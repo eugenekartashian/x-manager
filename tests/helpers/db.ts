@@ -16,3 +16,28 @@ export async function createOwner(suffix: "a" | "b") {
   const workspace = await prisma.workspace.create({ data: { ownerId: user.id, name: suffix } });
   return { userId: user.id, workspaceId: workspace.id };
 }
+
+/** Inserts a connected X account directly (bypassing OAuth) with encrypted tokens. */
+export async function connectXDirectly(
+  workspaceId: string,
+  options: { xUserId: string; accessToken: string; expiresAt?: Date },
+) {
+  const { encrypt } = await import("@/server/crypto");
+  const { keyRing } = await import("@/server/keyring");
+  return prisma.xAccount.create({
+    data: {
+      workspaceId,
+      xUserId: options.xUserId,
+      username: options.xUserId,
+      name: options.xUserId,
+      accessTokenEnc: encrypt(keyRing, options.accessToken, `x-account:${workspaceId}:access`),
+      refreshTokenEnc: encrypt(
+        keyRing,
+        `refresh-${options.accessToken}`,
+        `x-account:${workspaceId}:refresh`,
+      ),
+      accessTokenExpiresAt: options.expiresAt ?? new Date(Date.now() + 2 * 60 * 60 * 1000),
+      scopes: "tweet.read tweet.write users.read offline.access",
+    },
+  });
+}

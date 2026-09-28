@@ -156,16 +156,31 @@ export type TokenError = "not_connected" | "needs_reconnect" | "x_unavailable";
  * Returns a valid access token for the workspace's X account, refreshing it
  * under a row lock when it is about to expire.
  */
-export function getXAccessToken(
+export async function getXAccessToken(
   workspaceId: string,
   now: Date = new Date(),
 ): Promise<Result<string, TokenError>> {
+  const result = await getXCredentials(workspaceId, now);
+  return result.ok ? ok(result.data.accessToken) : result;
+}
+
+export type XCredentials = { accessToken: string; xUserId: string };
+
+/** Access token plus the X user id it belongs to (needed for /2/users/:id/... endpoints). */
+export function getXCredentials(
+  workspaceId: string,
+  now: Date = new Date(),
+): Promise<Result<XCredentials, TokenError>> {
   return withLockedXAccount(workspaceId, async (account, tx) => {
     if (!account) return err("not_connected");
     if (account.status === "NEEDS_RECONNECT") return err("needs_reconnect");
+    const { xUserId } = account;
 
     if (account.accessTokenExpiresAt.getTime() - now.getTime() > REFRESH_MARGIN_MS) {
-      return ok(decrypt(keyRing, account.accessTokenEnc, tokenContext(workspaceId, "access")));
+      return ok({
+        accessToken: decrypt(keyRing, account.accessTokenEnc, tokenContext(workspaceId, "access")),
+        xUserId,
+      });
     }
 
     const refreshToken = decrypt(
@@ -179,7 +194,7 @@ export function getXAccessToken(
         where: { id: account.id },
         data: { ...sealTokens(workspaceId, tokens, now), lastRefreshedAt: now },
       });
-      return ok(tokens.access_token);
+      return ok({ accessToken: tokens.access_token, xUserId });
     } catch (error) {
       if (!(error instanceof XApiError)) throw error;
       logger.warn("x.refresh_failed", { workspaceId, code: error.code, status: error.status });
@@ -193,6 +208,15 @@ export function getXAccessToken(
       return err("x_unavailable");
     }
   });
+}
+
+/** Called when X rejects a fresh access token (revoked in X settings). */
+export async function markNeedsReconnect(workspaceId: string): Promise<void> {
+  await withLockedXAccount(workspaceId, async (account, tx) => {
+    if (account)
+      await tx.xAccount.update({ where: { id: account.id }, data: { status: "NEEDS_RECONNECT" } });
+  });
+  logger.warn("x.needs_reconnect", { workspaceId });
 }
 
 // ─── Disconnect ──────────────────────────────────────────────────────────────

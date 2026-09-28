@@ -41,12 +41,28 @@ export async function xRequest<S extends z.ZodType>(
       codeForStatus(response.status, oauthError),
       response.status,
       parseRateLimitReset(response.headers),
+      problemDetail(body),
     );
   }
 
   const parsed = schema.safeParse(body);
   if (!parsed.success) throw new XApiError("X_BAD_RESPONSE", response.status);
   return parsed.data;
+}
+
+function problemDetail(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const record = body as Record<string, unknown>;
+  const candidates = [record["detail"], record["title"], record["error_description"]];
+  const errors = record["errors"];
+  if (Array.isArray(errors)) {
+    for (const item of errors) {
+      if (item && typeof item === "object")
+        candidates.push((item as Record<string, unknown>)["message"]);
+    }
+  }
+  const text = candidates.filter((value): value is string => typeof value === "string").join(" | ");
+  return text || null;
 }
 
 function parseRateLimitReset(headers: Headers): Date | null {

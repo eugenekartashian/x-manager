@@ -4,6 +4,30 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.1 — X client: own posts, Repost, undo Repost
+
+**Changed**
+- `integrations/x/client.ts`: `listOwnPosts` (`GET /2/users/:id/tweets`, replies/Reposts excluded, `created_at` + `public_metrics`, 5–100 per page, pagination), `repost` (`POST /2/users/:id/retweets`), `undoRepost` (`DELETE /2/users/:id/retweets/:postId`), `getMe` now also returns `pinned_tweet_id` (same cost).
+- Errors: `X_NOT_FOUND`; X problem `detail` kept in memory for matching (never logged). Duplicate Repost ("already …" 400/403) → `already_reposted` success.
+- `services/x-api.ts`: `fetchOwnPosts`, `fetchPinnedPostId`, `repostPost`, `undoRepostPost` — resolve credentials, single call (no retries), record estimated cost, map to app errors. Writes that time out / 5xx / malformed → `unknown_outcome` (cost still recorded — X may have billed); reads → `x_unavailable`. 401 → account marked `NEEDS_RECONNECT`, later calls stop before X.
+- `x-connection.ts`: `getXCredentials` (token + X user id), `markNeedsReconnect`.
+- Pricing constants: owned read $0.001/post, Repost $0.015, undo $0.010 (mapping UNVERIFIED, D-004).
+- Test helpers: fake X routes by method/path; `connectXDirectly`.
+
+**Verification**
+- `pnpm check` ✅ — 77 tests (21 new: request shape, pagination/clamping, empty timeline, usage rows, rate limit, read vs write failure semantics, duplicate Repost, 404/402/403/429 mapping, 401 → reconnect, per-workspace credential isolation).
+- No live X calls in this task.
+
+**Open (UNVERIFIED until 2.7 live test)**
+- Exact X response to a duplicate Repost and to undoing a non-existent Repost.
+- Whether Repost/undo are billed under "User interactions"/"Interaction deletion".
+
+**Costs:** $0.
+
+**Next:** M2.2 — own posts in the app + Repost queue (pick from list or paste URL).
+
+---
+
 ## 2026-09-28 · M1.3 — X OAuth connection
 
 **Changed**

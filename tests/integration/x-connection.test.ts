@@ -71,7 +71,7 @@ describe("completeXConnection", () => {
     expect(result).toMatchObject({ ok: true, data: { username: "eugene", status: "CONNECTED" } });
 
     // Token exchange: Basic client auth + a verifier matching the published challenge.
-    const tokenCall = x.calls.find((call) => call.url.endsWith("/2/oauth2/token"));
+    const tokenCall = x.calls.find((call) => call.url.pathname === "/2/oauth2/token");
     expect(tokenCall?.headers.get("authorization")).toMatch(/^Basic /);
     const verifier = tokenCall?.body?.get("code_verifier") ?? "";
     const challenge = createHash("sha256").update(verifier).digest("base64url");
@@ -172,7 +172,7 @@ describe("completeXConnection", () => {
     const result = await connect(owner);
 
     expect(result).toEqual({ ok: false, error: "missing_scopes" });
-    expect(x.calls.some((call) => call.url.endsWith("/2/users/me"))).toBe(false);
+    expect(x.calls.some((call) => call.url.pathname === "/2/users/me")).toBe(false);
     expect(await prisma.xAccount.count()).toBe(0);
   });
 
@@ -247,7 +247,7 @@ describe("getXAccessToken", () => {
       { ok: true, data: "access-2" },
       { ok: true, data: "access-2" },
     ]);
-    expect(x.calls.filter((call) => call.url.endsWith("/2/oauth2/token"))).toHaveLength(1);
+    expect(x.calls.filter((call) => call.url.pathname === "/2/oauth2/token")).toHaveLength(1);
   });
 
   it("marks the account for reconnect when X rejects the refresh token", async () => {

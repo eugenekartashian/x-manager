@@ -14,7 +14,38 @@ export const meResponseSchema = z.object({
     id: z.string().min(1),
     username: z.string().min(1),
     name: z.string(),
+    pinned_tweet_id: z.string().optional(),
   }),
+});
+
+const publicMetricsSchema = z.object({
+  retweet_count: z.number().int(),
+  reply_count: z.number().int(),
+  like_count: z.number().int(),
+  quote_count: z.number().int(),
+  impression_count: z.number().int().optional(),
+});
+
+export const userPostsResponseSchema = z.object({
+  // X omits `data` entirely when there are no posts.
+  data: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        text: z.string(),
+        created_at: z.iso.datetime(),
+        public_metrics: publicMetricsSchema.optional(),
+      }),
+    )
+    .default([]),
+  meta: z.object({
+    result_count: z.number().int(),
+    next_token: z.string().optional(),
+  }),
+});
+
+export const repostResponseSchema = z.object({
+  data: z.object({ retweeted: z.boolean() }),
 });
 
 export const revokeResponseSchema = z.object({ revoked: z.boolean() });
