@@ -50,7 +50,7 @@ describe("fetchOwnPosts", () => {
     expect(Object.fromEntries(call?.url.searchParams ?? [])).toEqual({
       max_results: "20",
       exclude: "replies,retweets",
-      "tweet.fields": "created_at,public_metrics,attachments",
+      "tweet.fields": "created_at,public_metrics,attachments,in_reply_to_user_id,referenced_tweets",
       expansions: "attachments.media_keys",
       "media.fields": "type,url,preview_image_url",
     });
@@ -126,6 +126,46 @@ describe("fetchOwnPosts", () => {
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({ ok: false, error: "not_connected" });
     expect(x.calls).toHaveLength(0);
+  });
+});
+
+describe("reply filtering", () => {
+  it("drops comments (including replies to own posts) but keeps quotes", async () => {
+    const owner = await connectedOwner();
+    withFakeX({
+      posts: () => ({
+        status: 200,
+        body: {
+          data: [
+            { id: "1", text: "original", created_at: "2026-09-20T10:00:00.000Z" },
+            {
+              id: "2",
+              text: "https://t.co/link",
+              created_at: "2026-09-20T10:01:00.000Z",
+              in_reply_to_user_id: "x-a",
+              referenced_tweets: [{ type: "replied_to", id: "1" }],
+            },
+            {
+              id: "3",
+              text: "reply without user id",
+              created_at: "2026-09-20T10:02:00.000Z",
+              referenced_tweets: [{ type: "replied_to", id: "1" }],
+            },
+            {
+              id: "4",
+              text: "quote",
+              created_at: "2026-09-20T10:03:00.000Z",
+              referenced_tweets: [{ type: "quoted", id: "99" }],
+            },
+          ],
+          meta: { result_count: 4 },
+        },
+      }),
+    });
+
+    const result = await fetchOwnPosts(owner.workspaceId);
+
+    expect(result.ok && result.data.posts.map((post) => post.id)).toEqual(["1", "4"]);
   });
 });
 

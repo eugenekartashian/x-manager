@@ -54,6 +54,17 @@ export async function upsertPosts(scope: OwnPostScope, posts: XPost[], now: Date
   );
 }
 
+/**
+ * Drops cached posts that are neither in the latest page, pinned, nor in the repost
+ * list — "recent posts" then mirrors X (deleted posts and old comments disappear).
+ */
+export async function pruneStale(scope: OwnPostScope, keepXPostIds: string[]): Promise<number> {
+  const { count } = await prisma.ownPost.deleteMany({
+    where: { ...scope, inRotation: false, isPinned: false, xPostId: { notIn: keepXPostIds } },
+  });
+  return count;
+}
+
 export async function setPinned(scope: OwnPostScope, pinnedXPostId: string | null): Promise<void> {
   await prisma.$transaction([
     prisma.ownPost.updateMany({

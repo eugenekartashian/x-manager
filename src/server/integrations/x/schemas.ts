@@ -28,6 +28,8 @@ const publicMetricsSchema = z.object({
 
 const attachmentsSchema = z.object({ media_keys: z.array(z.string()).optional() }).optional();
 
+const referencedPostsSchema = z.array(z.object({ type: z.string(), id: z.string() })).optional();
+
 const mediaSchema = z.object({
   media_key: z.string(),
   type: z.string(),
@@ -49,6 +51,8 @@ export const userPostsResponseSchema = z.object({
         created_at: z.iso.datetime(),
         public_metrics: publicMetricsSchema.optional(),
         attachments: attachmentsSchema,
+        in_reply_to_user_id: z.string().optional(),
+        referenced_tweets: referencedPostsSchema,
       }),
     )
     .default([]),

@@ -160,6 +160,24 @@ describe("refreshOwnPosts", () => {
     expect(x.calls.some((call) => call.url.pathname.startsWith("/2/tweets/"))).toBe(false);
   });
 
+  it("drops cached posts that left the recent page unless listed or pinned", async () => {
+    const owner = await connectedOwner();
+    await seedPosts(owner.workspaceId, ["4", "3", "2", "1"], "1");
+    await setInRotation(owner.workspaceId, await postId(owner.workspaceId, "2"), true);
+    withFakeX({
+      posts: () => postsReply(["5", "4"]),
+      me: () => meReply("x-a", "a", "1"),
+      post: (id) => postReply(id, "x-a"),
+    });
+
+    await refreshOwnPosts(owner.workspaceId, later(REFRESH_MIN_INTERVAL_MS + 1));
+
+    const ids = (await prisma.ownPost.findMany({ where: { workspaceId: owner.workspaceId } }))
+      .map((p) => p.xPostId)
+      .sort();
+    expect(ids).toEqual(["1", "2", "4", "5"]); // 3 dropped; 2 (listed) and 1 (pinned) kept
+  });
+
   it("moves the pinned flag when the user pins another post", async () => {
     const owner = await connectedOwner();
     await seedPosts(owner.workspaceId, ["2", "1"], "1");

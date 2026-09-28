@@ -60,7 +60,10 @@ export async function listOwnPosts(
   const url = new URL(`${X_API_BASE}/2/users/${encodeURIComponent(xUserId)}/tweets`);
   url.searchParams.set("max_results", String(maxResults));
   url.searchParams.set("exclude", "replies,retweets");
-  url.searchParams.set("tweet.fields", "created_at,public_metrics,attachments");
+  url.searchParams.set(
+    "tweet.fields",
+    "created_at,public_metrics,attachments,in_reply_to_user_id,referenced_tweets",
+  );
   setMediaParams(url);
   if (options.paginationToken) url.searchParams.set("pagination_token", options.paginationToken);
 
@@ -69,7 +72,11 @@ export async function listOwnPosts(
     userPostsResponseSchema,
   );
   return {
-    posts: body.data.map((post) => toXPost(post, body.includes.media)),
+    // `exclude=replies` still returns replies to one's own posts (e.g. a link left
+    // under a post); those are comments, not Repost candidates.
+    posts: body.data
+      .filter((post) => !isReply(post))
+      .map((post) => toXPost(post, body.includes.media)),
     nextToken: body.meta.next_token ?? null,
   };
 }
@@ -121,6 +128,16 @@ type RawPost = {
     | undefined;
   attachments?: { media_keys?: string[] | undefined } | undefined;
 };
+
+function isReply(post: {
+  in_reply_to_user_id?: string | undefined;
+  referenced_tweets?: { type: string }[] | undefined;
+}): boolean {
+  return (
+    post.in_reply_to_user_id !== undefined ||
+    (post.referenced_tweets ?? []).some((ref) => ref.type === "replied_to")
+  );
+}
 
 // Media URLs come from X and are rendered in our pages: accept X's image CDN only.
 const MEDIA_HOST = "https://pbs.twimg.com/";

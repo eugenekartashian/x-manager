@@ -60,6 +60,10 @@ export async function refreshOwnPosts(
     }
   }
   await posts.setPinned(scope.data, pinnedId);
+  await posts.pruneStale(
+    scope.data,
+    page.data.posts.map((post) => post.id),
+  );
 
   return ok({ synced: page.data.posts.length });
 }
