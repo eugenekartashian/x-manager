@@ -1,0 +1,10 @@
+// Data model draft: docs/architecture.md §2. Models are added task by task (M1.2+).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
