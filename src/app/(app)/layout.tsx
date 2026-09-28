@@ -17,6 +17,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <Link href="/posts" className="text-foreground/70 hover:text-foreground text-sm">
               Posts
             </Link>
+            <Link href="/schedule" className="text-foreground/70 hover:text-foreground text-sm">
+              Schedule
+            </Link>
           </nav>
           <div className="flex min-w-0 items-center gap-3">
             <span className="text-foreground/70 truncate text-sm">{user.email}</span>

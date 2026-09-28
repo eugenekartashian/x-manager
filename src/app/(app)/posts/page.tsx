@@ -41,10 +41,17 @@ export default async function PostsPage() {
 
       <section className="flex flex-col gap-3">
         <div>
-          <h2 className="text-lg font-medium">Repost rotation</h2>
+          <h2 className="text-lg font-medium">
+            Repost list <span className="text-foreground/50">({data.rotation.length})</span>
+          </h2>
           <p className="text-foreground/70 text-sm">
-            Your posts that scheduled Reposts pick from, in this order. A post is reposted at most
-            once every 6 hours.
+            Daily times set to “next from repost list” take these posts top to bottom, in a loop.
+            Each post is reposted at most once every {workspace.perPostMinIntervalMinutes / 60} h —
+            set times and limits on the{" "}
+            <Link href="/schedule" className="underline underline-offset-2">
+              Schedule
+            </Link>{" "}
+            page. Use ↑ ↓ to reorder.
           </p>
         </div>
         <RotationList
