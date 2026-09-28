@@ -94,21 +94,27 @@ export async function setPinned(scope: OwnPostScope, pinnedXPostId: string | nul
   ]);
 }
 
-/** Adds to the end of the rotation (idempotent). Returns false if the post is not in scope. */
-export function addToRotation(scope: OwnPostScope, ownPostId: string): Promise<boolean> {
+/** Adds to the end of the repost list (idempotent), unless the list already has `maxSize` posts. */
+export function addToRotation(
+  scope: OwnPostScope,
+  ownPostId: string,
+  maxSize: number,
+): Promise<"added" | "full" | "not_found"> {
   return prisma.$transaction(async (tx) => {
     const post = await tx.ownPost.findFirst({ where: { ...scope, id: ownPostId } });
-    if (!post) return false;
-    if (post.inRotation) return true;
+    if (!post) return "not_found";
+    if (post.inRotation) return "added";
     const last = await tx.ownPost.aggregate({
       where: { ...scope, inRotation: true },
       _max: { rotationPosition: true },
+      _count: true,
     });
+    if (last._count >= maxSize) return "full";
     await tx.ownPost.update({
       where: { id: post.id },
       data: { inRotation: true, rotationPosition: (last._max.rotationPosition ?? 0) + 1 },
     });
-    return true;
+    return "added";
   });
 }
 

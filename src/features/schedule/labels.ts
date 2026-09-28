@@ -8,7 +8,6 @@ export function timezoneLabel(zone: string): string {
 export const SKIP_LABELS: Record<SkipReason, string> = {
   empty_list: "skipped — repost list is empty",
   interval: "skipped — reposted too recently (per-post interval)",
-  daily_cap: "skipped — daily limit reached",
 };
 
 export function formatTime(date: Date, timeZone: string): string {

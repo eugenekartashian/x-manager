@@ -49,9 +49,9 @@ export async function deleteSlot(workspaceId: string, slotId: string): Promise<b
   return count > 0;
 }
 
-export async function updateRepostLimits(
-  workspaceId: string,
-  data: { perPostMinIntervalMinutes: number; dailyRepostCap: number },
-): Promise<void> {
-  await prisma.workspace.update({ where: { id: workspaceId }, data });
+export async function updateRepostInterval(workspaceId: string, minutes: number): Promise<void> {
+  await prisma.workspace.update({
+    where: { id: workspaceId },
+    data: { perPostMinIntervalMinutes: minutes },
+  });
 }

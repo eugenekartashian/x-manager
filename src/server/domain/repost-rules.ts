@@ -1,11 +1,15 @@
 // Repost limits (D-003, D-012). Workspace settings choose values within these bounds.
 import { X_PRICE_MICROS } from "@/server/integrations/x/pricing";
 
-/** Hard ceiling regardless of settings (user decision 2026-09-28). */
-export const HARD_MAX_REPOSTS_PER_DAY = 8;
-export const MAX_SLOTS = HARD_MAX_REPOSTS_PER_DAY;
+/** Up to 8 daily times; each reposts the whole list (D-017, D-018). */
+export const MAX_SLOTS = 8;
+/**
+ * Repost list size cap: a batch is undo + Repost per post, and X allows 50 of each per
+ * user per 15 min (docs.x.com rate limits). 25 keeps one batch well inside that.
+ */
+export const MAX_LIST_SIZE = 25;
 export const MIN_INTERVAL_HOUR_OPTIONS = [2, 3, 4, 5, 6, 8, 12] as const;
-export const DEFAULT_MIN_INTERVAL_MINUTES = 240;
+export const DEFAULT_MIN_INTERVAL_MINUTES = 120;
 
 /** Each scheduled Repost = undo (if any) + Repost. */
 export const REPOST_PAIR_COST_MICROS = X_PRICE_MICROS.undoRepost + X_PRICE_MICROS.repost;

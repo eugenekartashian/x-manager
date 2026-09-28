@@ -1,6 +1,5 @@
 import "server-only";
 import type { AttemptStep, Prisma, RepostStatus, ScheduledRepost } from "@/generated/prisma/client";
-import { localDateOf, type LocalDate } from "@/lib/zoned-time";
 import { prisma } from "@/server/db";
 
 // ─── Workspace lease ─────────────────────────────────────────────────────────
@@ -43,28 +42,6 @@ export async function recordedKeys(workspaceId: string, since: Date): Promise<Se
     select: { dedupeKey: true },
   });
   return new Set(rows.map((row) => row.dedupeKey));
-}
-
-/** Reposts that happened (or may have) per workspace-local day — for the daily cap. */
-export async function countDoneByDay(
-  workspaceId: string,
-  since: Date,
-  timeZone: string,
-): Promise<Map<LocalDate, number>> {
-  const rows = await prisma.scheduledRepost.findMany({
-    where: {
-      workspaceId,
-      runAt: { gte: since },
-      status: { in: ["SUCCEEDED", "UNKNOWN", "PROCESSING"] },
-    },
-    select: { runAt: true },
-  });
-  const counts = new Map<LocalDate, number>();
-  for (const row of rows) {
-    const day = localDateOf(row.runAt, timeZone);
-    counts.set(day, (counts.get(day) ?? 0) + 1);
-  }
-  return counts;
 }
 
 /** Inserts the occurrence; null if another worker already claimed this dedupe key. */

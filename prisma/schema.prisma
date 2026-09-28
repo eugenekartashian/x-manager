@@ -91,10 +91,8 @@ model Workspace {
   // Spend guard for paid X/AI calls (micro-dollars, per UTC calendar month). D-001.
   monthlyBudgetMicros       BigInt    @default(5000000)
   postsSyncedAt             DateTime?
-  // Repost limits (D-003, D-012): a post is reposted at most once per interval;
-  // at most dailyRepostCap Reposts per local day (hard ceiling in code).
-  perPostMinIntervalMinutes Int       @default(240)
-  dailyRepostCap            Int       @default(8)
+  // A post is reposted at most once per interval (D-018); max 8 daily times, no daily cap.
+  perPostMinIntervalMinutes Int       @default(120)
 
   xAccount XAccount?
   usage    ExternalUsage[]

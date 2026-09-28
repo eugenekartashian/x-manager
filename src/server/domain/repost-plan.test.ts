@@ -12,8 +12,7 @@ function input(overrides: Partial<PlanInput> = {}): PlanInput {
       { id: "B", lastRepostedAt: null },
       { id: "C", lastRepostedAt: null },
     ],
-    limits: { minIntervalMs: 4 * H, dailyCap: 8 },
-    workspaceTimezone: "Europe/Madrid",
+    limits: { minIntervalMs: 4 * H },
     from: new Date("2026-10-01T00:00:00Z"),
     to: new Date("2026-10-02T00:00:00Z"),
     ...overrides,
@@ -104,35 +103,16 @@ describe("planReposts — whole list at every time", () => {
     expect(summary(plan)).toEqual(["08:00 A", "10:00 A (interval)", "12:00 A"]);
   });
 
-  it("stops at the daily cap, counting reposts already done today", () => {
+  it("has no daily cap: 8 times × 3 posts are all planned", () => {
+    const times = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"];
     const plan = planReposts(
       input({
-        slots: [slot("a", "08:00"), slot("b", "14:00")],
-        limits: { minIntervalMs: 0, dailyCap: 4 },
-        doneByDay: new Map([["2026-10-01", 1]]),
+        slots: times.map((time, index) => slot(`s${index}`, time)),
+        limits: { minIntervalMs: 2 * H },
       }),
     );
-    expect(plan.map((item) => item.skipReason)).toEqual([
-      null,
-      null,
-      null,
-      "daily_cap",
-      "daily_cap",
-      "daily_cap",
-    ]);
-  });
-
-  it("counts the daily cap in the workspace timezone", () => {
-    // 20:00 NY = 02:00 Madrid next day → belongs to the next Madrid day.
-    const plan = planReposts(
-      input({
-        list: [{ id: "A", lastRepostedAt: null }],
-        slots: [slot("eu", "19:00", "Europe/Madrid"), slot("us", "20:00", "America/New_York")],
-        limits: { minIntervalMs: 0, dailyCap: 1 },
-        to: new Date("2026-10-02T03:00:00Z"),
-      }),
-    );
-    expect(plan.map((item) => item.skipReason)).toEqual([null, null]);
+    expect(plan).toHaveLength(24);
+    expect(plan.every((item) => item.skipReason === null)).toBe(true);
   });
 
   it("records a single skip when the list is empty", () => {
@@ -151,7 +131,6 @@ describe("planReposts — whole list at every time", () => {
         ],
         slots: [slot("s", "10:00")],
         skipKeys: new Set(["s:2026-10-01:B"]),
-        doneByDay: new Map([["2026-10-01", 1]]),
       }),
     );
     expect(summary(plan)).toEqual(["10:00 A"]);
@@ -163,7 +142,7 @@ describe("planReposts — whole list at every time", () => {
         list: [{ id: "A", lastRepostedAt: null }],
         schedule: { active: true, startDate: "2026-10-24", durationDays: 3 },
         slots: [slot("s", "09:00", "Europe/Madrid")],
-        limits: { minIntervalMs: 0, dailyCap: 8 },
+        limits: { minIntervalMs: 0 },
         from: new Date("2026-10-24T00:00:00Z"),
         to: new Date("2026-10-27T00:00:00Z"),
       }),

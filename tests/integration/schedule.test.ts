@@ -5,7 +5,7 @@ import {
   addSlot,
   getSchedulePageData,
   removeSlot,
-  saveRepostLimits,
+  saveRepostInterval,
   saveSchedule,
 } from "@/server/services/schedule";
 import { connectXDirectly, createOwner, resetDatabase } from "../helpers/db";
@@ -75,27 +75,22 @@ describe("schedule settings", () => {
     ).toBe(true);
   });
 
-  it("validates limits against the allowed options and the hard ceiling of 8", async () => {
+  it("validates the interval against the allowed options (default 2 h)", async () => {
     const { workspace } = await setup();
+    expect(workspace.perPostMinIntervalMinutes).toBe(120);
 
-    expect(await saveRepostLimits(workspace.id, { minIntervalHours: 1, dailyCap: 5 })).toEqual({
+    expect(await saveRepostInterval(workspace.id, { minIntervalHours: 1 })).toEqual({
       ok: false,
       error: "invalid_interval",
     });
-    expect(await saveRepostLimits(workspace.id, { minIntervalHours: 4, dailyCap: 9 })).toEqual({
-      ok: false,
-      error: "invalid_cap",
-    });
-    expect(await saveRepostLimits(workspace.id, { minIntervalHours: 3, dailyCap: 8 })).toEqual({
+    expect(await saveRepostInterval(workspace.id, { minIntervalHours: 3 })).toEqual({
       ok: true,
       data: null,
     });
-    expect(await prisma.workspace.findUniqueOrThrow({ where: { id: workspace.id } })).toMatchObject(
-      {
-        perPostMinIntervalMinutes: 180,
-        dailyRepostCap: 8,
-      },
-    );
+    expect(
+      (await prisma.workspace.findUniqueOrThrow({ where: { id: workspace.id } }))
+        .perPostMinIntervalMinutes,
+    ).toBe(180);
   });
 });
 
@@ -170,14 +165,14 @@ describe("preview and estimate", () => {
     }
     expect(Object.fromEntries(byTime)).toEqual({
       "08:00": ["2", "3", "1"], // bottom → top, so "1" (first in list) ends on top
-      "11:00": ["2:interval", "3:interval", "1:interval"], // only 3 h later, interval 4 h
+      "11:00": ["2", "3", "1"], // 3 h later ≥ 2 h interval
       "14:00": ["2", "3", "1"],
     });
-    // 3 times × 3 posts = 9, capped at 8 per day.
+    // 3 times × 3 posts = 9, no daily cap (D-018).
     expect(data.estimate).toEqual({
-      repostsPerDay: 8,
-      perDayMicros: 200_000,
-      perMonthMicros: 6_000_000,
+      repostsPerDay: 9,
+      perDayMicros: 225_000,
+      perMonthMicros: 6_750_000,
     });
     expect(data.minGapMinutes).toBe(180);
   });
@@ -187,7 +182,7 @@ describe("preview and estimate", () => {
     await setInRotation(workspaceId, await postId(workspaceId, "1"), true);
     await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays: 1 });
     await addSlot(workspace, { localTime: "10:00", timezone: "Europe/Madrid" }, NOW);
-    await addSlot(workspace, { localTime: "12:00", timezone: "Europe/Madrid" }, NOW); // 2 h later, interval 4 h
+    await addSlot(workspace, { localTime: "11:00", timezone: "Europe/Madrid" }, NOW); // 1 h later, interval 2 h
 
     const data = await getSchedulePageData(workspace, NOW);
 

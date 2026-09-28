@@ -97,7 +97,7 @@ async function processWorkspace(
   // Re-plan after each Repost: its outcome changes the state the next one depends on.
   for (let step = 0; step < MAX_ITEMS_PER_WORKSPACE; step++) {
     if (Date.now() - startedAt > timeBudget) return; // the rest runs on the next call
-    const context = await loadContext(workspaceId, now);
+    const context = await loadContext(workspaceId);
     if (!context) return;
     const item = planReposts({
       ...context.planInput,
@@ -120,10 +120,10 @@ type Context = {
   planInput: Omit<Parameters<typeof planReposts>[0], "from" | "to" | "skipKeys">;
 };
 
-async function loadContext(workspaceId: string, now: Date): Promise<Context | null> {
+async function loadContext(workspaceId: string): Promise<Context | null> {
   const workspace = await prisma.workspace.findUniqueOrThrow({
     where: { id: workspaceId },
-    select: { timezone: true, perPostMinIntervalMinutes: true, dailyRepostCap: true },
+    select: { perPostMinIntervalMinutes: true },
   });
   const schedule = await prisma.repostSchedule.findUnique({
     where: { workspaceId },
@@ -146,23 +146,14 @@ async function loadContext(workspaceId: string, now: Date): Promise<Context | nu
     xUserId: scope?.xUserId ?? null,
     planInput: {
       schedule,
-      // Every time reposts the whole list (D-017).
+      // Every time reposts the whole list (D-017); no daily cap beyond 8 times (D-018).
       slots: schedule.slots.map((slot) => ({
         id: slot.id,
         localTime: slot.localTime,
         timezone: slot.timezone,
       })),
       list: list.map(toPlanPost),
-      limits: {
-        minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000,
-        dailyCap: workspace.dailyRepostCap,
-      },
-      workspaceTimezone: workspace.timezone,
-      doneByDay: await runs.countDoneByDay(
-        workspaceId,
-        new Date(now.getTime() - 48 * 3_600_000),
-        workspace.timezone,
-      ),
+      limits: { minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000 },
     },
   };
 }

@@ -5,19 +5,14 @@ import { ActionMessage } from "@/features/posts/action-message";
 import type { ActionState } from "@/features/posts/actions";
 import { SubmitButton } from "@/features/posts/submit-button";
 import { Select } from "@/components/ui/select";
-import { saveLimitsAction } from "./actions";
+import { saveIntervalAction } from "./actions";
 
 const initial: ActionState = { status: "idle", message: "" };
 
-type Props = {
-  intervalHours: number;
-  dailyCap: number;
-  intervalOptions: readonly number[];
-  maxCap: number;
-};
+type Props = { intervalHours: number; intervalOptions: readonly number[] };
 
-export function LimitsForm({ intervalHours, dailyCap, intervalOptions, maxCap }: Props) {
-  const [state, action] = useActionState(saveLimitsAction, initial);
+export function LimitsForm({ intervalHours, intervalOptions }: Props) {
+  const [state, action] = useActionState(saveIntervalAction, initial);
   return (
     <form action={action} className="flex flex-col gap-2">
       <div className="flex flex-wrap items-end gap-4">
@@ -31,18 +26,8 @@ export function LimitsForm({ intervalHours, dailyCap, intervalOptions, maxCap }:
             ))}
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Max Reposts per day
-          <Select name="dailyCap" defaultValue={dailyCap} className="min-w-40">
-            {Array.from({ length: maxCap }, (_, index) => index + 1).map((cap) => (
-              <option key={cap} value={cap}>
-                {cap}
-              </option>
-            ))}
-          </Select>
-        </label>
         <SubmitButton variant="secondary" pendingLabel="Saving…">
-          Save limits
+          Save
         </SubmitButton>
       </div>
       <ActionMessage state={state} />

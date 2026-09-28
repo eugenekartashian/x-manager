@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireWorkspace } from "@/server/auth/session";
-import { addSlot, removeSlot, saveRepostLimits, saveSchedule } from "@/server/services/schedule";
+import { addSlot, removeSlot, saveRepostInterval, saveSchedule } from "@/server/services/schedule";
 import type { ActionState } from "@/features/posts/actions";
 
 const MESSAGES: Record<string, string> = {
@@ -13,7 +13,6 @@ const MESSAGES: Record<string, string> = {
   invalid_timezone: "Pick a timezone from the list.",
   too_many_slots: "You already have the maximum number of daily times.",
   invalid_interval: "Pick an interval from the list.",
-  invalid_cap: "Daily limit must be between 1 and 8.",
   invalid_input: "Please check the form and try again.",
 };
 
@@ -87,19 +86,16 @@ export async function deleteSlotAction(formData: FormData): Promise<void> {
   refresh();
 }
 
-const limitsSchema = z.object({
-  minIntervalHours: z.coerce.number().int(),
-  dailyCap: z.coerce.number().int(),
-});
+const intervalSchema = z.object({ minIntervalHours: z.coerce.number().int() });
 
-export async function saveLimitsAction(
+export async function saveIntervalAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   const { workspace } = await requireWorkspace();
-  const input = limitsSchema.safeParse(Object.fromEntries(formData));
+  const input = intervalSchema.safeParse(Object.fromEntries(formData));
   if (!input.success) return failed("invalid_input");
-  const result = await saveRepostLimits(workspace.id, input.data);
+  const result = await saveRepostInterval(workspace.id, input.data);
   refresh();
-  return result.ok ? done("Limits saved.") : failed(result.error);
+  return result.ok ? done("Interval saved.") : failed(result.error);
 }

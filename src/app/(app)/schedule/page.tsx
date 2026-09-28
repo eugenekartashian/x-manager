@@ -10,7 +10,6 @@ import { formatUsd } from "@/lib/format";
 import { env } from "@/lib/env";
 import { requireWorkspace } from "@/server/auth/session";
 import {
-  HARD_MAX_REPOSTS_PER_DAY,
   MAX_SLOTS,
   MIN_INTERVAL_HOUR_OPTIONS,
   SCHEDULE_TIMEZONES,
@@ -102,18 +101,16 @@ export default async function SchedulePage() {
       </section>
 
       <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
-        <h2 className="text-lg font-medium">Limits & cost</h2>
+        <h2 className="text-lg font-medium">Interval & cost</h2>
         <LimitsForm
           intervalHours={workspace.perPostMinIntervalMinutes / 60}
-          dailyCap={workspace.dailyRepostCap}
           intervalOptions={MIN_INTERVAL_HOUR_OPTIONS}
-          maxCap={HARD_MAX_REPOSTS_PER_DAY}
         />
         <p
           className={`text-sm ${overBudget ? "text-amber-700 dark:text-amber-400" : "text-foreground/70"}`}
         >
-          {data.estimate.repostsPerDay} Reposts/day ≈{" "}
-          {formatUsd(BigInt(data.estimate.perDayMicros))}/day ≈{" "}
+          {data.slots.length} times × {data.listSize} posts = {data.estimate.repostsPerDay}{" "}
+          Reposts/day ≈ {formatUsd(BigInt(data.estimate.perDayMicros))}/day ≈{" "}
           {formatUsd(BigInt(data.estimate.perMonthMicros))}/month (estimate, each = undo + Repost).
           Monthly budget {formatUsd(data.budget.budgetMicros)}, spent{" "}
           {formatUsd(data.budget.spentMicros)}.

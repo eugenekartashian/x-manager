@@ -4,7 +4,6 @@ import { err, ok, type Result } from "@/lib/result";
 import { isLocalDate, isLocalTime, localDateOf, zonedToUtc } from "@/lib/zoned-time";
 import { planReposts, type PlannedRepost, type PlanPost } from "@/server/domain/repost-plan";
 import {
-  HARD_MAX_REPOSTS_PER_DAY,
   isScheduleTimezone,
   MAX_SLOTS,
   MIN_INTERVAL_HOUR_OPTIONS,
@@ -23,7 +22,6 @@ type WorkspaceRef = {
   id: string;
   timezone: string;
   perPostMinIntervalMinutes: number;
-  dailyRepostCap: number;
 };
 
 // ─── Page data ───────────────────────────────────────────────────────────────
@@ -56,9 +54,8 @@ export async function getSchedulePageData(
   ]);
 
   const scope = xUserId.ok ? { workspaceId: workspace.id, xUserId: xUserId.data } : null;
-  const [list, doneByDay, recentRuns] = await Promise.all([
+  const [list, recentRuns] = await Promise.all([
     scope ? posts.listRotation(scope) : Promise.resolve([]),
-    runs.countDoneByDay(workspace.id, new Date(now.getTime() - 48 * 3_600_000), workspace.timezone),
     runs.listRecentRuns(workspace.id, 10),
   ]);
   const byId = new Map(list.map((post) => [post.id, post]));
@@ -72,19 +69,14 @@ export async function getSchedulePageData(
       timezone: slot.timezone,
     })),
     list: list.map(toPlanPost),
-    limits: {
-      minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000,
-      dailyCap: workspace.dailyRepostCap,
-    },
-    workspaceTimezone: workspace.timezone,
-    doneByDay,
+    limits: { minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000 },
     skipKeys: await runs.recordedKeys(workspace.id, now),
     from: now,
     to: new Date(now.getTime() + PREVIEW_HOURS * 3_600_000),
   });
 
-  // Every daily time reposts the whole list (D-017), capped by the daily limit.
-  const repostsPerDay = Math.min(slots.length * list.length, workspace.dailyRepostCap);
+  // Every daily time reposts the whole list (D-017, D-018).
+  const repostsPerDay = slots.length * list.length;
   const perDayMicros = repostsPerDay * REPOST_PAIR_COST_MICROS;
 
   return {
@@ -178,25 +170,13 @@ export async function removeSlot(
   return (await schedules.deleteSlot(workspaceId, slotId)) ? ok(null) : err("not_found");
 }
 
-export type LimitsError = "invalid_interval" | "invalid_cap";
-
-export async function saveRepostLimits(
+export async function saveRepostInterval(
   workspaceId: string,
-  input: { minIntervalHours: number; dailyCap: number },
-): Promise<Result<null, LimitsError>> {
+  input: { minIntervalHours: number },
+): Promise<Result<null, "invalid_interval">> {
   if (!(MIN_INTERVAL_HOUR_OPTIONS as readonly number[]).includes(input.minIntervalHours)) {
     return err("invalid_interval");
   }
-  if (
-    !Number.isInteger(input.dailyCap) ||
-    input.dailyCap < 1 ||
-    input.dailyCap > HARD_MAX_REPOSTS_PER_DAY
-  ) {
-    return err("invalid_cap");
-  }
-  await schedules.updateRepostLimits(workspaceId, {
-    perPostMinIntervalMinutes: input.minIntervalHours * 60,
-    dailyRepostCap: input.dailyCap,
-  });
+  await schedules.updateRepostInterval(workspaceId, input.minIntervalHours * 60);
   return ok(null);
 }

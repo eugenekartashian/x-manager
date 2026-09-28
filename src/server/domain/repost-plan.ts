@@ -1,9 +1,10 @@
-// Pure Repost planner: turns the schedule, daily times, repost list and limits into
+// Pure Repost planner: turns the schedule, daily times, repost list and interval into
 // concrete Reposts (or the reason each one is skipped). Shared by the schedule preview
 // and the job processor, so the preview shows exactly what will run.
 //
-// Model (D-017): at every daily time, EVERY post in the repost list is reposted. The
-// batch runs bottom → top, so the first post in the list ends up on top of the timeline.
+// Model (D-017, D-018): at every daily time (max 8 per day), EVERY post in the repost list
+// is reposted. The batch runs bottom → top, so the first post in the list ends up on top
+// of the timeline. The only per-post limit is the minimum interval between its Reposts.
 
 import { addDays, localDateOf, zonedToUtc, type LocalDate, type LocalTime } from "@/lib/zoned-time";
 
@@ -18,11 +19,8 @@ export type PlanInput = {
   slots: PlanSlot[];
   /** Repost list in display order (first = should end on top of the timeline). */
   list: PlanPost[];
-  limits: { minIntervalMs: number; dailyCap: number };
-  /** Daily cap is counted per local day in this timezone. */
-  workspaceTimezone: string;
-  /** Reposts already done per workspace-local day (from history). */
-  doneByDay?: ReadonlyMap<LocalDate, number>;
+  /** A post is reposted at most once per this interval (our anti-spam rule, D-018). */
+  limits: { minIntervalMs: number };
   /** Reposts already recorded — their effects are in the state above, so skip them. */
   skipKeys?: ReadonlySet<string>;
   from: Date;
@@ -31,8 +29,7 @@ export type PlanInput = {
 
 export type SkipReason =
   | "empty_list" // repost list is empty
-  | "interval" // this post was reposted too recently
-  | "daily_cap"; // daily limit reached
+  | "interval"; // this post was reposted too recently
 
 export type PlannedRepost = {
   /** Stable per time, local date and post — used as the job dedupe key. */
@@ -86,7 +83,6 @@ export function occurrences(input: Pick<PlanInput, "schedule" | "slots" | "from"
 
 export function planReposts(input: PlanInput): PlannedRepost[] {
   const lastReposted = new Map(input.list.map((post) => [post.id, post.lastRepostedAt]));
-  const doneByDay = new Map(input.doneByDay ?? []);
   // Bottom → top, so the first post in the list is reposted last and shows on top.
   const batchOrder = [...input.list].reverse();
   const planned: PlannedRepost[] = [];
@@ -108,21 +104,14 @@ export function planReposts(input: PlanInput): PlannedRepost[] {
       continue;
     }
 
-    const day = localDateOf(runAt, input.workspaceTimezone);
     for (const post of batchOrder) {
       const key = repostKey(slot.id, localDate, post.id);
       if (input.skipKeys?.has(key)) continue;
 
       const last = lastReposted.get(post.id) ?? null;
-      let skipReason: SkipReason | null = null;
-      if ((doneByDay.get(day) ?? 0) >= input.limits.dailyCap) skipReason = "daily_cap";
-      else if (last && runAt.getTime() - last.getTime() < input.limits.minIntervalMs)
-        skipReason = "interval";
-
-      if (!skipReason) {
-        lastReposted.set(post.id, runAt);
-        doneByDay.set(day, (doneByDay.get(day) ?? 0) + 1);
-      }
+      const skipReason: SkipReason | null =
+        last && runAt.getTime() - last.getTime() < input.limits.minIntervalMs ? "interval" : null;
+      if (!skipReason) lastReposted.set(post.id, runAt);
       planned.push({ ...base, key, postId: post.id, skipReason });
     }
   }

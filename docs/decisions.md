@@ -120,3 +120,12 @@ User decision after the live test: at each daily time, **all** posts in the repo
 - Per-post interval still applies (a whole batch is skipped if times are closer than the interval — the UI warns); the daily cap counts individual Reposts.
 - Cost ≈ times × posts × $0.025/day, capped by the daily limit (8). The list cursor is no longer used.
 - Rollout note: deploy only after the grace window of the day's already-run time has passed (old dedupe keys differ).
+
+## D-018 · 2026-09-28 · Accepted — No daily Repost cap; 8 daily times; 2 h default interval; list ≤ 25
+
+- User decision: the only daily limit is the number of daily times (max 8). Each time reposts the whole list regardless of its size; the per-post daily cap (`dailyRepostCap`) is removed.
+- Default per-post interval 2 h (options 2–12 h). X has no documented per-post Repost interval; X automation rules only prohibit bulk/aggressive/spammy Reposting. The interval remains our own safeguard.
+- X API rate limits (docs.x.com): Repost 50 / 15 min per user, undo Repost 50 / 15 min per user. Repost list capped at 25 posts so one batch stays well inside them.
+- UNVERIFIED: account-level daily post limits (reported 50 posts / 200 replies per day for non-Premium accounts since May 2026; unclear whether Reposts count). Official help page could not be fetched — user to check.
+- Budget guard stays: when the monthly budget is used, remaining Reposts are skipped. 8 times × 4 posts ≈ $0.80/day ≈ $24/month at current estimates.
+Sources: [X API rate limits](https://docs.x.com/x-api/fundamentals/rate-limits), [X automation rules](https://help.x.com/en/rules-and-policies/x-automation), [Understanding X limits](https://help.x.com/en/rules-and-policies/x-limits).

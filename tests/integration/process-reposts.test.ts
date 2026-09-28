@@ -273,28 +273,15 @@ describe("processDueReposts — safety switches", () => {
     });
   });
 
-  it("honours the daily cap within a batch and across times", async () => {
+  it("has no daily cap: every time reposts the whole list", async () => {
     const { workspaceId } = await setup({ list: ["A", "B", "C"], times: ["10:00", "15:00"] });
-    await prisma.workspace.update({
-      where: { id: workspaceId },
-      data: { dailyRepostCap: 4, perPostMinIntervalMinutes: 120 },
-    });
     withFakeX(okX());
 
     await processDueReposts(minutes(AT_10, 1), LIVE);
-
     await processDueReposts(minutes(AT_10, 5 * 60 + 1), LIVE);
 
     const runs = await runsOf(workspaceId);
-    // 3 posts at 10:00, then only 1 more at 15:00 before the cap of 4 is reached.
-    expect(runs.map((run) => run.skipReason ?? run.status)).toEqual([
-      "SUCCEEDED",
-      "SUCCEEDED",
-      "SUCCEEDED",
-      "SUCCEEDED",
-      "daily_cap",
-      "daily_cap",
-    ]);
+    expect(runs.map((run) => run.status)).toEqual(Array(6).fill("SUCCEEDED"));
   });
 
   it("records one skip for an empty list", async () => {

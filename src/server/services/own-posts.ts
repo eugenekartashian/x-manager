@@ -2,6 +2,7 @@ import "server-only";
 import type { OwnPost } from "@/generated/prisma/client";
 import { parsePostUrl } from "@/lib/post-url";
 import { err, ok, type Result } from "@/lib/result";
+import { MAX_LIST_SIZE } from "@/server/domain/repost-rules";
 import { X_PRICE_MICROS } from "@/server/integrations/x/pricing";
 import * as posts from "@/server/repositories/own-posts";
 import { claimPostsSync } from "@/server/repositories/workspaces";
@@ -74,7 +75,7 @@ export async function refreshOwnPosts(
 // ─── Add by link ─────────────────────────────────────────────────────────────
 
 export type AddByUrlError =
-  XActionError | "invalid_url" | "not_found" | "not_own_post" | "budget_exceeded";
+  XActionError | "invalid_url" | "not_found" | "not_own_post" | "budget_exceeded" | "list_full";
 
 /** Adds one of the user's own posts to the rotation from a link or id. */
 export async function addPostToRotationByUrl(
@@ -101,13 +102,14 @@ export async function addPostToRotationByUrl(
     if (!post) return err("not_found");
   }
 
-  await posts.addToRotation(scope.data, post.id);
+  if ((await posts.addToRotation(scope.data, post.id, MAX_LIST_SIZE)) === "full")
+    return err("list_full");
   return ok({ xPostId: post.xPostId });
 }
 
 // ─── Rotation edits (local only, free) ───────────────────────────────────────
 
-export type RotationError = XActionError | "not_found";
+export type RotationError = XActionError | "not_found" | "list_full";
 
 export async function setInRotation(
   workspaceId: string,
@@ -116,10 +118,11 @@ export async function setInRotation(
 ): Promise<Result<null, RotationError>> {
   const scope = await scopeFor(workspaceId);
   if (!scope.ok) return scope;
-  const changed = inRotation
-    ? await posts.addToRotation(scope.data, ownPostId)
-    : await posts.removeFromRotation(scope.data, ownPostId);
-  return changed ? ok(null) : err("not_found");
+  if (!inRotation) {
+    return (await posts.removeFromRotation(scope.data, ownPostId)) ? ok(null) : err("not_found");
+  }
+  const added = await posts.addToRotation(scope.data, ownPostId, MAX_LIST_SIZE);
+  return added === "added" ? ok(null) : err(added === "full" ? "list_full" : "not_found");
 }
 
 export async function moveInRotation(

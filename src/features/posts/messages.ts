@@ -12,6 +12,7 @@ const MESSAGES: Record<string, string> = {
   budget_exceeded: "Monthly API budget reached — nothing was requested from X.",
   invalid_url: "Paste a link like https://x.com/you/status/123…",
   not_own_post: "Only your own posts can be added to the repost list.",
+  list_full: "The repost list is full (25 posts max — X allows 50 Reposts per 15 minutes).",
 };
 
 export function errorMessage(code: string): string {

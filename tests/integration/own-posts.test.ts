@@ -408,3 +408,24 @@ describe("rotation editing", () => {
     expect(data.connected && data.recent).toEqual([]);
   });
 });
+
+describe("repost list size", () => {
+  it("refuses more than 25 posts (X allows 50 Reposts per 15 minutes)", async () => {
+    const owner = await connectedOwner();
+    const ids = Array.from({ length: 26 }, (_, index) => String(100 + index));
+    await seedPosts(owner.workspaceId, ids);
+
+    const results = [];
+    for (const id of ids)
+      results.push(
+        await setInRotation(owner.workspaceId, await postId(owner.workspaceId, id), true),
+      );
+
+    expect(results.slice(0, 25).every((result) => result.ok)).toBe(true);
+    expect(results[25]).toEqual({ ok: false, error: "list_full" });
+    expect(await addPostToRotationByUrl(owner.workspaceId, ids[25] ?? "", T0)).toEqual({
+      ok: false,
+      error: "list_full",
+    });
+  });
+});

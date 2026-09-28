@@ -6,6 +6,7 @@ import { RecentPostsList } from "@/features/posts/recent-posts-list";
 import { RefreshPostsForm } from "@/features/posts/refresh-posts-form";
 import { RotationList } from "@/features/posts/rotation-list";
 import { formatDateTime, formatUsd } from "@/lib/format";
+import { MAX_LIST_SIZE } from "@/server/domain/repost-rules";
 import { requireWorkspace } from "@/server/auth/session";
 import { getPostsPageData, REFRESH_ESTIMATE_MICROS } from "@/server/services/own-posts";
 
@@ -65,7 +66,11 @@ export default async function PostsPage() {
           </div>
           <RefreshPostsForm costLabel={formatUsd(BigInt(REFRESH_ESTIMATE_MICROS))} />
         </div>
-        <RecentPostsList posts={data.recent} timeZone={timeZone} />
+        <RecentPostsList
+          posts={data.recent}
+          timeZone={timeZone}
+          listFull={data.rotation.length >= MAX_LIST_SIZE}
+        />
       </section>
     </>
   );
