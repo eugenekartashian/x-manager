@@ -94,3 +94,11 @@ User decision: keep one simple model — daily times + one repost list cycled in
 - Steps: undo Repost → Repost; on unknown outcome one re-check (Repost again — duplicates are refused by X); still unknown → `UNKNOWN`, counted as done for limits, never retried. Runs stuck in PROCESSING past the lease are recovered with a Repost re-check only (no undo).
 - Deleted post (404) → run FAILED and the post is removed from the repost list.
 - **`X_WRITES_ENABLED` (default `false`)**: without it the job records `SKIPPED: dry_run` and never writes to X. It is switched on only for the approved live test (2.7) and in production afterwards.
+
+## D-015 · 2026-09-28 · Accepted — Production setup
+
+- Vercel project `x-manager`, functions in `fra1`, fixed domain **x-manager-ek.vercel.app** (OAuth callbacks depend on it), GitHub auto-deploys from `main`. Hobby plan = personal, noncommercial use only.
+- Supabase project in Frankfurt; app uses the transaction pooler (6543), migrations/setup the session pooler (5432). Data API disabled, automatic RLS on, RLS on every table, API roles revoked.
+- pg_cron job `x-manager-reposts` every 5 min → `net.http_post` to `/api/jobs/run` with the bearer secret read from Supabase Vault. First run verified: HTTP 200.
+- Production secrets generated fresh; stored only in `.env.production.local` and as Vercel Sensitive env vars. `X_WRITES_ENABLED=false` in production until the approved live test (2.7).
+- Open: Supabase free projects may pause after ~7 days of inactivity — verify whether cron traffic keeps it active.

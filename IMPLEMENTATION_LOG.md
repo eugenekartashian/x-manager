@@ -4,6 +4,27 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.5 — Deploy (Vercel + Supabase + pg_cron)
+
+**Changed**
+- RLS enabled on all tables (migration `enable_rls`) + guard test; `scripts/supabase-setup.sql` (Data API lockdown, Vault secret, pg_cron); `scripts/prod.mts` (`prod:migrate`, `prod:setup`, `prod:env`); `vercel.json` region fra1.
+- Supabase project (Frankfurt, Data API off, automatic RLS on); 8 migrations applied; setup SQL run.
+- Vercel project linked to GitHub, domain x-manager-ek.vercel.app, 13 env vars as Sensitive, production deploy via git push.
+- Decision D-015.
+
+**Verification**
+- `pnpm check` ✅ (175 tests) · Vercel build ✅.
+- Production smoke: `/sign-in` 200, `/dashboard` → 307 `/sign-in`, `/api/jobs/run` 401 without secret / 405 on GET, HSTS + CSP frame-ancestors + X-Frame-Options present, Google `redirect_uri` uses the production domain.
+- pg_cron first run: HTTP 200 `{"workspaces":0,…}` (dry-run mode, no users yet).
+
+**Pending (user):** add production callback URLs in Google Cloud and X Developer Console; sign in on production and redo setup (connect X, refresh posts, list, schedule) — production DB is separate from local.
+
+**Costs:** $0 (hosting free tiers; no X calls).
+
+**Next:** 2.6 history & real spend (per-day dedup), then 2.7 approved live test (`X_WRITES_ENABLED=true`).
+
+---
+
 ## 2026-09-28 · M2.4 — Repost job processor
 
 **Changed**

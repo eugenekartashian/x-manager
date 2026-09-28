@@ -178,6 +178,9 @@ pnpm db:migrate       # prisma migrate dev (reads .env.local via prisma.config.t
 pnpm db:status        # prisma migrate status
 pnpm db:seed          # two isolated seed users + workspaces (dev DB only)
 pnpm jobs:run         # trigger the Repost job once against the local server (dry run unless X_WRITES_ENABLED=true)
+pnpm prod:migrate     # prisma migrate deploy on Supabase (reads .env.production.local)
+pnpm prod:setup       # idempotent Supabase setup: Data API lockdown, Vault cron secret, pg_cron job
+pnpm prod:env         # push production env vars to Vercel as Sensitive (then redeploy)
 ```
 
 Stack notes:
@@ -186,4 +189,5 @@ Stack notes:
 - **Zod 4** — use top-level format schemas (`z.url()`, `z.email()`), not deprecated `z.string().url()`.
 - **Better Auth 1.7** — app login (Google) in `src/server/auth/auth.ts`; allowlist enforced in database hooks (user + session create) and again in `requireWorkspace()`. Pages/actions get the workspace only via `requireWorkspace()` from `src/server/auth/session.ts`.
 - Tests: `tests/integration/*` hit the real test DB (migrated in `tests/setup/global-setup.ts`, reset via `tests/helpers/db.ts`); files run sequentially.
+- **Production:** Vercel project `x-manager` (fra1), https://x-manager-ek.vercel.app, auto-deploy on push to `main`; Supabase Postgres (Frankfurt) via transaction pooler; pg_cron → `POST /api/jobs/run` every 5 min. Production secrets live only in `.env.production.local` (gitignored) and Vercel. New migrations: run `pnpm prod:migrate` **before** pushing code that needs them.
 - Env: `.env.local` (gitignored) for all local values; `.env.example` is the documented template; validated in `src/lib/env.ts`.

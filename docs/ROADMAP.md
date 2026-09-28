@@ -41,7 +41,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped/de
 - [x] **2.3 Slots & settings** — daily slots in the user's timezone (default 3–4, hard max 6), per-post cooldown (default 7 days), pause/resume switch; preview "what will be reposted next and when".
 - [x] **2.4 Job processor** — `processDueActions(now, batchSize)`: atomic claim + lease, pick next eligible post, undo-if-needed → Repost, audit row per attempt, UNKNOWN handling per D-007, stop when X disconnected or budget reached (user notified).
   - Done when: tests for competing workers, lease expiry, cooldown, daily cap, DST, timeout → re-check → UNKNOWN pass.
-- [ ] **2.5 Deploy & cron** — Vercel + Supabase, secured `/api/jobs/run`, Supabase `pg_cron` every 5 min, production env vars. UI states real precision (±5 min).
+- [x] **2.5 Deploy & cron** (https://x-manager-ek.vercel.app, 2026-09-28) — Vercel + Supabase, secured `/api/jobs/run`, Supabase `pg_cron` every 5 min, production env vars. UI states real precision (±5 min).
 - [ ] **2.6 History & spend** — action history (reposted / skipped / failed / unknown) and month-to-date estimated spend vs $5 cap.
 - [ ] **2.7 Live test** — with your explicit OK: one manual "Repost now", then one scheduled slot; confirm cost in Console matches estimate.
 
