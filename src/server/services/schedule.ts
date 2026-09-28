@@ -2,12 +2,7 @@ import "server-only";
 import type { OwnPost, RepostSchedule } from "@/generated/prisma/client";
 import { err, ok, type Result } from "@/lib/result";
 import { isLocalDate, isLocalTime, localDateOf } from "@/lib/zoned-time";
-import {
-  planReposts,
-  type PlannedRepost,
-  type PlanPost,
-  type PlanSlot,
-} from "@/server/domain/repost-plan";
+import { planReposts, type PlannedRepost, type PlanPost } from "@/server/domain/repost-plan";
 import {
   HARD_MAX_REPOSTS_PER_DAY,
   isScheduleTimezone,
@@ -16,6 +11,7 @@ import {
   REPOST_PAIR_COST_MICROS,
 } from "@/server/domain/repost-rules";
 import * as posts from "@/server/repositories/own-posts";
+import * as runs from "@/server/repositories/repost-runs";
 import * as schedules from "@/server/repositories/schedules";
 import { getBudgetStatus, type BudgetStatus } from "@/server/services/budget";
 import { connectedXUserId } from "@/server/services/x-api";
@@ -35,9 +31,9 @@ type WorkspaceRef = {
 export type SchedulePageData = {
   schedule: RepostSchedule;
   slots: schedules.SlotWithPost[];
-  pinned: OwnPost | null;
   listSize: number;
   preview: (PlannedRepost & { post: OwnPost | null })[];
+  recentRuns: Awaited<ReturnType<typeof runs.listRecentRuns>>;
   estimate: { repostsPerDay: number; perDayMicros: number; perMonthMicros: number };
   budget: BudgetStatus;
   connected: boolean;
@@ -58,31 +54,33 @@ export async function getSchedulePageData(
   ]);
 
   const scope = xUserId.ok ? { workspaceId: workspace.id, xUserId: xUserId.data } : null;
-  const [list, pinned] = scope
-    ? await Promise.all([posts.listRotation(scope), posts.findPinned(scope)])
-    : [[], null];
-  // Slot-chosen posts outside the current X account's scope are treated as missing.
-  const slotPosts = slots
-    .map((slot) => slot.ownPost)
-    .filter(
-      (post): post is OwnPost => post !== null && scope !== null && post.xUserId === scope.xUserId,
-    );
+  const [list, doneByDay, recentRuns] = await Promise.all([
+    scope ? posts.listRotation(scope) : Promise.resolve([]),
+    runs.countDoneByDay(workspace.id, new Date(now.getTime() - 48 * 3_600_000), workspace.timezone),
+    runs.listRecentRuns(workspace.id, 10),
+  ]);
+  const byId = new Map(list.map((post) => [post.id, post]));
 
-  const byId = new Map<string, OwnPost>();
-  for (const post of [...list, ...slotPosts, ...(pinned ? [pinned] : [])]) byId.set(post.id, post);
-
+  // Same inputs as the job processor, so the preview shows what will actually run.
   const plan = planReposts({
     schedule,
-    slots: slots.map(toPlanSlot),
+    slots: slots.map((slot) => ({
+      id: slot.id,
+      localTime: slot.localTime,
+      timezone: slot.timezone,
+      target: { kind: "next" as const }, // D-013
+    })),
     list: list.map(toPlanPost),
-    pinned: pinned ? toPlanPost(pinned) : null,
-    posts: slotPosts.map(toPlanPost),
+    pinned: null,
+    posts: [],
     listCursorPostId: schedule.listCursorPostId,
     limits: {
       minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000,
       dailyCap: workspace.dailyRepostCap,
     },
     workspaceTimezone: workspace.timezone,
+    doneByDay,
+    skipKeys: await runs.recordedKeys(workspace.id, now),
     from: now,
     to: new Date(now.getTime() + PREVIEW_HOURS * 3_600_000),
   });
@@ -93,26 +91,16 @@ export async function getSchedulePageData(
   return {
     schedule,
     slots,
-    pinned,
     listSize: list.length,
     preview: plan.map((item) => ({
       ...item,
       post: item.postId ? (byId.get(item.postId) ?? null) : null,
     })),
+    recentRuns,
     estimate: { repostsPerDay, perDayMicros, perMonthMicros: perDayMicros * 30 },
     budget,
     connected: scope !== null,
   };
-}
-
-function toPlanSlot(slot: schedules.SlotWithPost): PlanSlot {
-  const target =
-    slot.target === "PINNED"
-      ? ({ kind: "pinned" } as const)
-      : slot.target === "POST"
-        ? ({ kind: "post", ownPostId: slot.ownPostId } as const)
-        : ({ kind: "next" } as const);
-  return { id: slot.id, localTime: slot.localTime, timezone: slot.timezone, target };
 }
 
 function toPlanPost(post: OwnPost): PlanPost {

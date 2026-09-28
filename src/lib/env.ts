@@ -21,6 +21,13 @@ const serverEnvSchema = z.object({
   // Parsed and validated as a key ring in src/server/keyring.ts.
   TOKEN_ENCRYPTION_KEYS: z.string().min(1),
   TOKEN_ENCRYPTION_CURRENT: z.string().regex(/^v\d+$/),
+  // Bearer secret for POST /api/jobs/run (called by the scheduler).
+  CRON_SECRET: z.string().min(32),
+  // Kill switch for writes to X (Reposts). Off by default: the job runs as a dry run.
+  X_WRITES_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

@@ -29,6 +29,8 @@ export type PlanInput = {
   workspaceTimezone: string;
   /** Reposts already done per workspace-local day (from history). */
   doneByDay?: ReadonlyMap<LocalDate, number>;
+  /** Occurrences already recorded — their effects are in the state above, so skip them. */
+  skipKeys?: ReadonlySet<string>;
   from: Date;
   to: Date;
 };
@@ -52,6 +54,10 @@ export type PlannedRepost = {
   postId: string | null;
   skipReason: SkipReason | null;
 };
+
+export function occurrenceKey(slotId: string, localDate: LocalDate): string {
+  return `${slotId}:${localDate}`;
+}
 
 export function scheduleEndDate(schedule: PlanSchedule): LocalDate | null {
   return schedule.durationDays === null
@@ -94,9 +100,13 @@ export function planReposts(input: PlanInput): PlannedRepost[] {
     return !last || at.getTime() - last.getTime() >= input.limits.minIntervalMs;
   };
 
-  return occurrences(input).map(({ slot, localDate, runAt }) => {
+  const pending = occurrences(input).filter(
+    ({ slot, localDate }) => !input.skipKeys?.has(occurrenceKey(slot.id, localDate)),
+  );
+
+  return pending.map(({ slot, localDate, runAt }) => {
     const base = {
-      key: `${slot.id}:${localDate}`,
+      key: occurrenceKey(slot.id, localDate),
       slotId: slot.id,
       runAt,
       localDate,

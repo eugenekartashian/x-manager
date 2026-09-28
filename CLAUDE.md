@@ -177,6 +177,7 @@ pnpm build            # next build
 pnpm db:migrate       # prisma migrate dev (reads .env.local via prisma.config.ts)
 pnpm db:status        # prisma migrate status
 pnpm db:seed          # two isolated seed users + workspaces (dev DB only)
+pnpm jobs:run         # trigger the Repost job once against the local server (dry run unless X_WRITES_ENABLED=true)
 ```
 
 Stack notes:

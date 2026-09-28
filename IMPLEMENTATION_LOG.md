@@ -4,6 +4,25 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.4 — Repost job processor
+
+**Changed**
+- Prisma: `ScheduledRepost` (unique `dedupeKey` per slot occurrence, status PROCESSING/SUCCEEDED/SKIPPED/FAILED/UNKNOWN, lease, snapshot `xPostId`), `RepostAttempt` (UNDO/REPOST/RECHECK with outcome), `RepostSchedule.processingUntil`. Migration `repost_runs`.
+- `jobs/process-due-reposts.ts`: stale-run recovery, per-workspace lease, re-plan per occurrence (planner `skipKeys`), guards (connection, dry run, budget, planner skips), undo → Repost → one re-check, UNKNOWN handling, cursor/`lastRepostedAt` updates, deleted post removed from list.
+- `POST /api/jobs/run`: Bearer `CRON_SECRET` (constant-time), `no-store`, `maxDuration` 60. `pnpm jobs:run` dev trigger.
+- Env: `CRON_SECRET`, `X_WRITES_ENABLED` (default false). UI: dry-run banner, preview aligned with the job (list-only, today's runs), "Recent runs" with statuses and reasons.
+- Decision D-014.
+
+**Verification**
+- `pnpm check` ✅ — 174 tests (new: planner skipKeys; job happy path with exact X call order, cursor progression, time window/grace, schedule off, exactly-once across calls, concurrent workers, dry run, budget stop, not connected, daily cap across runs, re-check success, UNKNOWN without retry, deleted post, crashed-run recovery, per-workspace credentials, endpoint auth). `pnpm build` ✅.
+- Local endpoint call (dry run): `200 {"workspaces":1,…}`, no due occurrence at 15:25 Madrid, no X calls.
+
+**Costs:** $0.
+
+**Next:** M2.5 — deploy (Vercel + Supabase, pg_cron every 5 min, production secrets), then 2.6 history/spend and 2.7 approved live test.
+
+---
+
 ## 2026-09-28 · M2.3 — Schedule: dates, daily times per timezone, limits, preview
 
 **Changed**

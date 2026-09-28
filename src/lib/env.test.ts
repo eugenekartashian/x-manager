@@ -13,6 +13,7 @@ const validEnv = {
   X_REDIRECT_URI: "http://127.0.0.1:3000/api/x/oauth/callback",
   TOKEN_ENCRYPTION_KEYS: "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
   TOKEN_ENCRYPTION_CURRENT: "v1",
+  CRON_SECRET: "c".repeat(32),
 };
 
 describe("parseServerEnv", () => {
@@ -20,6 +21,7 @@ describe("parseServerEnv", () => {
     const env = parseServerEnv(validEnv);
 
     expect(env.NODE_ENV).toBe("development");
+    expect(env.X_WRITES_ENABLED).toBe(false);
     expect(env.ALLOWED_EMAILS).toEqual(["me@gmail.com", "friend@example.com"]);
   });
 

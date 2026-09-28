@@ -2,9 +2,11 @@ import Link from "next/link";
 import { AddSlotForm } from "@/features/schedule/add-slot-form";
 import { LimitsForm } from "@/features/schedule/limits-form";
 import { PreviewList } from "@/features/schedule/preview-list";
+import { RecentRuns } from "@/features/schedule/recent-runs";
 import { ScheduleForm } from "@/features/schedule/schedule-form";
 import { SlotList } from "@/features/schedule/slot-list";
 import { formatUsd } from "@/lib/format";
+import { env } from "@/lib/env";
 import { requireWorkspace } from "@/server/auth/session";
 import {
   HARD_MAX_REPOSTS_PER_DAY,
@@ -38,6 +40,16 @@ export default async function SchedulePage() {
           </p>
         )}
       </div>
+
+      {!env.X_WRITES_ENABLED && (
+        <p
+          role="status"
+          className="rounded-md bg-blue-500/10 px-3 py-2 text-sm text-blue-800 dark:text-blue-300"
+        >
+          Live Reposts are OFF (dry run): the scheduler only records what it would repost. They are
+          switched on for the first live test, with your approval.
+        </p>
+      )}
 
       <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
         <h2 className="text-lg font-medium">Dates</h2>
@@ -99,10 +111,15 @@ export default async function SchedulePage() {
         <div>
           <h2 className="text-lg font-medium">Next {PREVIEW_HOURS} hours</h2>
           <p className="text-foreground/70 text-sm">
-            Preview only — Reposts are not executed yet (coming in the next step).
+            What the scheduler will do next, based on your list, limits and today’s runs.
           </p>
         </div>
         <PreviewList items={data.preview} workspaceTimezone={tz} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Recent runs</h2>
+        <RecentRuns runs={data.recentRuns} timeZone={tz} />
       </section>
     </>
   );

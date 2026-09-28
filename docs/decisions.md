@@ -87,3 +87,10 @@ First live usage: app recorded $0.055 (2× `users/me`, 20 owned post reads, prof
 ## D-013 · 2026-09-28 · Accepted — Every daily time reposts the next post from the repost list
 
 User decision: keep one simple model — daily times + one repost list cycled in order. The "pinned" and "specific post" slot targets are removed from the UI and service (the pinned post can simply be in the list). The `SlotTarget` enum and planner support stay for existing data and the planned multi-list feature (see ROADMAP "Later"). Schedule length is inclusive: start 28 Sept + 3 days = 28, 29, 30 Sept.
+
+## D-014 · 2026-09-28 · Accepted — Job execution model and live-write kill switch
+
+- `processDueReposts(now)` runs occurrences due within the last 30 min (grace for a 5-min scheduler; older ones are not executed late). Each occurrence (slot + local date) is claimed by inserting a unique `dedupeKey`; one worker per workspace via a 2-min lease on `RepostSchedule.processingUntil`. The plan is recomputed after each occurrence from stored state (list cursor, `lastRepostedAt`, runs per day).
+- Steps: undo Repost → Repost; on unknown outcome one re-check (Repost again — duplicates are refused by X); still unknown → `UNKNOWN`, counted as done for limits, never retried. Runs stuck in PROCESSING past the lease are recovered with a Repost re-check only (no undo).
+- Deleted post (404) → run FAILED and the post is removed from the repost list.
+- **`X_WRITES_ENABLED` (default `false`)**: without it the job records `SKIPPED: dry_run` and never writes to X. It is switched on only for the approved live test (2.7) and in production afterwards.

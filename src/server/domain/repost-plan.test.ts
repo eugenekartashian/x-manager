@@ -213,3 +213,22 @@ describe("planReposts", () => {
     ]);
   });
 });
+
+describe("planReposts with recorded occurrences", () => {
+  it("skips recorded occurrences and continues from the stored state", () => {
+    const slots = [slot("a", "08:00", "UTC", next), slot("b", "12:00", "UTC", next)];
+    // 08:00 already ran and reposted A (cursor = A, A.lastRepostedAt = 08:00).
+    const plan = planReposts(
+      input({
+        slots,
+        list: [
+          { id: "A", lastRepostedAt: new Date("2026-10-01T08:00:00Z") },
+          { id: "B", lastRepostedAt: null },
+        ],
+        listCursorPostId: "A",
+        skipKeys: new Set(["a:2026-10-01"]),
+      }),
+    );
+    expect(summary(plan)).toEqual(["12:00 B"]);
+  });
+});

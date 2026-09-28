@@ -38,6 +38,8 @@ export default defineConfig({
       // Test-only key (32 zero bytes), never used outside tests.
       TOKEN_ENCRYPTION_KEYS: "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
       TOKEN_ENCRYPTION_CURRENT: "v1",
+      CRON_SECRET: "test-cron-secret-test-cron-secret-0000",
+      X_WRITES_ENABLED: "true",
     },
   },
 });

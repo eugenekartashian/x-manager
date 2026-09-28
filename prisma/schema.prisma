@@ -101,6 +101,7 @@ model Workspace {
   posts    OwnPost[]
   schedule RepostSchedule?
   slots    RepostSlot[]
+  runs     ScheduledRepost[]
 
   @@map("workspace")
 }
@@ -163,14 +164,14 @@ model ExternalUsage {
 // The connected user's own posts, cached locally. Keyed by the X user id (not the
 // XAccount row) so rotation survives a disconnect/reconnect of the same account.
 model OwnPost {
-  id               String       @id @default(uuid(7))
+  id               String            @id @default(uuid(7))
   workspaceId      String
-  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   xUserId          String
   xPostId          String
   text             String
   postedAt         DateTime
-  isPinned         Boolean      @default(false)
+  isPinned         Boolean           @default(false)
   likeCount        Int?
   repostCount      Int?
   replyCount       Int?
@@ -179,14 +180,15 @@ model OwnPost {
   // First attachment preview (photo URL or video/GIF thumbnail), pbs.twimg.com only.
   mediaType        String?
   mediaPreviewUrl  String?
-  mediaCount       Int          @default(0)
+  mediaCount       Int               @default(0)
   // Repost rotation: posts the user chose for scheduled Reposts, in order.
-  inRotation       Boolean      @default(false)
+  inRotation       Boolean           @default(false)
   rotationPosition Int?
   lastRepostedAt   DateTime?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   slots            RepostSlot[]
+  runs             ScheduledRepost[]
 
   @@unique([workspaceId, xPostId])
   @@index([workspaceId, xUserId, postedAt])
@@ -207,6 +209,8 @@ model RepostSchedule {
   durationDays     Int?
   // Last post taken from the repost list; the next "next from list" slot continues after it.
   listCursorPostId String?
+  // Per-workspace processing lease: one worker handles a workspace at a time.
+  processingUntil  DateTime?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   slots            RepostSlot[]
@@ -222,19 +226,78 @@ enum SlotTarget {
 
 // A daily time in its own timezone (e.g. 09:40 America/New_York) and what to repost.
 model RepostSlot {
-  id          String         @id @default(uuid(7))
+  id          String            @id @default(uuid(7))
   scheduleId  String
-  schedule    RepostSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  schedule    RepostSchedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   workspaceId String
-  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   localTime   String // HH:MM, 24h
   timezone    String // IANA
   target      SlotTarget
   ownPostId   String?
-  ownPost     OwnPost?       @relation(fields: [ownPostId], references: [id], onDelete: SetNull)
-  createdAt   DateTime       @default(now())
+  ownPost     OwnPost?          @relation(fields: [ownPostId], references: [id], onDelete: SetNull)
+  createdAt   DateTime          @default(now())
+  runs        ScheduledRepost[]
 
   @@index([workspaceId])
   @@index([scheduleId])
   @@map("repost_slot")
+}
+
+// ─── Repost execution (M2.4) ────────────────────────────────────────────────
+
+enum RepostStatus {
+  PROCESSING
+  SUCCEEDED
+  SKIPPED
+  FAILED
+  UNKNOWN // X did not confirm; not retried automatically (D-007)
+}
+
+enum AttemptStep {
+  UNDO
+  REPOST
+  RECHECK
+}
+
+// One row per slot occurrence (slot + local date). Inserting the unique dedupeKey is
+// the atomic claim: competing workers cannot execute the same occurrence twice.
+model ScheduledRepost {
+  id          String          @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  slotId      String?
+  slot        RepostSlot?     @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  dedupeKey   String          @unique
+  runAt       DateTime
+  localDate   String
+  ownPostId   String?
+  ownPost     OwnPost?        @relation(fields: [ownPostId], references: [id], onDelete: SetNull)
+  xPostId     String? // snapshot, survives post deletion
+  fromList    Boolean         @default(true)
+  status      RepostStatus
+  skipReason  String?
+  errorCode   String?
+  leaseUntil  DateTime?
+  startedAt   DateTime        @default(now())
+  finishedAt  DateTime?
+  attempts    RepostAttempt[]
+
+  @@index([workspaceId, runAt])
+  @@index([status, leaseUntil])
+  @@map("scheduled_repost")
+}
+
+model RepostAttempt {
+  id                String          @id @default(uuid(7))
+  scheduledRepostId String
+  scheduledRepost   ScheduledRepost @relation(fields: [scheduledRepostId], references: [id], onDelete: Cascade)
+  workspaceId       String
+  step              AttemptStep
+  outcome           String // ok | reposted | already_reposted | <error code>
+  startedAt         DateTime
+  finishedAt        DateTime
+
+  @@index([scheduledRepostId])
+  @@map("repost_attempt")
 }

@@ -39,7 +39,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped/de
 - [x] **2.1 X client** — typed calls: list own recent posts, Repost, undo Repost; Zod-parsed responses; error mapping (`X_RATE_LIMITED`, `X_AUTH_EXPIRED`, `X_ALREADY_REPOSTED`, `X_WRITE_UNKNOWN`); 429 backoff; every call recorded in `ExternalUsage` with estimated cost. Mocked tests only.
 - [x] **2.2 Own posts & queue** — sync own recent posts (manual "Refresh" button, owned reads), add posts to the Repost queue from the list or by pasting a URL, reorder/remove, see last-reposted date and cooldown status.
 - [x] **2.3 Slots & settings** — daily slots in the user's timezone (default 3–4, hard max 6), per-post cooldown (default 7 days), pause/resume switch; preview "what will be reposted next and when".
-- [ ] **2.4 Job processor** — `processDueActions(now, batchSize)`: atomic claim + lease, pick next eligible post, undo-if-needed → Repost, audit row per attempt, UNKNOWN handling per D-007, stop when X disconnected or budget reached (user notified).
+- [x] **2.4 Job processor** — `processDueActions(now, batchSize)`: atomic claim + lease, pick next eligible post, undo-if-needed → Repost, audit row per attempt, UNKNOWN handling per D-007, stop when X disconnected or budget reached (user notified).
   - Done when: tests for competing workers, lease expiry, cooldown, daily cap, DST, timeout → re-check → UNKNOWN pass.
 - [ ] **2.5 Deploy & cron** — Vercel + Supabase, secured `/api/jobs/run`, Supabase `pg_cron` every 5 min, production env vars. UI states real precision (±5 min).
 - [ ] **2.6 History & spend** — action history (reposted / skipped / failed / unknown) and month-to-date estimated spend vs $5 cap.
