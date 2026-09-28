@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { AddSlotForm } from "@/features/schedule/add-slot-form";
-import { formatDay } from "@/features/schedule/labels";
 import { LimitsForm } from "@/features/schedule/limits-form";
 import { PreviewList } from "@/features/schedule/preview-list";
 import { ScheduleForm } from "@/features/schedule/schedule-form";
 import { SlotList } from "@/features/schedule/slot-list";
 import { formatUsd } from "@/lib/format";
-import { zonedToUtc } from "@/lib/zoned-time";
 import { requireWorkspace } from "@/server/auth/session";
-import { scheduleEndDate } from "@/server/domain/repost-plan";
 import {
   HARD_MAX_REPOSTS_PER_DAY,
   MAX_SLOTS,
@@ -22,9 +19,7 @@ export default async function SchedulePage() {
   const now = new Date();
   const data = await getSchedulePageData(workspace, now);
   const tz = workspace.timezone;
-  const end = scheduleEndDate(data.schedule);
   const overBudget = BigInt(data.estimate.perMonthMicros) > data.budget.budgetMicros;
-  const dayLabel = (date: string) => formatDay(zonedToUtc(date, "12:00", tz), tz);
 
   const postOptions = data.choosablePosts.map((post) => {
     const text = post.text.replace(/\s+/g, " ").trim() || "(media only)";
@@ -58,11 +53,8 @@ export default async function SchedulePage() {
           active={data.schedule.active}
           startDate={data.schedule.startDate}
           durationDays={data.schedule.durationDays}
+          timeZone={tz}
         />
-        <p className="text-foreground/70 text-sm">
-          {data.schedule.active ? "Runs" : "Would run"} from {dayLabel(data.schedule.startDate)}{" "}
-          {end ? `to ${dayLabel(end)} (${data.schedule.durationDays} days)` : "with no end date"}.
-        </p>
       </section>
 
       <section className="flex flex-col gap-3">

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { ActionMessage } from "@/features/posts/action-message";
 import type { ActionState } from "@/features/posts/actions";
 import { SubmitButton } from "@/features/posts/submit-button";
+import { Select } from "@/components/ui/select";
 import { addSlotAction } from "./actions";
 
 const initial: ActionState = { status: "idle", message: "" };
@@ -37,10 +38,10 @@ export function AddSlotForm({ timezones, defaultTimezone, posts, disabled }: Pro
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Timezone
-          <select
+          <Select
             name="timezone"
             defaultValue={defaultTimezone}
-            className={field}
+            className="min-w-40"
             disabled={disabled}
           >
             {timezones.map((zone) => (
@@ -48,14 +49,14 @@ export function AddSlotForm({ timezones, defaultTimezone, posts, disabled }: Pro
                 {zone.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           What to repost
-          <select
+          <Select
             name="target"
             defaultValue="NEXT_FROM_LIST"
-            className={`${field} min-w-0`}
+            className="min-w-40"
             disabled={disabled}
           >
             <option value="NEXT_FROM_LIST">Next from repost list</option>
@@ -69,7 +70,7 @@ export function AddSlotForm({ timezones, defaultTimezone, posts, disabled }: Pro
                 ))}
               </optgroup>
             )}
-          </select>
+          </Select>
         </label>
         <SubmitButton variant="primary" pendingLabel="Adding…">
           Add time
