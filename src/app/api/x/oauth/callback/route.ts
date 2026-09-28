@@ -25,5 +25,6 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(target);
   // One-time state: always clear it, success or not.
   response.cookies.set(OAUTH_COOKIE, "", { ...oauthCookieOptions, maxAge: 0 });
+  response.headers.set("Cache-Control", "no-store");
   return response;
 }

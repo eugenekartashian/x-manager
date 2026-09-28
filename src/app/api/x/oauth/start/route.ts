@@ -12,5 +12,6 @@ export async function GET() {
 
   const response = NextResponse.redirect(authorizeUrl);
   response.cookies.set(OAUTH_COOKIE, sealedState, oauthCookieOptions);
+  response.headers.set("Cache-Control", "no-store");
   return response;
 }

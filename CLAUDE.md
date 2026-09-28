@@ -96,6 +96,8 @@ Principles:
 
 ## Security & privacy
 
+Full model and deploy checklist: [docs/security.md](docs/security.md) — keep it in sync when auth, tokens or X calls change.
+
 - **Authorize every read and mutation** via the current-workspace helper; repository functions require `workspaceId`. No unbounded queries — always `where` by owner + pagination/limit.
 - Test **cross-workspace IDOR** for every new resource type (user A cannot read/mutate B's media, posts, jobs, tokens, candidates, metrics, usage).
 - X OAuth 2.0 with **state + PKCE**, minimal scopes; the callback must bind the X account to the initiating user's workspace only.
