@@ -125,11 +125,41 @@ export async function claimStaleRuns(
   return claimed;
 }
 
-export function listRecentRuns(workspaceId: string, take: number) {
+export type RunFilter = "all" | "reposted" | "problems";
+
+const FILTER_STATUSES: Record<RunFilter, RepostStatus[] | null> = {
+  all: null,
+  reposted: ["SUCCEEDED"],
+  problems: ["FAILED", "UNKNOWN"],
+};
+
+export function listRecentRuns(workspaceId: string, take: number, filter: RunFilter = "all") {
+  const statuses = FILTER_STATUSES[filter];
   return prisma.scheduledRepost.findMany({
-    where: { workspaceId },
-    orderBy: { runAt: "desc" },
+    where: { workspaceId, ...(statuses ? { status: { in: statuses } } : {}) },
+    orderBy: [{ runAt: "desc" }, { startedAt: "desc" }],
     take,
     include: { ownPost: true },
   });
+}
+
+/** Run counts per status since `since` (e.g. this month). */
+export async function countRunsByStatus(
+  workspaceId: string,
+  since: Date,
+): Promise<Record<RepostStatus, number>> {
+  const rows = await prisma.scheduledRepost.groupBy({
+    by: ["status"],
+    where: { workspaceId, runAt: { gte: since } },
+    _count: { _all: true },
+  });
+  const counts: Record<RepostStatus, number> = {
+    PROCESSING: 0,
+    SUCCEEDED: 0,
+    SKIPPED: 0,
+    FAILED: 0,
+    UNKNOWN: 0,
+  };
+  for (const row of rows) counts[row.status] = row._count._all;
+  return counts;
 }

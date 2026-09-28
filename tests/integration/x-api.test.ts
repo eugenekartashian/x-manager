@@ -78,7 +78,7 @@ describe("fetchOwnPosts", () => {
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({
       ok: true,
-      data: { posts: [], nextToken: null, quotedPostsRead: 0 },
+      data: { posts: [], nextToken: null, billedPostIds: [], quotedPostIds: [] },
     });
     expect(await usageRows(owner.workspaceId)).toEqual([]);
   });

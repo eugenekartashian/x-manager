@@ -129,3 +129,7 @@ User decision after the live test: at each daily time, **all** posts in the repo
 - UNVERIFIED: account-level daily post limits (reported 50 posts / 200 replies per day for non-Premium accounts since May 2026; unclear whether Reposts count). Official help page could not be fetched — user to check.
 - Budget guard stays: when the monthly budget is used, remaining Reposts are skipped. 8 times × 4 posts ≈ $0.80/day ≈ $24/month at current estimates.
 Sources: [X API rate limits](https://docs.x.com/x-api/fundamentals/rate-limits), [X automation rules](https://help.x.com/en/rules-and-policies/x-automation), [Understanding X limits](https://help.x.com/en/rules-and-policies/x-limits).
+
+## D-019 · 2026-09-28 · Accepted — Spend estimate models X's same-day deduplication
+
+X pricing: "All resources are deduplicated within a 24-hour UTC day window". Reads now record the returned resource ids in `billed_resource` (workspace, UTC day, kind, id); only ids new for the day are billed (`external_usage.billedUnits`, `costMicros`). Writes (Repost, undo) are billed per request. Every post X returns is billed, including replies we filter out. Dedup is modelled per workspace (conservative: X may dedup across the whole developer account). The Console remains the source of truth.

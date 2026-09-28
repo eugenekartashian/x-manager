@@ -4,6 +4,20 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.6 — History & real spend
+
+- `billed_resource` table (RLS on) + `external_usage.billedUnits`; `recordUsage` bills read resources once per UTC day (D-019). Filtered replies are now counted (X bills them). Migration `billed_resources` (existing rows: billedUnits = units).
+- `/history`: month counters (reposted / skipped / failed / check on X), spend by operation with budget bar, runs list with All / Reposted / Problems filters, monthly budget form ($1–$500, whole cents).
+- App-wide budget banner at ≥ 80% (warning) and 100% (Reposts paused). Nav: History.
+- Commercial-version considerations recorded in ROADMAP ("Future").
+- `pnpm check` ✅ — 184 tests (new: per-day dedup incl. day boundary, per-workspace dedup, writes per request, filtered replies billed, budget levels, budget validation, history filters + month counts + workspace isolation). `pnpm build` ✅. Production migrated before deploy.
+
+**Costs:** $0.
+
+**Next (user choice):** M3 reply assistant, M4 measurement, or M6 friend beta.
+
+---
+
 ## 2026-09-28 · D-018 — no daily cap, 2 h interval, list ≤ 25 (deployed)
 
 - Per-post daily cap removed (planner, processor, service, UI; migration drops `workspace.dailyRepostCap`, default interval 120 min). Only limits: ≤ 8 daily times, per-post interval (2–12 h), repost list ≤ 25 (X API: 50 Reposts / 15 min per user), monthly budget.

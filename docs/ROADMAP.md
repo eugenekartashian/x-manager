@@ -42,7 +42,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped/de
 - [x] **2.4 Job processor** — `processDueActions(now, batchSize)`: atomic claim + lease, pick next eligible post, undo-if-needed → Repost, audit row per attempt, UNKNOWN handling per D-007, stop when X disconnected or budget reached (user notified).
   - Done when: tests for competing workers, lease expiry, cooldown, daily cap, DST, timeout → re-check → UNKNOWN pass.
 - [x] **2.5 Deploy & cron** (https://x-manager-ek.vercel.app, 2026-09-28) — Vercel + Supabase, secured `/api/jobs/run`, Supabase `pg_cron` every 5 min, production env vars. UI states real precision (±5 min).
-- [ ] **2.6 History & spend** — action history (reposted / skipped / failed / unknown) and month-to-date estimated spend vs $5 cap.
+- [x] **2.6 History & spend** — action history (reposted / skipped / failed / unknown) and month-to-date estimated spend vs $5 cap.
 - [x] **2.7 Live test** (2026-09-28 16:40, pinned post, D-016) — with your explicit OK: one manual "Repost now", then one scheduled slot; confirm cost in Console matches estimate.
 
 > **Gate 2:** reposts run on schedule, never duplicate, respect cooldown/cap; Console spend matches the estimate. Then we run it for 1–2 weeks and recalibrate budget/cadence.
@@ -80,8 +80,20 @@ API replies to other accounts are blocked by X unless summoned, so the app **pre
 
 - **Custom name for the repost list** (user request 2026-09-28) — e.g. "Main", "Promo"; today it is fixed as "Repost list" (`src/features/schedule/list-badge.tsx`). Natural first step toward multiple lists.
 - **Multiple repost lists, each with its own schedule** (e.g. "Main posts" at EU+US prime time, "Promo" on weekends). Today: one list + one schedule (D-012, D-013). Revisit after a few weeks of real use.
-- **Real balance with X's same-day deduplication** — model per-resource dedup so estimates match the Console (planned in 2.6); use `GET /2/usage/credits` if X makes it reliable.
+- **Reconcile with X billing API** — use `GET /2/usage/credits` if X makes it reliable (same-day dedup is modelled since 2.6).
 - **Media previews for posts that embed another post's video** (needs one extra read per post).
+
+## Future: commercial version for creators (idea recorded 2026-09-28, not started)
+
+Goal: sell scheduled Reposts as a service to creators who don't want to do it by hand, with prices that cover X API costs and leave a margin. Before any work:
+
+- **Unit economics:** each Repost ≈ $0.025 in X API cost (undo + Repost, D-016) + reads for refreshes. Model cost per customer = times/day × posts × days, add hosting, payment fees, support; set plan prices with margin and hard caps per plan.
+- **Plans & limits:** e.g. tiers by daily times, list size and days per month; enforce per-workspace budget (already exists) derived from the plan; overage policy (stop vs. pay-as-you-go).
+- **X platform rules:** re-check X Developer Agreement/Policy for a multi-user commercial app (each creator connects their own account through our app; our developer account pays API usage), automation rules for Reposts at scale, whether X app review / a different access tier is required, and account-level daily post limits for non-Premium users.
+- **Billing:** Stripe (or similar) subscriptions + usage metering from `ExternalUsage`; invoices, refunds, failed payments.
+- **Product/infra:** self-serve sign-up (replace the email allowlist), onboarding, team/agency roles, abuse prevention, per-customer isolation audit (M6), status page and alerts.
+- **Legal & hosting:** Terms of Service, Privacy Policy, data retention/deletion, GDPR (EU users); move off Vercel Hobby (noncommercial) and Supabase free tier to paid plans.
+- **Marketing constraints:** no "get more followers" promises (X rules, PRD §4).
 
 ## Deferred (not in MVP)
 

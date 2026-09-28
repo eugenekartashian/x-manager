@@ -24,6 +24,16 @@ export async function getMonthlyBudgetMicros(workspaceId: string): Promise<bigin
   return workspace.monthlyBudgetMicros;
 }
 
+export async function updateMonthlyBudgetMicros(
+  workspaceId: string,
+  micros: bigint,
+): Promise<void> {
+  await prisma.workspace.update({
+    where: { id: workspaceId },
+    data: { monthlyBudgetMicros: micros },
+  });
+}
+
 /**
  * Atomically claims a posts sync: succeeds only if the last sync is older than
  * `minIntervalMs`. Concurrent clicks cannot both pass.

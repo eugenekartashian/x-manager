@@ -58,7 +58,14 @@ export async function listOwnPosts(
   accessToken: string,
   xUserId: string,
   options: { maxResults?: number; paginationToken?: string } = {},
-): Promise<{ posts: XPost[]; nextToken: string | null; quotedPostsRead: number }> {
+): Promise<{
+  posts: XPost[];
+  nextToken: string | null;
+  /** Every post X returned (incl. filtered replies) — all of them are billed. */
+  billedPostIds: string[];
+  /** Quoted posts, returned as expanded resources and billed as Post reads. */
+  quotedPostIds: string[];
+}> {
   const maxResults = Math.min(Math.max(options.maxResults ?? 20, 5), 100);
   const url = new URL(`${X_API_BASE}/2/users/${encodeURIComponent(xUserId)}/tweets`);
   url.searchParams.set("max_results", String(maxResults));
@@ -79,8 +86,8 @@ export async function listOwnPosts(
     // under a post); those are comments, not Repost candidates.
     posts: body.data.filter((post) => !isReply(post)).map((post) => toXPost(post, body.includes)),
     nextToken: body.meta.next_token ?? null,
-    // Quoted posts come back as expanded resources and are billed as Post reads.
-    quotedPostsRead: body.includes.tweets.length,
+    billedPostIds: body.data.map((post) => post.id),
+    quotedPostIds: body.includes.tweets.map((post) => post.id),
   };
 }
 
@@ -91,7 +98,7 @@ export async function listOwnPosts(
 export async function getPost(
   accessToken: string,
   postId: string,
-): Promise<(XPost & { authorId: string; quotedPostsRead: number }) | null> {
+): Promise<(XPost & { authorId: string; quotedPostIds: string[] }) | null> {
   const url = new URL(`${X_API_BASE}/2/tweets/${encodeURIComponent(postId)}`);
   url.searchParams.set(
     "tweet.fields",
@@ -107,7 +114,7 @@ export async function getPost(
       ? {
           ...toXPost(body.data, body.includes),
           authorId: body.data.author_id,
-          quotedPostsRead: body.includes.tweets.length,
+          quotedPostIds: body.includes.tweets.map((post) => post.id),
         }
       : null;
   } catch (error) {

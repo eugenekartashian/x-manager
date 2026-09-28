@@ -112,7 +112,8 @@ export async function completeXConnection(
       provider: "X",
       operation: "users.me",
       units: 1,
-      costMicros: X_PRICE_MICROS.userRead,
+      unitPriceMicros: X_PRICE_MICROS.userRead,
+      resources: { kind: "user", ids: [xUser.id] },
     });
   } catch (error) {
     return err(mapConnectError(error, owner.workspaceId));

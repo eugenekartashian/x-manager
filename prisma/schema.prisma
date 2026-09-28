@@ -94,12 +94,13 @@ model Workspace {
   // A post is reposted at most once per interval (D-018); max 8 daily times, no daily cap.
   perPostMinIntervalMinutes Int       @default(120)
 
-  xAccount XAccount?
-  usage    ExternalUsage[]
-  posts    OwnPost[]
-  schedule RepostSchedule?
-  slots    RepostSlot[]
-  runs     ScheduledRepost[]
+  xAccount        XAccount?
+  usage           ExternalUsage[]
+  billedResources BilledResource[]
+  posts           OwnPost[]
+  schedule        RepostSchedule?
+  slots           RepostSlot[]
+  runs            ScheduledRepost[]
 
   @@map("workspace")
 }
@@ -150,6 +151,8 @@ model ExternalUsage {
   provider    UsageProvider
   operation   String
   units       Int
+  // Units X actually bills after its same-UTC-day deduplication (≤ units).
+  billedUnits Int           @default(0)
   costMicros  BigInt
   occurredAt  DateTime      @default(now())
 
@@ -301,4 +304,19 @@ model RepostAttempt {
 
   @@index([scheduledRepostId])
   @@map("repost_attempt")
+}
+
+// X bills each read resource once per UTC day ("All resources are deduplicated within a
+// 24-hour UTC day window" — docs.x.com pricing). One row per resource per day and workspace.
+model BilledResource {
+  id          String    @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  day         String // YYYY-MM-DD (UTC)
+  kind        String // "post" | "user"
+  resourceId  String
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, day, kind, resourceId])
+  @@map("billed_resource")
 }

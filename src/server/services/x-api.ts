@@ -12,7 +12,7 @@ import {
 } from "@/server/integrations/x/client";
 import { XApiError } from "@/server/integrations/x/errors";
 import { X_PRICE_MICROS, type XBillableOperation } from "@/server/integrations/x/pricing";
-import { recordUsage } from "@/server/repositories/usage";
+import { recordUsage, type BillableResources } from "@/server/repositories/usage";
 import {
   getXCredentials,
   markNeedsReconnect,
@@ -42,8 +42,16 @@ export function fetchOwnPosts(
     return {
       data: page,
       usage: [
-        { operation: "ownedPostRead", units: page.posts.length },
-        { operation: "postRead", units: page.quotedPostsRead },
+        {
+          operation: "ownedPostRead",
+          units: page.billedPostIds.length,
+          resources: { kind: "post", ids: page.billedPostIds },
+        },
+        {
+          operation: "postRead",
+          units: page.quotedPostIds.length,
+          resources: { kind: "post", ids: page.quotedPostIds },
+        },
       ],
     };
   });
@@ -55,7 +63,10 @@ export function fetchPinnedPostId(
 ): Promise<Result<string | null, XActionError>> {
   return callX(workspaceId, "read", async ({ accessToken }) => {
     const me = await getMe(accessToken);
-    return { data: me.pinnedPostId, usage: { operation: "userRead", units: 1 } };
+    return {
+      data: me.pinnedPostId,
+      usage: { operation: "userRead", units: 1, resources: { kind: "user", ids: [me.id] } },
+    };
   });
 }
 
@@ -68,7 +79,13 @@ export function fetchPost(
     const post = await getPost(accessToken, postId);
     return {
       data: post,
-      usage: { operation: "postRead", units: post ? 1 + post.quotedPostsRead : 0 },
+      usage: post
+        ? {
+            operation: "postRead",
+            units: 1 + post.quotedPostIds.length,
+            resources: { kind: "post", ids: [post.id, ...post.quotedPostIds] },
+          }
+        : { operation: "postRead", units: 0 },
     };
   });
 }
@@ -111,7 +128,8 @@ export function undoRepostPost(
 
 // ─── Internals ───────────────────────────────────────────────────────────────
 
-type Usage = { operation: XBillableOperation; units: number };
+/** `resources` (reads only): ids X returned — billed once per resource per UTC day. */
+type Usage = { operation: XBillableOperation; units: number; resources?: BillableResources };
 
 const REPOST_USAGE: Usage = { operation: "repost", units: 1 };
 const UNDO_REPOST_USAGE: Usage = { operation: "undoRepost", units: 1 };
@@ -174,6 +192,7 @@ async function record(workspaceId: string, usage: Usage): Promise<void> {
     provider: "X",
     operation: usage.operation,
     units: usage.units,
-    costMicros: X_PRICE_MICROS[usage.operation] * usage.units,
+    unitPriceMicros: X_PRICE_MICROS[usage.operation],
+    ...(usage.resources ? { resources: usage.resources } : {}),
   });
 }
