@@ -45,7 +45,8 @@ What protects the user's X account and credentials, and what must stay true as t
 ## 7. Operational checklist (owner)
 
 - [ ] 2FA on every account that can reach secrets: **GitHub, Vercel, Supabase, X (developer console), Google Cloud**. Their takeover is the realistic way to lose tokens.
-- [ ] Production gets **new** values for `TOKEN_ENCRYPTION_KEYS`, `AUTH_SECRET`, `CRON_SECRET` — never reuse dev values. Mark them *Sensitive* in Vercel.
+- [x] Production gets **new** values for `TOKEN_ENCRYPTION_KEYS`, `AUTH_SECRET`, `CRON_SECRET` — never reuse dev values. Mark them *Sensitive* in Vercel. (Done 2026-09-28 via `pnpm prod:env`, all values stored as Sensitive.)
+- [x] Supabase: Data API disabled at creation, automatic RLS on, RLS enabled on all app tables (migration + test), Data API roles revoked (`scripts/supabase-setup.sql`).
 - [ ] Never paste secrets into chats, issues, screenshots or commits. `.env*` is gitignored (except `.env.example`).
 - [ ] FileVault on (verified 2026-09-28).
 - [ ] If a secret may have leaked: regenerate it (X Console → Keys → Regenerate; Google → reset secret), add a new encryption key version and set it current, disconnect/reconnect X.
