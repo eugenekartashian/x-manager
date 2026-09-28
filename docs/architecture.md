@@ -7,7 +7,7 @@ Scope: foundation + scheduled Reposts of own posts. Later milestones (reply assi
 ```
  Browser (user)                        Vercel (Next.js App Router)                       External
  ─────────────                         ───────────────────────────                       ────────
- Google sign-in  ───────────────────▶  Auth.js (Google, email allowlist) ─────────────▶ Google OAuth
+ Google sign-in  ───────────────────▶  Better Auth (Google, allowlist) ───────────────▶ Google OAuth
  UI: posts, slots, history  ◀───────▶  Server Components / Route Handlers
                                           │  parse (Zod) → requireWorkspace() → service
  "Connect X"  ──────────────────────▶  /api/x/oauth/start ── state+PKCE ─────────────▶ x.com authorize
@@ -34,7 +34,7 @@ Ownership: `User → Workspace (1:1 for MVP) → XAccount (1:1 for MVP)`. Every 
 
 | Model | Key fields | Constraints / indexes |
 |---|---|---|
-| `User`, `Account`, `Session`, `VerificationToken` | Auth.js Prisma adapter tables (Google login) | adapter defaults |
+| `User`, `Session`, `Account`, `Verification` | Better Auth core tables (Google login) | `email` unique; `Account` unique (`providerId`, `accountId`) |
 | `Workspace` | `ownerId`, `timezone` (IANA), `repostPaused`, `dailyRepostCap` (default 6, max 6), `perPostMinIntervalHours` (default 6), `monthlyBudgetMicros` (default 5_000_000) | `ownerId` unique (MVP) |
 | `XAccount` | `workspaceId`, `xUserId`, `username`, `accessTokenEnc`, `refreshTokenEnc`, `tokenKeyVersion`, `accessTokenExpiresAt`, `scopes`, `status` (`CONNECTED` / `NEEDS_RECONNECT` / `DISCONNECTED`) | `workspaceId` unique (MVP); `xUserId` unique (one X account can't be attached to two workspaces) |
 | `OwnPost` | `workspaceId`, `xAccountId`, `xPostId`, `text`, `postedAt`, `isPinned`, `lastRepostedAt`, `archived` | unique (`xAccountId`, `xPostId`); index (`workspaceId`, `postedAt`) |
@@ -105,7 +105,7 @@ src/
     api/jobs/run/route.ts
   features/{posts,slots,history,settings}/   # UI components + client hooks
   server/
-    auth/        # auth.ts (Auth.js config), requireWorkspace.ts, crypto.ts
+    auth/        # auth.ts (Better Auth config), session.ts (requireWorkspace), crypto.ts
     services/    # xConnection, ownPosts, slots, reposts, usage
     repositories/
     integrations/x/   # client.ts, schemas.ts, errors.ts, pricing.ts

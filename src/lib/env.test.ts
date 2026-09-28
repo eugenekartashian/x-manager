@@ -1,28 +1,48 @@
 import { describe, expect, it } from "vitest";
 import { parseServerEnv } from "./env";
 
-describe("parseServerEnv", () => {
-  it("accepts a valid postgres URL and defaults NODE_ENV", () => {
-    const env = parseServerEnv({ DATABASE_URL: "postgresql://user@localhost:5432/db" });
+const validEnv = {
+  DATABASE_URL: "postgresql://user@localhost:5432/db",
+  APP_URL: "http://127.0.0.1:3000",
+  AUTH_SECRET: "x".repeat(32),
+  AUTH_GOOGLE_ID: "google-id",
+  AUTH_GOOGLE_SECRET: "google-secret",
+  ALLOWED_EMAILS: "Me@Gmail.com, friend@example.com",
+};
 
-    expect(env).toEqual({
-      NODE_ENV: "development",
-      DATABASE_URL: "postgresql://user@localhost:5432/db",
-    });
+describe("parseServerEnv", () => {
+  it("parses a valid environment, defaulting NODE_ENV and normalizing the allowlist", () => {
+    const env = parseServerEnv(validEnv);
+
+    expect(env.NODE_ENV).toBe("development");
+    expect(env.ALLOWED_EMAILS).toEqual(["me@gmail.com", "friend@example.com"]);
   });
 
   it("rejects a missing DATABASE_URL", () => {
-    expect(() => parseServerEnv({})).toThrow("DATABASE_URL");
+    expect(() => parseServerEnv({ ...validEnv, DATABASE_URL: undefined })).toThrow("DATABASE_URL");
   });
 
   it("rejects a non-postgres URL", () => {
-    expect(() => parseServerEnv({ DATABASE_URL: "mysql://localhost/db" })).toThrow("DATABASE_URL");
+    expect(() => parseServerEnv({ ...validEnv, DATABASE_URL: "mysql://localhost/db" })).toThrow(
+      "DATABASE_URL",
+    );
+  });
+
+  it("rejects an empty or invalid allowlist", () => {
+    expect(() => parseServerEnv({ ...validEnv, ALLOWED_EMAILS: " , " })).toThrow("ALLOWED_EMAILS");
+    expect(() => parseServerEnv({ ...validEnv, ALLOWED_EMAILS: "not-an-email" })).toThrow(
+      "ALLOWED_EMAILS",
+    );
+  });
+
+  it("rejects a short AUTH_SECRET", () => {
+    expect(() => parseServerEnv({ ...validEnv, AUTH_SECRET: "short" })).toThrow("AUTH_SECRET");
   });
 
   it("never includes variable values in the error message", () => {
-    const secret = "postgresql//no-colon-secret-value";
+    const secret = "short-secret-value";
 
-    expect(() => parseServerEnv({ DATABASE_URL: secret })).toThrow(
+    expect(() => parseServerEnv({ ...validEnv, AUTH_SECRET: secret })).toThrow(
       expect.objectContaining({ message: expect.not.stringContaining(secret) }),
     );
   });

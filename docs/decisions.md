@@ -49,7 +49,7 @@ Alternatives kept in reserve: cron-job.org (free, external), Vercel Pro Cron (pa
 
 - Hosting: Vercel Hobby (personal, noncommercial — must move before any paid version).
 - DB + storage: Supabase Postgres (via Prisma) + Supabase Storage (later, for media).
-- App login: **Auth.js (NextAuth v5) with Google**, restricted by an email allowlist (user + friend). App login is separate from X.
+- App login: ~~Auth.js (NextAuth v5)~~ **Better Auth with Google** (see D-010), restricted by an email allowlist (user + friend). App login is separate from X.
 - X connection: OAuth 2.0 + PKCE on x.com. The user signs in to X exactly as usual (Google + authenticator); the app never sees the X password or 2FA codes — only receives revocable tokens.
 
 ## D-007 · 2026-09-28 · Proposed — Ambiguous outcome (UNKNOWN) for Reposts
@@ -66,3 +66,8 @@ Sources: [@XDevelopers announcement](https://x.com/XDevelopers/status/2026084506
 ## D-009 · 2026-09-28 · Proposed — Scheduled original posts deprioritized
 
 The user schedules their own posts manually; X's composer has built-in scheduling (availability per account tier `UNVERIFIED`). In-app publishing/scheduling (old M3) moves to "later, if needed". Reposts are the core feature.
+
+## D-010 · 2026-09-28 · Accepted — App login library: Better Auth (supersedes Auth.js in D-006)
+
+`next-auth` v5 is still `5.0.0-beta.32` (Sep 2026) and the Auth.js team joined Better Auth in 2025. Better Auth 1.7 is stable, supports Next.js 16 and Prisma 7, and offers the needed pieces: Google provider, Prisma adapter, database hooks (allowlist on user and session creation), OAuth token encryption at rest (`account.encryptOAuthTokens`). Telemetry disabled. Google callback path unchanged: `/api/auth/callback/google`.
+Source: [Better Auth — Next.js integration](https://www.better-auth.com/docs/integrations/next), npm dist-tags checked 2026-09-28.

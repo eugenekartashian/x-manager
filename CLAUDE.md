@@ -173,10 +173,13 @@ pnpm test             # vitest run (DATABASE_URL is forced to TEST_DATABASE_URL)
 pnpm build            # next build
 pnpm db:migrate       # prisma migrate dev (reads .env.local via prisma.config.ts)
 pnpm db:status        # prisma migrate status
+pnpm db:seed          # two isolated seed users + workspaces (dev DB only)
 ```
 
 Stack notes:
 - **Next.js 16** — APIs differ from older versions; read `node_modules/next/dist/docs/` before using a Next API (see AGENTS.md).
 - **Prisma 7** — config in `prisma.config.ts`, generator `prisma-client`, import the client from `@/generated/prisma/client`, connect via `@prisma/adapter-pg`. Keep `prisma` and `@prisma/client` on the same exact version.
 - **Zod 4** — use top-level format schemas (`z.url()`, `z.email()`), not deprecated `z.string().url()`.
+- **Better Auth 1.7** — app login (Google) in `src/server/auth/auth.ts`; allowlist enforced in database hooks (user + session create) and again in `requireWorkspace()`. Pages/actions get the workspace only via `requireWorkspace()` from `src/server/auth/session.ts`.
+- Tests: `tests/integration/*` hit the real test DB (migrated in `tests/setup/global-setup.ts`, reset via `tests/helpers/db.ts`); files run sequentially.
 - Env: `.env.local` (gitignored) for all local values; `.env.example` is the documented template; validated in `src/lib/env.ts`.

@@ -4,6 +4,34 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M1.2 — App login & workspace
+
+**Changed**
+- Better Auth 1.7.6 with Google (`src/server/auth/auth.ts`), route `src/app/api/auth/[...all]`, client `src/lib/auth-client.ts`. Email/password disabled, telemetry off, Google OAuth tokens encrypted at rest.
+- Allowlist (`ALLOWED_EMAILS`) enforced at user creation, at every session creation and in `requireWorkspace()` (existing sessions lose access when an email is removed).
+- Prisma: Better Auth core tables + `Workspace` (one per user, `ownerId` unique, cascade delete). Migration `init_auth_workspace`.
+- `requireWorkspace()` / `getCurrentUser()` (request-cached) in `src/server/auth/session.ts`; workspace repository with idempotent `ensureWorkspaceForOwner`.
+- Pages: `/sign-in` (Google button, error states), `(app)` layout with header + sign out, `/dashboard` placeholder; `/` → `/dashboard`.
+- Env: added `APP_URL`; `AUTH_*`, `ALLOWED_EMAILS` validated (allowlist normalized, at least one email).
+- Test infra: global setup migrates the test DB (refuses non-test URLs), DB reset helper, sequential files. Seed: two isolated users (dev DB only, idempotent).
+
+**Decisions**
+- D-010: Better Auth instead of Auth.js (next-auth v5 still beta).
+
+**Verification**
+- `pnpm check` ✅ (typecheck, lint, format, 23 tests: env, allowlist, workspace isolation/idempotency/concurrency/cascade, sign-up + sign-in allowlist hooks) · `pnpm build` ✅
+- Dev smoke: `/dashboard` → 307 `/sign-in`; `/sign-in` 200 with button and error message; `get-session` → null; `sign-in/social` returns Google authorize URL.
+- Real Google sign-in verified by the user in the browser (dashboard shows own workspace). Fixed: dev server now binds 127.0.0.1; `src/proxy.ts` sends localhost visitors to 127.0.0.1 (Better Auth rejected the localhost origin).
+
+**Limitations**
+- UI copy is English for now. No resources besides the workspace yet, so cross-workspace tests cover workspace lookup only; each new resource adds its own IDOR tests.
+
+**Costs:** $0.
+
+**Next:** M1.3 — X OAuth 2.0 (state + PKCE), encrypted token storage, refresh, disconnect. Needs X credits before the first live connection.
+
+---
+
 ## 2026-09-28 · M1.1 — Scaffold
 
 **Changed**
