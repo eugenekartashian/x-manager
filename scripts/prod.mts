@@ -2,7 +2,7 @@
 // tools via env/stdin — secrets are never printed or typed into a chat.
 //   pnpm prod:migrate  → prisma migrate deploy against Supabase (session pooler URL)
 //   pnpm prod:setup    → scripts/supabase-setup.sql (RLS lockdown, Vault secret, pg_cron)
-//   pnpm prod:env      → push env vars to the linked Vercel project (production)
+//   pnpm prod:env [NAME…] → push env vars (all, or only NAME…) to the linked Vercel project
 import { spawnSync } from "node:child_process";
 import { config } from "dotenv";
 
@@ -64,7 +64,10 @@ if (command === "migrate") {
     "scripts/supabase-setup.sql",
   ]);
 } else if (command === "env") {
-  for (const name of APP_ENV) {
+  const only = process.argv.slice(3);
+  const unknown = only.filter((name) => !(APP_ENV as readonly string[]).includes(name));
+  if (unknown.length) throw new Error(`Unknown variable(s): ${unknown.join(", ")}`);
+  for (const name of only.length ? only : APP_ENV) {
     const value = required(name);
     // Replace any existing value; stdin keeps the secret out of argv and logs.
     spawnSync("pnpm", ["dlx", "vercel", "env", "rm", name, "production", "--yes"], {
