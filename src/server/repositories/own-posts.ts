@@ -55,12 +55,18 @@ export async function upsertPosts(scope: OwnPostScope, posts: XPost[], now: Date
 }
 
 /**
- * Drops cached posts that are neither in the latest page, pinned, nor in the repost
- * list — "recent posts" then mirrors X (deleted posts and old comments disappear).
+ * Drops cached posts that are neither in the latest page, pinned, in the repost
+ * list, nor used by a schedule slot — "recent posts" then mirrors X (deleted posts and old comments disappear).
  */
 export async function pruneStale(scope: OwnPostScope, keepXPostIds: string[]): Promise<number> {
   const { count } = await prisma.ownPost.deleteMany({
-    where: { ...scope, inRotation: false, isPinned: false, xPostId: { notIn: keepXPostIds } },
+    where: {
+      ...scope,
+      inRotation: false,
+      isPinned: false,
+      slots: { none: {} }, // chosen directly by a schedule slot
+      xPostId: { notIn: keepXPostIds },
+    },
   });
   return count;
 }
@@ -138,4 +144,12 @@ export function moveInRotation(
     }
     return true;
   });
+}
+
+export function findPinned(scope: OwnPostScope): Promise<OwnPost | null> {
+  return prisma.ownPost.findFirst({ where: { ...scope, isPinned: true } });
+}
+
+export function findInScope(scope: OwnPostScope, ownPostId: string): Promise<OwnPost | null> {
+  return prisma.ownPost.findFirst({ where: { ...scope, id: ownPostId } });
 }

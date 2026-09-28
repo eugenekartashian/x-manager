@@ -47,7 +47,12 @@ export default async function PostsPage() {
             once every 6 hours.
           </p>
         </div>
-        <RotationList posts={data.rotation} timeZone={timeZone} now={now} />
+        <RotationList
+          posts={data.rotation}
+          timeZone={timeZone}
+          now={now}
+          minIntervalMs={workspace.perPostMinIntervalMinutes * 60_000}
+        />
         <AddPostForm />
       </section>
 

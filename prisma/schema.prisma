@@ -89,12 +89,18 @@ model Workspace {
   updatedAt DateTime @updatedAt
 
   // Spend guard for paid X/AI calls (micro-dollars, per UTC calendar month). D-001.
-  monthlyBudgetMicros BigInt    @default(5000000)
-  postsSyncedAt       DateTime?
+  monthlyBudgetMicros       BigInt    @default(5000000)
+  postsSyncedAt             DateTime?
+  // Repost limits (D-003, D-012): a post is reposted at most once per interval;
+  // at most dailyRepostCap Reposts per local day (hard ceiling in code).
+  perPostMinIntervalMinutes Int       @default(240)
+  dailyRepostCap            Int       @default(8)
 
   xAccount XAccount?
   usage    ExternalUsage[]
   posts    OwnPost[]
+  schedule RepostSchedule?
+  slots    RepostSlot[]
 
   @@map("workspace")
 }
@@ -157,14 +163,14 @@ model ExternalUsage {
 // The connected user's own posts, cached locally. Keyed by the X user id (not the
 // XAccount row) so rotation survives a disconnect/reconnect of the same account.
 model OwnPost {
-  id               String    @id @default(uuid(7))
+  id               String       @id @default(uuid(7))
   workspaceId      String
-  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   xUserId          String
   xPostId          String
   text             String
   postedAt         DateTime
-  isPinned         Boolean   @default(false)
+  isPinned         Boolean      @default(false)
   likeCount        Int?
   repostCount      Int?
   replyCount       Int?
@@ -173,16 +179,62 @@ model OwnPost {
   // First attachment preview (photo URL or video/GIF thumbnail), pbs.twimg.com only.
   mediaType        String?
   mediaPreviewUrl  String?
-  mediaCount       Int       @default(0)
+  mediaCount       Int          @default(0)
   // Repost rotation: posts the user chose for scheduled Reposts, in order.
-  inRotation       Boolean   @default(false)
+  inRotation       Boolean      @default(false)
   rotationPosition Int?
   lastRepostedAt   DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  slots            RepostSlot[]
 
   @@unique([workspaceId, xPostId])
   @@index([workspaceId, xUserId, postedAt])
   @@index([workspaceId, xUserId, inRotation, rotationPosition])
   @@map("own_post")
+}
+
+// ─── Repost schedule (M2.3) ─────────────────────────────────────────────────
+
+// One schedule per workspace (MVP): active between startDate and
+// startDate + durationDays - 1 (local dates), or open-ended when durationDays is null.
+model RepostSchedule {
+  id               String       @id @default(uuid(7))
+  workspaceId      String       @unique
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  active           Boolean      @default(false)
+  startDate        String // YYYY-MM-DD
+  durationDays     Int?
+  // Last post taken from the repost list; the next "next from list" slot continues after it.
+  listCursorPostId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  slots            RepostSlot[]
+
+  @@map("repost_schedule")
+}
+
+enum SlotTarget {
+  PINNED
+  POST
+  NEXT_FROM_LIST
+}
+
+// A daily time in its own timezone (e.g. 09:40 America/New_York) and what to repost.
+model RepostSlot {
+  id          String         @id @default(uuid(7))
+  scheduleId  String
+  schedule    RepostSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  localTime   String // HH:MM, 24h
+  timezone    String // IANA
+  target      SlotTarget
+  ownPostId   String?
+  ownPost     OwnPost?       @relation(fields: [ownPostId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+
+  @@index([workspaceId])
+  @@index([scheduleId])
+  @@map("repost_slot")
 }

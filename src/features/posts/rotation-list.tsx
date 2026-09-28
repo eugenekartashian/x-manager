@@ -5,9 +5,9 @@ import { moveRotationAction, toggleRotationAction } from "./actions";
 import { PostText } from "./post-text";
 import { SubmitButton } from "./submit-button";
 
-type Props = { posts: OwnPost[]; timeZone: string; now: Date };
+type Props = { posts: OwnPost[]; timeZone: string; now: Date; minIntervalMs: number };
 
-export function RotationList({ posts, timeZone, now }: Props) {
+export function RotationList({ posts, timeZone, now, minIntervalMs }: Props) {
   if (posts.length === 0) {
     return (
       <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-6 text-center text-sm">
@@ -19,7 +19,7 @@ export function RotationList({ posts, timeZone, now }: Props) {
   return (
     <ol className="divide-foreground/10 border-foreground/10 flex flex-col divide-y rounded-lg border">
       {posts.map((post, index) => {
-        const nextAllowed = nextRepostAllowedAt(post.lastRepostedAt, now);
+        const nextAllowed = nextRepostAllowedAt(post.lastRepostedAt, minIntervalMs, now);
         return (
           <li key={post.id} className="flex flex-wrap items-start gap-3 p-3 sm:flex-nowrap">
             <span className="text-foreground/50 w-5 pt-0.5 text-sm tabular-nums">{index + 1}</span>

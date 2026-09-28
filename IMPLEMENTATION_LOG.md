@@ -4,6 +4,25 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.3 — Schedule: dates, daily times per timezone, limits, preview
+
+**Changed**
+- Prisma: `RepostSchedule` (one per workspace: active, start date, duration, list cursor), `RepostSlot` (local time + IANA timezone + target PINNED/POST/NEXT_FROM_LIST), workspace `perPostMinIntervalMinutes` (default 240) and `dailyRepostCap` (default 8). Migration `repost_schedule`.
+- `lib/zoned-time.ts`: Intl-only wall-clock → UTC with explicit DST rules (gap → after, overlap → earlier) + date helpers.
+- `domain/repost-plan.ts`: pure planner — occurrences within the date range, target resolution, list cycling after cursor, per-post interval, daily cap per workspace-local day, skip reasons. Will drive the job processor (M2.4).
+- `services/schedule.ts`: page data (preview 48 h, estimate), save schedule, add/remove slots (max 8, own-post check, scoped delete), limits (2–12 h options, cap 1–8).
+- UI `/schedule`: dates form (ON/OFF, start, duration / no end), daily times with conversion to Madrid time, add-time form (time, timezone, target incl. specific post), limits & cost projection with over-budget warning, 48 h preview with skip reasons. Posts page uses the interval setting; posts used by a slot are never pruned.
+- Decision D-012.
+
+**Verification**
+- `pnpm check` ✅ — 158 tests (new: 13 timezone/DST, 12 planner, 11 schedule service incl. cross-workspace slot/post access, 8-slot ceiling, validation, preview + estimate, previous-account post). `pnpm build` ✅.
+
+**Costs:** $0 (no X calls in this task).
+
+**Next:** M2.4 — job processor: materialize planned Reposts, atomic claim + lease, undo → Repost, attempts log, budget/connection guards, UNKNOWN handling.
+
+---
+
 ## 2026-09-28 · M2.2 follow-up — media previews, clearer labels, dev Prisma cache fix
 
 - Dev bug: after `prisma generate`, the running dev server kept a cached PrismaClient of the old class (`prisma.ownPost` undefined). `src/server/db.ts` now replaces a cached instance that is not of the current class.

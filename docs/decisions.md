@@ -75,3 +75,11 @@ Source: [Better Auth — Next.js integration](https://www.better-auth.com/docs/i
 ## D-011 · 2026-09-28 · Accepted (measured) — Cost estimates are an upper bound; reconcile with Console
 
 First live usage: app recorded $0.055 (2× `users/me`, 20 owned post reads, profile + pinned post read); X Console showed **$0.03** for the same period. X deduplicates the same resource within a UTC day (repeat `users/me`, re-read pinned post), which the app does not model. Decision: keep conservative per-call estimates for the budget guard (never under-counts); the Console remains the source of truth. Revisit if estimates overshoot enough to block legitimate work.
+
+## D-012 · 2026-09-28 · Accepted — Repost limits and single calendar schedule (supersedes limits in D-003)
+
+- Per-post minimum interval is a **user setting** (2–12 h, default 4 h). It is our own anti-spam rule, not an X rule; X only prohibits "bulk, aggressive, or spammy" Reposting.
+- Hard ceiling **8 Reposts/day** (user decision). At ≈ $0.025 per undo + Repost, 8/day ≈ $6/month > $5 budget: the budget guard skips Reposts once the month's budget is used; the UI shows the projection.
+- **One schedule per workspace**: on/off, start date, duration in days (or no end). Up to 8 daily times; each time has its own IANA timezone and target: pinned post, a specific post, or next from the repost list (cycled after a cursor).
+- DST: a skipped wall time runs after the gap; a repeated wall time runs once (earlier instant). Daily cap counted per local day in the workspace timezone.
+- Multiple overlapping schedules deferred until the user asks.
