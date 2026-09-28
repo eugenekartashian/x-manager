@@ -15,6 +15,7 @@ type Handlers = {
   me?: () => Reply;
   revoke?: () => Reply;
   posts?: (url: URL) => Reply;
+  post?: (postId: string) => Reply;
   repost?: (postId: string) => Reply;
   undoRepost?: (postId: string) => Reply;
 };
@@ -55,6 +56,8 @@ function route(
   if (path === "/2/oauth2/revoke") return h.revoke?.();
   if (path === "/2/users/me") return h.me?.();
   if (/^\/2\/users\/[^/]+\/tweets$/.test(path)) return h.posts?.(url);
+  const single = /^\/2\/tweets\/([^/]+)$/.exec(path);
+  if (single) return h.post?.(decodeURIComponent(single[1] ?? ""));
   if (method === "POST" && /^\/2\/users\/[^/]+\/retweets$/.test(path)) {
     return h.repost?.(String((json as { tweet_id?: string } | null)?.tweet_id));
   }
@@ -113,3 +116,20 @@ export const postsReply = (ids: string[], nextToken?: string) => ({
 });
 
 export const repostReply = (retweeted: boolean) => ({ status: 200, body: { data: { retweeted } } });
+
+export const postReply = (
+  id: string,
+  authorId: string,
+  createdAt = "2025-01-15T10:00:00.000Z",
+) => ({
+  status: 200,
+  body: {
+    data: {
+      id,
+      text: `Post ${id}`,
+      author_id: authorId,
+      created_at: createdAt,
+      public_metrics: { retweet_count: 5, reply_count: 1, like_count: 50, quote_count: 0 },
+    },
+  },
+});

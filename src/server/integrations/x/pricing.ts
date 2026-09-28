@@ -5,6 +5,7 @@
 export const X_PRICE_MICROS = {
   userRead: 10_000, // GET /2/users/me — "Users: $0.010 per resource"
   ownedPostRead: 1_000, // GET /2/users/:id/tweets (own) — "Owned reads: $0.001 per resource"
+  postRead: 5_000, // GET /2/tweets/:id — "Posts: $0.005 per resource" (may bill as owned read $0.001)
   repost: 15_000, // POST /2/users/:id/retweets — "User interactions: $0.015 per request"
   undoRepost: 10_000, // DELETE /2/users/:id/retweets/:id — "Interaction deletion: $0.010 per request"
 } as const;

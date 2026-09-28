@@ -10,7 +10,7 @@ import { connectXDirectly, createOwner, resetDatabase } from "../helpers/db";
 import { fakeX, meReply, postsReply, repostReply } from "../helpers/fake-x";
 
 let restoreFetch: (() => void) | undefined;
-function useFakeX(...args: Parameters<typeof fakeX>) {
+function withFakeX(...args: Parameters<typeof fakeX>) {
   restoreFetch?.();
   const fake = fakeX(...args);
   restoreFetch = fake.restore;
@@ -41,7 +41,7 @@ async function usageRows(workspaceId: string) {
 describe("fetchOwnPosts", () => {
   it("requests own original posts and records owned-read cost per post", async () => {
     const owner = await connectedOwner();
-    const x = useFakeX({ posts: () => postsReply(["101", "100"], "next-page") });
+    const x = withFakeX({ posts: () => postsReply(["101", "100"], "next-page") });
 
     const result = await fetchOwnPosts(owner.workspaceId, { maxResults: 20 });
 
@@ -71,7 +71,7 @@ describe("fetchOwnPosts", () => {
 
   it("handles an account with no posts and records no cost", async () => {
     const owner = await connectedOwner();
-    useFakeX({ posts: () => postsReply([]) });
+    withFakeX({ posts: () => postsReply([]) });
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({
       ok: true,
@@ -82,7 +82,7 @@ describe("fetchOwnPosts", () => {
 
   it("clamps page size to X's 5–100 range and forwards the pagination token", async () => {
     const owner = await connectedOwner();
-    const x = useFakeX({ posts: () => postsReply([]) });
+    const x = withFakeX({ posts: () => postsReply([]) });
 
     await fetchOwnPosts(owner.workspaceId, { maxResults: 500, paginationToken: "p2" });
     await fetchOwnPosts(owner.workspaceId, { maxResults: 1 });
@@ -94,7 +94,7 @@ describe("fetchOwnPosts", () => {
 
   it("maps a rate limit without recording cost", async () => {
     const owner = await connectedOwner();
-    useFakeX({ posts: () => ({ status: 429, body: { title: "Too Many Requests" } }) });
+    withFakeX({ posts: () => ({ status: 429, body: { title: "Too Many Requests" } }) });
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({ ok: false, error: "rate_limited" });
     expect(await usageRows(owner.workspaceId)).toEqual([]);
@@ -102,7 +102,7 @@ describe("fetchOwnPosts", () => {
 
   it("treats a failed read as retryable, not as an unknown outcome", async () => {
     const owner = await connectedOwner();
-    useFakeX({ posts: () => "network-error" });
+    withFakeX({ posts: () => "network-error" });
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({ ok: false, error: "x_unavailable" });
   });
@@ -110,7 +110,7 @@ describe("fetchOwnPosts", () => {
   it("uses only the caller's own X account and token", async () => {
     await connectedOwner("a");
     const ownerB = await connectedOwner("b");
-    const x = useFakeX({ posts: () => postsReply([]) });
+    const x = withFakeX({ posts: () => postsReply([]) });
 
     await fetchOwnPosts(ownerB.workspaceId);
 
@@ -120,7 +120,7 @@ describe("fetchOwnPosts", () => {
 
   it("does not call X when no account is connected", async () => {
     const owner = await createOwner("a");
-    const x = useFakeX({});
+    const x = withFakeX({});
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({ ok: false, error: "not_connected" });
     expect(x.calls).toHaveLength(0);
@@ -130,7 +130,7 @@ describe("fetchOwnPosts", () => {
 describe("fetchPinnedPostId", () => {
   it("returns the pinned post id and records one user read", async () => {
     const owner = await connectedOwner();
-    const x = useFakeX({ me: () => meReply("x-a", "a", "555") });
+    const x = withFakeX({ me: () => meReply("x-a", "a", "555") });
 
     expect(await fetchPinnedPostId(owner.workspaceId)).toEqual({ ok: true, data: "555" });
     expect(x.calls[0]?.url.searchParams.get("user.fields")).toBe("pinned_tweet_id");
@@ -141,7 +141,7 @@ describe("fetchPinnedPostId", () => {
 
   it("returns null when nothing is pinned", async () => {
     const owner = await connectedOwner();
-    useFakeX({ me: () => meReply("x-a") });
+    withFakeX({ me: () => meReply("x-a") });
 
     expect(await fetchPinnedPostId(owner.workspaceId)).toEqual({ ok: true, data: null });
   });
@@ -150,7 +150,7 @@ describe("fetchPinnedPostId", () => {
 describe("repostPost", () => {
   it("reposts the given post and records the write cost", async () => {
     const owner = await connectedOwner();
-    const x = useFakeX({ repost: () => repostReply(true) });
+    const x = withFakeX({ repost: () => repostReply(true) });
 
     expect(await repostPost(owner.workspaceId, "101")).toEqual({ ok: true, data: "reposted" });
     expect(x.calls[0]?.method).toBe("POST");
@@ -163,7 +163,7 @@ describe("repostPost", () => {
 
   it("treats 'already reposted' as the desired state", async () => {
     const owner = await connectedOwner();
-    useFakeX({
+    withFakeX({
       repost: () => ({ status: 403, body: { detail: "You have already retweeted this Post." } }),
     });
 
@@ -179,7 +179,7 @@ describe("repostPost", () => {
     ["a 200 that did not repost", () => repostReply(false)],
   ])("reports an unknown outcome after %s and still counts the cost", async (_label, reply) => {
     const owner = await connectedOwner();
-    useFakeX({ repost: reply });
+    withFakeX({ repost: reply });
 
     expect(await repostPost(owner.workspaceId, "101")).toEqual({
       ok: false,
@@ -197,7 +197,7 @@ describe("repostPost", () => {
     [429, "rate_limited"],
   ] as const)("maps HTTP %i to %s without recording cost", async (status, error) => {
     const owner = await connectedOwner();
-    useFakeX({ repost: () => ({ status, body: { detail: "nope" } }) });
+    withFakeX({ repost: () => ({ status, body: { detail: "nope" } }) });
 
     expect(await repostPost(owner.workspaceId, "101")).toEqual({ ok: false, error });
     expect(await usageRows(owner.workspaceId)).toEqual([]);
@@ -205,7 +205,7 @@ describe("repostPost", () => {
 
   it("marks the account for reconnect when X rejects the token", async () => {
     const owner = await connectedOwner();
-    useFakeX({ repost: () => ({ status: 401, body: { title: "Unauthorized" } }) });
+    withFakeX({ repost: () => ({ status: 401, body: { title: "Unauthorized" } }) });
 
     expect(await repostPost(owner.workspaceId, "101")).toEqual({
       ok: false,
@@ -217,7 +217,7 @@ describe("repostPost", () => {
     expect(account.status).toBe("NEEDS_RECONNECT");
 
     // Subsequent calls stop before reaching X.
-    const x = useFakeX({});
+    const x = withFakeX({});
     expect(await repostPost(owner.workspaceId, "101")).toEqual({
       ok: false,
       error: "needs_reconnect",
@@ -229,7 +229,7 @@ describe("repostPost", () => {
 describe("undoRepostPost", () => {
   it("removes the Repost and records the deletion cost", async () => {
     const owner = await connectedOwner();
-    const x = useFakeX({ undoRepost: () => repostReply(false) });
+    const x = withFakeX({ undoRepost: () => repostReply(false) });
 
     expect(await undoRepostPost(owner.workspaceId, "101")).toEqual({ ok: true, data: "undone" });
     expect(x.calls[0]?.method).toBe("DELETE");
@@ -241,7 +241,7 @@ describe("undoRepostPost", () => {
 
   it("reports an unknown outcome on timeout", async () => {
     const owner = await connectedOwner();
-    useFakeX({ undoRepost: () => "network-error" });
+    withFakeX({ undoRepost: () => "network-error" });
 
     expect(await undoRepostPost(owner.workspaceId, "101")).toEqual({
       ok: false,

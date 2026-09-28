@@ -15,3 +15,33 @@ export function ensureWorkspaceForOwner(ownerId: string, ownerName: string): Pro
     update: {},
   });
 }
+
+export async function getMonthlyBudgetMicros(workspaceId: string): Promise<bigint> {
+  const workspace = await prisma.workspace.findUniqueOrThrow({
+    where: { id: workspaceId },
+    select: { monthlyBudgetMicros: true },
+  });
+  return workspace.monthlyBudgetMicros;
+}
+
+/**
+ * Atomically claims a posts sync: succeeds only if the last sync is older than
+ * `minIntervalMs`. Concurrent clicks cannot both pass.
+ */
+export async function claimPostsSync(
+  workspaceId: string,
+  now: Date,
+  minIntervalMs: number,
+): Promise<boolean> {
+  const { count } = await prisma.workspace.updateMany({
+    where: {
+      id: workspaceId,
+      OR: [
+        { postsSyncedAt: null },
+        { postsSyncedAt: { lt: new Date(now.getTime() - minIntervalMs) } },
+      ],
+    },
+    data: { postsSyncedAt: now },
+  });
+  return count === 1;
+}

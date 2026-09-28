@@ -4,6 +4,24 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.2 — Own posts & Repost rotation UI
+
+**Changed**
+- Prisma: `OwnPost` (scoped by workspace + X user id, metrics, pinned flag, rotation flag/position, `lastRepostedAt`); `Workspace.monthlyBudgetMicros` (default $5) and `postsSyncedAt`. Migration `own_posts_and_budget`.
+- X: `getPost` (`GET /2/tweets/:id` with `author_id`; 200-without-data or 404 → not found), price `postRead` $0.005 (UNVERIFIED, may bill as owned read).
+- Services: `own-posts.ts` — refresh (budget check → atomic 60 s sync claim → 20 recent posts → pinned id → fetch old pinned post if missing), add by link (parse → local lookup → fetch + **own-post check** → append), add/remove/reorder rotation; `budget.ts` (month-to-date spend vs budget, UTC month).
+- `lib/post-url.ts` (x.com/twitter.com links or bare id; rejects other hosts), `lib/format.ts`, `domain/repost-rules.ts` (6 h per-post interval, 6/day cap defaults).
+- UI `/posts`: month spend vs budget, Repost rotation (order, last reposted, cooldown/ready, ↑ ↓ Remove), add-by-link form, recent posts with metrics (unavailable = “—”), “Refresh from X (≤ $0.035)”; nav links. Server actions validate input with Zod; buttons disable while pending.
+
+**Verification**
+- `pnpm check` ✅ — 118 tests (new: URL parsing incl. lookalike hosts; USD/date/count formatting; refresh flow, old pinned post, pin move, rotation preserved, 60 s throttle, concurrent refresh = one X call, budget stop, month boundary, not connected; add by link — local, fetched own, foreign post rejected, missing post ×2, invalid link, idempotent; reorder/remove; cross-workspace edits denied; posts of a previous X account hidden). `pnpm build` ✅.
+
+**Costs:** $0 in tests. One real refresh ≤ $0.035 (20 × $0.001 + $0.010 + maybe $0.005); X deduplicates same-day re-reads.
+
+**Next:** M2.3 — daily slots per timezone, cap and per-post interval settings, preview of the next Reposts.
+
+---
+
 ## 2026-09-28 · M2.1 — X client: own posts, Repost, undo Repost
 
 **Changed**

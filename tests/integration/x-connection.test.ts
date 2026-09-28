@@ -13,7 +13,7 @@ import { createOwner, resetDatabase } from "../helpers/db";
 import { fakeX, meReply, tokenReply } from "../helpers/fake-x";
 
 let restoreFetch: (() => void) | undefined;
-function useFakeX(...args: Parameters<typeof fakeX>) {
+function withFakeX(...args: Parameters<typeof fakeX>) {
   const fake = fakeX(...args);
   restoreFetch = fake.restore;
   return fake;
@@ -59,7 +59,7 @@ describe("startXConnection", () => {
 describe("completeXConnection", () => {
   it("connects, stores tokens encrypted and records the users/me cost", async () => {
     const owner = await createOwner("a");
-    const x = useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    const x = withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     const { authorizeUrl, sealedState } = startXConnection(owner);
 
     const result = await completeXConnection(
@@ -92,7 +92,7 @@ describe("completeXConnection", () => {
 
   it("reports a cancelled authorization without calling X", async () => {
     const owner = await createOwner("a");
-    const x = useFakeX({});
+    const x = withFakeX({});
     const { sealedState } = startXConnection(owner);
 
     const result = await completeXConnection(owner, { error: "access_denied" }, sealedState);
@@ -107,7 +107,7 @@ describe("completeXConnection", () => {
     ["a tampered cookie", (state: string, sealed: string) => ({ state, sealed: `${sealed}x` })],
   ])("rejects %s without calling X", async (_label, mutate) => {
     const owner = await createOwner("a");
-    const x = useFakeX({});
+    const x = withFakeX({});
     const { authorizeUrl, sealedState } = startXConnection(owner);
     const { state, sealed } = mutate(stateFrom(authorizeUrl), sealedState);
 
@@ -119,7 +119,7 @@ describe("completeXConnection", () => {
 
   it("rejects an expired attempt", async () => {
     const owner = await createOwner("a");
-    useFakeX({});
+    withFakeX({});
     const started = new Date("2026-09-28T10:00:00Z");
     const { authorizeUrl, sealedState } = startXConnection(owner, started);
     const later = new Date(started.getTime() + OAUTH_STATE_TTL_MS + 1);
@@ -137,7 +137,7 @@ describe("completeXConnection", () => {
   it("never attaches an X account to another user's workspace", async () => {
     const ownerA = await createOwner("a");
     const ownerB = await createOwner("b");
-    const x = useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    const x = withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     // A starts the flow; B's session completes it with A's state cookie and code.
     const { authorizeUrl, sealedState } = startXConnection(ownerA);
 
@@ -155,7 +155,7 @@ describe("completeXConnection", () => {
   it("refuses an X account already linked to another workspace", async () => {
     const ownerA = await createOwner("a");
     const ownerB = await createOwner("b");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply("same-x-user") });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply("same-x-user") });
 
     expect((await connect(ownerA)).ok).toBe(true);
     const second = await connect(ownerB);
@@ -167,7 +167,7 @@ describe("completeXConnection", () => {
 
   it("requires every requested scope", async () => {
     const owner = await createOwner("a");
-    const x = useFakeX({ token: () => tokenReply("1", "tweet.read users.read offline.access") });
+    const x = withFakeX({ token: () => tokenReply("1", "tweet.read users.read offline.access") });
 
     const result = await connect(owner);
 
@@ -178,14 +178,14 @@ describe("completeXConnection", () => {
 
   it("explains exhausted credits (HTTP 402)", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => ({ status: 402, body: {} }) });
+    withFakeX({ token: () => tokenReply("1"), me: () => ({ status: 402, body: {} }) });
 
     expect(await connect(owner)).toEqual({ ok: false, error: "no_credits" });
   });
 
   it("maps a network failure to a retryable error", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => "network-error" });
+    withFakeX({ token: () => "network-error" });
 
     expect(await connect(owner)).toEqual({ ok: false, error: "x_unavailable" });
   });
@@ -197,9 +197,9 @@ describe("getXAccessToken", () => {
 
   it("returns the stored token without calling X while it is fresh", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(owner, connectedAt);
-    const x = useFakeX({});
+    const x = withFakeX({});
 
     expect(await getXAccessToken(owner.workspaceId, connectedAt)).toEqual({
       ok: true,
@@ -210,9 +210,9 @@ describe("getXAccessToken", () => {
 
   it("refreshes near expiry and stores the rotated refresh token", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(owner, connectedAt);
-    const x = useFakeX({ token: () => tokenReply("2") });
+    const x = withFakeX({ token: () => tokenReply("2") });
 
     expect(await getXAccessToken(owner.workspaceId, nearExpiry)).toEqual({
       ok: true,
@@ -222,16 +222,16 @@ describe("getXAccessToken", () => {
 
     // Next refresh must use the rotated token.
     const later = new Date(nearExpiry.getTime() + 7200_000);
-    const x2 = useFakeX({ token: () => tokenReply("3") });
+    const x2 = withFakeX({ token: () => tokenReply("3") });
     await getXAccessToken(owner.workspaceId, later);
     expect(x2.calls[0]?.body?.get("refresh_token")).toBe("refresh-2");
   });
 
   it("refreshes only once when two workers ask concurrently", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(owner, connectedAt);
-    const x = useFakeX({
+    const x = withFakeX({
       token: async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
         return tokenReply("2");
@@ -252,9 +252,9 @@ describe("getXAccessToken", () => {
 
   it("marks the account for reconnect when X rejects the refresh token", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(owner, connectedAt);
-    useFakeX({ token: () => ({ status: 400, body: { error: "invalid_grant" } }) });
+    withFakeX({ token: () => ({ status: 400, body: { error: "invalid_grant" } }) });
 
     expect(await getXAccessToken(owner.workspaceId, nearExpiry)).toEqual({
       ok: false,
@@ -268,9 +268,9 @@ describe("getXAccessToken", () => {
 
   it("keeps the account connected when X is temporarily unavailable", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(owner, connectedAt);
-    useFakeX({ token: () => ({ status: 503, body: {} }) });
+    withFakeX({ token: () => ({ status: 503, body: {} }) });
 
     expect(await getXAccessToken(owner.workspaceId, nearExpiry)).toEqual({
       ok: false,
@@ -285,7 +285,7 @@ describe("getXAccessToken", () => {
   it("never returns another workspace's token", async () => {
     const ownerA = await createOwner("a");
     const ownerB = await createOwner("b");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(ownerA);
 
     expect(await getXAccessToken(ownerB.workspaceId)).toEqual({
@@ -298,9 +298,9 @@ describe("getXAccessToken", () => {
 describe("disconnectX", () => {
   it("deletes the connection and revokes the refresh token at X", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(owner);
-    const x = useFakeX({ revoke: () => ({ status: 200, body: { revoked: true } }) });
+    const x = withFakeX({ revoke: () => ({ status: 200, body: { revoked: true } }) });
 
     await disconnectX(owner.workspaceId);
 
@@ -310,9 +310,9 @@ describe("disconnectX", () => {
 
   it("still deletes locally when revocation fails", async () => {
     const owner = await createOwner("a");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply() });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply() });
     await connect(owner);
-    useFakeX({ revoke: () => "network-error" });
+    withFakeX({ revoke: () => "network-error" });
 
     await disconnectX(owner.workspaceId);
 
@@ -322,9 +322,9 @@ describe("disconnectX", () => {
   it("only affects the caller's workspace", async () => {
     const ownerA = await createOwner("a");
     const ownerB = await createOwner("b");
-    useFakeX({ token: () => tokenReply("1"), me: () => meReply("x-a") });
+    withFakeX({ token: () => tokenReply("1"), me: () => meReply("x-a") });
     await connect(ownerA);
-    const x = useFakeX({});
+    const x = withFakeX({});
 
     await disconnectX(ownerB.workspaceId);
 
@@ -335,7 +335,7 @@ describe("disconnectX", () => {
   it("lets the same X account be connected again afterwards", async () => {
     const ownerA = await createOwner("a");
     const ownerB = await createOwner("b");
-    useFakeX({
+    withFakeX({
       token: () => tokenReply("1"),
       me: () => meReply("same-x-user"),
       revoke: () => ({ status: 200, body: { revoked: true } }),

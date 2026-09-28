@@ -1,7 +1,12 @@
 import "server-only";
 import { XApiError } from "./errors";
 import { X_API_BASE, xRequest } from "./http";
-import { meResponseSchema, repostResponseSchema, userPostsResponseSchema } from "./schemas";
+import {
+  meResponseSchema,
+  postByIdResponseSchema,
+  repostResponseSchema,
+  userPostsResponseSchema,
+} from "./schemas";
 
 // Typed X API v2 calls. Pure protocol: no database, no cost accounting — see
 // src/server/services/x-api.ts for the workspace-aware wrapper.
@@ -60,21 +65,62 @@ export async function listOwnPosts(
     userPostsResponseSchema,
   );
   return {
-    posts: body.data.map((post) => ({
-      id: post.id,
-      text: post.text,
-      createdAt: new Date(post.created_at),
-      metrics: post.public_metrics
-        ? {
-            reposts: post.public_metrics.retweet_count,
-            replies: post.public_metrics.reply_count,
-            likes: post.public_metrics.like_count,
-            quotes: post.public_metrics.quote_count,
-            impressions: post.public_metrics.impression_count ?? null,
-          }
-        : null,
-    })),
+    posts: body.data.map(toXPost),
     nextToken: body.meta.next_token ?? null,
+  };
+}
+
+/**
+ * GET /2/tweets/:id — one post with its author. Returns null when the post does
+ * not exist or is not visible (X answers 200 without `data`, or 404).
+ */
+export async function getPost(
+  accessToken: string,
+  postId: string,
+): Promise<(XPost & { authorId: string }) | null> {
+  const url = new URL(`${X_API_BASE}/2/tweets/${encodeURIComponent(postId)}`);
+  url.searchParams.set("tweet.fields", "author_id,created_at,public_metrics");
+  try {
+    const body = await xRequest(
+      { method: "GET", url: url.toString(), headers: bearer(accessToken) },
+      postByIdResponseSchema,
+    );
+    return body.data ? { ...toXPost(body.data), authorId: body.data.author_id } : null;
+  } catch (error) {
+    if (error instanceof XApiError && error.code === "X_NOT_FOUND") return null;
+    throw error;
+  }
+}
+
+type RawPost = {
+  id: string;
+  text: string;
+  created_at: string;
+  public_metrics?:
+    | {
+        retweet_count: number;
+        reply_count: number;
+        like_count: number;
+        quote_count: number;
+        impression_count?: number | undefined;
+      }
+    | undefined;
+};
+
+function toXPost(post: RawPost): XPost {
+  return {
+    id: post.id,
+    text: post.text,
+    createdAt: new Date(post.created_at),
+    metrics: post.public_metrics
+      ? {
+          reposts: post.public_metrics.retweet_count,
+          replies: post.public_metrics.reply_count,
+          likes: post.public_metrics.like_count,
+          quotes: post.public_metrics.quote_count,
+          impressions: post.public_metrics.impression_count ?? null,
+        }
+      : null,
   };
 }
 

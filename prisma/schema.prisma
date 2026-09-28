@@ -88,8 +88,13 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Spend guard for paid X/AI calls (micro-dollars, per UTC calendar month). D-001.
+  monthlyBudgetMicros BigInt    @default(5000000)
+  postsSyncedAt       DateTime?
+
   xAccount XAccount?
   usage    ExternalUsage[]
+  posts    OwnPost[]
 
   @@map("workspace")
 }
@@ -145,4 +150,35 @@ model ExternalUsage {
 
   @@index([workspaceId, occurredAt])
   @@map("external_usage")
+}
+
+// ─── Own posts & Repost rotation (M2.2) ─────────────────────────────────────
+
+// The connected user's own posts, cached locally. Keyed by the X user id (not the
+// XAccount row) so rotation survives a disconnect/reconnect of the same account.
+model OwnPost {
+  id               String    @id @default(uuid(7))
+  workspaceId      String
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  xUserId          String
+  xPostId          String
+  text             String
+  postedAt         DateTime
+  isPinned         Boolean   @default(false)
+  likeCount        Int?
+  repostCount      Int?
+  replyCount       Int?
+  impressionCount  Int?
+  metricsUpdatedAt DateTime?
+  // Repost rotation: posts the user chose for scheduled Reposts, in order.
+  inRotation       Boolean   @default(false)
+  rotationPosition Int?
+  lastRepostedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([workspaceId, xPostId])
+  @@index([workspaceId, xUserId, postedAt])
+  @@index([workspaceId, xUserId, inRotation, rotationPosition])
+  @@map("own_post")
 }

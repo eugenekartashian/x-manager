@@ -37,7 +37,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped/de
 ## M2 — Repost scheduler (first real value)
 
 - [x] **2.1 X client** — typed calls: list own recent posts, Repost, undo Repost; Zod-parsed responses; error mapping (`X_RATE_LIMITED`, `X_AUTH_EXPIRED`, `X_ALREADY_REPOSTED`, `X_WRITE_UNKNOWN`); 429 backoff; every call recorded in `ExternalUsage` with estimated cost. Mocked tests only.
-- [ ] **2.2 Own posts & queue** — sync own recent posts (manual "Refresh" button, owned reads), add posts to the Repost queue from the list or by pasting a URL, reorder/remove, see last-reposted date and cooldown status.
+- [x] **2.2 Own posts & queue** — sync own recent posts (manual "Refresh" button, owned reads), add posts to the Repost queue from the list or by pasting a URL, reorder/remove, see last-reposted date and cooldown status.
 - [ ] **2.3 Slots & settings** — daily slots in the user's timezone (default 3–4, hard max 6), per-post cooldown (default 7 days), pause/resume switch; preview "what will be reposted next and when".
 - [ ] **2.4 Job processor** — `processDueActions(now, batchSize)`: atomic claim + lease, pick next eligible post, undo-if-needed → Repost, audit row per attempt, UNKNOWN handling per D-007, stop when X disconnected or budget reached (user notified).
   - Done when: tests for competing workers, lease expiry, cooldown, daily cap, DST, timeout → re-check → UNKNOWN pass.

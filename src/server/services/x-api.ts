@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { err, ok, type Result } from "@/lib/result";
 import {
   getMe,
+  getPost,
   listOwnPosts,
   repost,
   undoRepost,
@@ -50,6 +51,23 @@ export function fetchPinnedPostId(
     const me = await getMe(accessToken);
     return { data: me.pinnedPostId, usage: { operation: "userRead", units: 1 } };
   });
+}
+
+/** One post by id with its author (null if missing/invisible). One billable Post read. */
+export function fetchPost(
+  workspaceId: string,
+  postId: string,
+): Promise<Result<(XPost & { authorId: string }) | null, XActionError>> {
+  return callX(workspaceId, "read", async ({ accessToken }) => {
+    const post = await getPost(accessToken, postId);
+    return { data: post, usage: { operation: "postRead", units: post ? 1 : 0 } };
+  });
+}
+
+/** X user id of the connected account, without calling X. */
+export async function connectedXUserId(workspaceId: string): Promise<Result<string, TokenError>> {
+  const credentials = await getXCredentials(workspaceId);
+  return credentials.ok ? ok(credentials.data.xUserId) : credentials;
 }
 
 export function repostPost(

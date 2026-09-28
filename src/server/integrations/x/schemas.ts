@@ -49,3 +49,16 @@ export const repostResponseSchema = z.object({
 });
 
 export const revokeResponseSchema = z.object({ revoked: z.boolean() });
+
+export const postByIdResponseSchema = z.object({
+  // Missing/deleted posts may come back as 200 with only `errors`.
+  data: z
+    .object({
+      id: z.string().min(1),
+      text: z.string(),
+      author_id: z.string().min(1),
+      created_at: z.iso.datetime(),
+      public_metrics: publicMetricsSchema.optional(),
+    })
+    .optional(),
+});
