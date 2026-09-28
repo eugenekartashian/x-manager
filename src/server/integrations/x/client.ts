@@ -20,6 +20,7 @@ export type XPost = {
   text: string;
   createdAt: Date;
   media: XPostMedia | null;
+  isQuote: boolean;
   metrics: {
     reposts: number;
     replies: number;
@@ -90,7 +91,10 @@ export async function getPost(
   postId: string,
 ): Promise<(XPost & { authorId: string }) | null> {
   const url = new URL(`${X_API_BASE}/2/tweets/${encodeURIComponent(postId)}`);
-  url.searchParams.set("tweet.fields", "author_id,created_at,public_metrics,attachments");
+  url.searchParams.set(
+    "tweet.fields",
+    "author_id,created_at,public_metrics,attachments,referenced_tweets",
+  );
   setMediaParams(url);
   try {
     const body = await xRequest(
@@ -127,6 +131,7 @@ type RawPost = {
       }
     | undefined;
   attachments?: { media_keys?: string[] | undefined } | undefined;
+  referenced_tweets?: { type: string }[] | undefined;
 };
 
 function isReply(post: {
@@ -158,6 +163,7 @@ function toXPost(post: RawPost, media: RawMedia[]): XPost {
     id: post.id,
     text: post.text,
     createdAt: new Date(post.created_at),
+    isQuote: (post.referenced_tweets ?? []).some((ref) => ref.type === "quoted"),
     media:
       keys.length > 0
         ? {

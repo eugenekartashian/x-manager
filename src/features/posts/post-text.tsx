@@ -11,6 +11,14 @@ export function PostText({ post, timeZone }: { post: OwnPost; timeZone: string }
           {post.text || <span className="text-foreground/50 italic">(media only)</span>}
         </p>
         <p className="text-foreground/60 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          {post.isQuote && (
+            <span
+              className="bg-foreground/10 text-foreground rounded px-1.5 py-0.5 font-medium"
+              title="Quote post — the media belongs to the quoted post"
+            >
+              Quote
+            </span>
+          )}
           {post.isPinned && (
             <span className="bg-foreground/10 text-foreground rounded px-1.5 py-0.5 font-medium">
               Pinned

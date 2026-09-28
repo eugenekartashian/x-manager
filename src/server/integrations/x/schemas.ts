@@ -79,6 +79,7 @@ export const postByIdResponseSchema = z.object({
       created_at: z.iso.datetime(),
       public_metrics: publicMetricsSchema.optional(),
       attachments: attachmentsSchema,
+      referenced_tweets: referencedPostsSchema,
     })
     .optional(),
   includes: mediaIncludesSchema,

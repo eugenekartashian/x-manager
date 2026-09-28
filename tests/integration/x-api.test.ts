@@ -166,6 +166,7 @@ describe("reply filtering", () => {
     const result = await fetchOwnPosts(owner.workspaceId);
 
     expect(result.ok && result.data.posts.map((post) => post.id)).toEqual(["1", "4"]);
+    expect(result.ok && result.data.posts.map((post) => post.isQuote)).toEqual([false, true]);
   });
 });
 
