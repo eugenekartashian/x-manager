@@ -4,6 +4,14 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · D-018 — no daily cap, 2 h interval, list ≤ 25 (deployed)
+
+- Per-post daily cap removed (planner, processor, service, UI; migration drops `workspace.dailyRepostCap`, default interval 120 min). Only limits: ≤ 8 daily times, per-post interval (2–12 h), repost list ≤ 25 (X API: 50 Reposts / 15 min per user), monthly budget.
+- Safe rollout of the batch model mid-window: inserted `SKIPPED: model_change` placeholder runs for today's 16:40 batch so the new dedupe keys could not re-run it; pushed at 17:02, deploy Ready, then `prod:migrate`, then production interval set to 120 min.
+- `pnpm check` ✅ (177 tests). Cron 17:05 → 200, no unexpected runs (schedule is OFF by the user).
+
+---
+
 ## 2026-09-28 · Batch model — whole list at every time (D-017)
 
 - Planner rewritten: each daily time yields one Repost per listed post (bottom → top), per-post interval and daily cap, empty-list skip; dead pinned/specific/cursor logic removed.
