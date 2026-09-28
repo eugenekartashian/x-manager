@@ -102,3 +102,11 @@ User decision: keep one simple model — daily times + one repost list cycled in
 - pg_cron job `x-manager-reposts` every 5 min → `net.http_post` to `/api/jobs/run` with the bearer secret read from Supabase Vault. First run verified: HTTP 200.
 - Production secrets generated fresh; stored only in `.env.production.local` and as Vercel Sensitive env vars. `X_WRITES_ENABLED=false` in production until the approved live test (2.7).
 - Open: Supabase free projects may pause after ~7 days of inactivity — verify whether cron traffic keeps it active.
+
+## D-016 · 2026-09-28 · Accepted (measured) — First live Repost
+
+- Production, 16:40 Madrid, schedule slot → pinned post: UNDO → X 200 "undone" (325 ms), REPOST → X 200 "reposted" (281 ms), run SUCCEEDED, cron response 200.
+- Undoing a post that may not have been reposted returned success (no error) — the always-undo-first design holds.
+- Console balance $4.96 → $4.94 (cent rounding) — consistent with the $0.025 estimate for undo + Repost. Per-endpoint prices still to confirm on the Console Usage page; keep current estimates.
+- Still UNVERIFIED: X's response to a duplicate Repost (not triggered in this test).
+- `X_WRITES_ENABLED=true` in production since 2026-09-28 16:37 (user-approved live test).

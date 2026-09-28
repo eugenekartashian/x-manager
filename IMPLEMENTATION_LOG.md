@@ -4,6 +4,18 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.7 — Live test + quote previews
+
+- Quote posts: `Quote` badge, preview of the quoted post's media and text (expansion `referenced_tweets.id`), quoted reads billed as Post reads; budget guard uses worst case per refresh. Migrations `own_post_quote`, `own_post_quoted_text` (applied to production first).
+- Schedule page requires a connected X account (shared `ConnectXFirst`).
+- `pnpm prod:env NAME…` pushes selected variables. `X_WRITES_ENABLED=true` in production (user-approved).
+- **Live test passed** (D-016): 16:40 Madrid slot reposted the pinned post; UNDO + REPOST both 200; Console −$0.02 (rounded), consistent with estimate.
+- `pnpm check` ✅ (176 tests).
+
+**Open:** user to choose "one post per time" vs "whole list per time" (batch) mode; slot 16:40 will repost the next list post tomorrow.
+
+---
+
 ## 2026-09-28 · M2.5 — Deploy (Vercel + Supabase + pg_cron)
 
 **Changed**

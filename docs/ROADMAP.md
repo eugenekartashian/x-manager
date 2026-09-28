@@ -43,7 +43,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped/de
   - Done when: tests for competing workers, lease expiry, cooldown, daily cap, DST, timeout → re-check → UNKNOWN pass.
 - [x] **2.5 Deploy & cron** (https://x-manager-ek.vercel.app, 2026-09-28) — Vercel + Supabase, secured `/api/jobs/run`, Supabase `pg_cron` every 5 min, production env vars. UI states real precision (±5 min).
 - [ ] **2.6 History & spend** — action history (reposted / skipped / failed / unknown) and month-to-date estimated spend vs $5 cap.
-- [ ] **2.7 Live test** — with your explicit OK: one manual "Repost now", then one scheduled slot; confirm cost in Console matches estimate.
+- [x] **2.7 Live test** (2026-09-28 16:40, pinned post, D-016) — with your explicit OK: one manual "Repost now", then one scheduled slot; confirm cost in Console matches estimate.
 
 > **Gate 2:** reposts run on schedule, never duplicate, respect cooldown/cap; Console spend matches the estimate. Then we run it for 1–2 weeks and recalibrate budget/cadence.
 
