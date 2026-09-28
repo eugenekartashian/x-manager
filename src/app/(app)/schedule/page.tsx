@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AddSlotForm } from "@/features/schedule/add-slot-form";
+import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { LimitsForm } from "@/features/schedule/limits-form";
 import { PreviewList } from "@/features/schedule/preview-list";
 import { RecentRuns } from "@/features/schedule/recent-runs";
@@ -23,6 +24,15 @@ export default async function SchedulePage() {
   const tz = workspace.timezone;
   const overBudget = BigInt(data.estimate.perMonthMicros) > data.budget.budgetMicros;
 
+  if (!data.connected) {
+    return (
+      <ConnectXFirst
+        title="Schedule"
+        message="Connect your X account first — the schedule reposts posts from your X account."
+      />
+    );
+  }
+
   return (
     <>
       <div className="flex flex-col gap-1">
@@ -31,14 +41,6 @@ export default async function SchedulePage() {
           Daily times for automatic Reposts of your own posts. Times run with about ±5 minutes
           precision once deployed.
         </p>
-        {!data.connected && (
-          <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">
-            X is not connected — nothing will be reposted.{" "}
-            <Link href="/dashboard" className="underline">
-              Connect X
-            </Link>
-          </p>
-        )}
       </div>
 
       {!env.X_WRITES_ENABLED && (

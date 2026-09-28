@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AddPostForm } from "@/features/posts/add-post-form";
+import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { errorMessage } from "@/features/posts/messages";
 import { RecentPostsList } from "@/features/posts/recent-posts-list";
 import { RefreshPostsForm } from "@/features/posts/refresh-posts-form";
@@ -15,18 +16,7 @@ export default async function PostsPage() {
   const timeZone = workspace.timezone;
 
   if (!data.connected) {
-    return (
-      <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
-        <h1 className="text-xl font-semibold">Posts</h1>
-        <p className="text-foreground/70 text-sm">{errorMessage(data.reason)}</p>
-        <Link
-          href="/dashboard"
-          className="self-start text-sm font-medium underline underline-offset-2"
-        >
-          Go to dashboard
-        </Link>
-      </section>
-    );
+    return <ConnectXFirst title="Posts" message={errorMessage(data.reason)} />;
   }
 
   return (
