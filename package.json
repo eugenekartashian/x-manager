@@ -18,7 +18,10 @@
     "db:status": "prisma migrate status",
     "postinstall": "prisma generate",
     "db:seed": "prisma db seed",
-    "jobs:run": "tsx scripts/run-jobs.mts"
+    "jobs:run": "tsx scripts/run-jobs.mts",
+    "prod:migrate": "tsx scripts/prod.mts migrate",
+    "prod:setup": "tsx scripts/prod.mts setup",
+    "prod:env": "tsx scripts/prod.mts env"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

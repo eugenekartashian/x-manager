@@ -78,6 +78,7 @@ API replies to other accounts are blocked by X unless summoned, so the app **pre
 
 ## Later — ideas to revisit (user requests)
 
+- **Custom name for the repost list** (user request 2026-09-28) — e.g. "Main", "Promo"; today it is fixed as "Repost list" (`src/features/schedule/list-badge.tsx`). Natural first step toward multiple lists.
 - **Multiple repost lists, each with its own schedule** (e.g. "Main posts" at EU+US prime time, "Promo" on weekends). Today: one list + one schedule (D-012, D-013). Revisit after a few weeks of real use.
 - **Real balance with X's same-day deduplication** — model per-resource dedup so estimates match the Console (planned in 2.6); use `GET /2/usage/credits` if X makes it reliable.
 - **Media previews for posts that embed another post's video** (needs one extra read per post).
