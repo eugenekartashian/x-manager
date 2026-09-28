@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { RecentReplies } from "@/features/replies/recent-replies";
+import { TemplatesSection } from "@/features/replies/templates-section";
 import { AddTargetsForm } from "@/features/targets/add-targets-form";
 import { TargetList } from "@/features/targets/target-list";
 import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { requireWorkspace } from "@/server/auth/session";
 import type { TargetSort } from "@/server/repositories/targets";
+import { listRecentReplies, listTemplates } from "@/server/services/replies";
 import { listTargets, MAX_TARGETS } from "@/server/services/targets";
 import { connectedXUserId } from "@/server/services/x-api";
 
@@ -21,7 +24,11 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
 
   const { sort: rawSort } = await searchParams;
   const sort: TargetSort = rawSort === "recent" ? "recent" : "followers";
-  const targets = await listTargets(workspace.id, sort);
+  const [targets, templates, replies] = await Promise.all([
+    listTargets(workspace.id, sort),
+    listTemplates(workspace.id),
+    listRecentReplies(workspace.id),
+  ]);
 
   return (
     <>
@@ -34,6 +41,8 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
       </div>
 
       <AddTargetsForm />
+
+      <TemplatesSection templates={templates} />
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -70,6 +79,11 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
           </div>
         </div>
         <TargetList targets={targets} timeZone={workspace.timezone} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Recent replies</h2>
+        <RecentReplies replies={replies} timeZone={workspace.timezone} />
       </section>
     </>
   );

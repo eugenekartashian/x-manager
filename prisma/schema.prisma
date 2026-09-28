@@ -98,6 +98,8 @@ model Workspace {
   usage           ExternalUsage[]
   billedResources BilledResource[]
   targets         TargetAccount[]
+  replyTemplates  ReplyTemplate[]
+  replies         ReplyLog[]
   posts           OwnPost[]
   schedule        RepostSchedule?
   slots           RepostSlot[]
@@ -327,25 +329,86 @@ model BilledResource {
 // Niche accounts the user wants to reply to (added by @handle). Profile data is a
 // snapshot from the last lookup. Replies are always posted by the user on x.com (D-008).
 model TargetAccount {
-  id             String    @id @default(uuid(7))
+  id             String       @id @default(uuid(7))
   workspaceId    String
-  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   xUserId        String
   username       String
   name           String
   bio            String?
   avatarUrl      String? // pbs.twimg.com only
-  verified       Boolean   @default(false)
+  verified       Boolean      @default(false)
   followersCount Int?
   followingCount Int?
   postsCount     Int?
   note           String?
   lastRepliedAt  DateTime?
+  postsFetchedAt DateTime?
   lookedUpAt     DateTime
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  posts          TargetPost[]
+  replies        ReplyLog[]
 
   @@unique([workspaceId, xUserId])
   @@index([workspaceId, followersCount])
   @@map("target_account")
+}
+
+// Latest posts of a target account, fetched on demand for a reply session.
+model TargetPost {
+  id              String        @id @default(uuid(7))
+  workspaceId     String
+  targetId        String
+  target          TargetAccount @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  xPostId         String
+  text            String
+  postedAt        DateTime
+  mediaType       String?
+  mediaPreviewUrl String?
+  mediaCount      Int           @default(0)
+  likeCount       Int?
+  replyCount      Int?
+  impressionCount Int?
+  fetchedAt       DateTime
+
+  @@unique([targetId, xPostId])
+  @@index([workspaceId])
+  @@map("target_post")
+}
+
+// The user's reply phrases; one is suggested at random in a reply session.
+model ReplyTemplate {
+  id          String    @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  text        String
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@map("reply_template")
+}
+
+enum ReplyStatus {
+  OPENED // composer opened on x.com — counts toward the limits
+  UNDONE // user said they did not post it
+}
+
+// A reply the user opened in X's composer. The app never posts replies itself (D-008).
+model ReplyLog {
+  id             String         @id @default(uuid(7))
+  workspaceId    String
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  targetId       String?
+  target         TargetAccount? @relation(fields: [targetId], references: [id], onDelete: SetNull)
+  targetUsername String
+  xPostId        String
+  text           String
+  status         ReplyStatus    @default(OPENED)
+  openedAt       DateTime
+  undoneAt       DateTime?
+
+  @@index([workspaceId, openedAt])
+  @@index([targetId, openedAt])
+  @@map("reply_log")
 }

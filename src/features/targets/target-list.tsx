@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { TargetAccount } from "@/generated/prisma/client";
 import { SubmitButton } from "@/features/posts/submit-button";
 import { formatCount, formatDateTime } from "@/lib/format";
@@ -76,12 +77,24 @@ export function TargetList({ targets, timeZone }: Props) {
               </form>
             </div>
           </div>
-          <form action={removeTargetAction} className="shrink-0 self-end sm:self-start">
-            <input type="hidden" name="targetId" value={target.id} />
-            <SubmitButton variant="ghost" pendingLabel="…" ariaLabel={`Remove @${target.username}`}>
-              Remove
-            </SubmitButton>
-          </form>
+          <div className="flex shrink-0 items-center gap-1 self-end sm:self-start">
+            <Link
+              href={`/targets/${target.id}`}
+              className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Reply →
+            </Link>
+            <form action={removeTargetAction}>
+              <input type="hidden" name="targetId" value={target.id} />
+              <SubmitButton
+                variant="ghost"
+                pendingLabel="…"
+                ariaLabel={`Remove @${target.username}`}
+              >
+                Remove
+              </SubmitButton>
+            </form>
+          </div>
         </li>
       ))}
     </ul>

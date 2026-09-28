@@ -59,6 +59,25 @@ export function fetchOwnPosts(
   });
 }
 
+/** Latest original posts of another account (not "owned" reads — billed as Post reads). */
+export function fetchUserPosts(
+  workspaceId: string,
+  xUserId: string,
+  maxResults: number,
+): Promise<Result<XPost[], XActionError>> {
+  return callX(workspaceId, "read", async ({ accessToken }) => {
+    const page = await listOwnPosts(accessToken, xUserId, { maxResults });
+    return {
+      data: page.posts,
+      usage: {
+        operation: "postRead",
+        units: page.billedPostIds.length + page.quotedPostIds.length,
+        resources: { kind: "post", ids: [...page.billedPostIds, ...page.quotedPostIds] },
+      },
+    };
+  });
+}
+
 /** Public profiles by @handle (≤ 100). Billed per returned user, once per UTC day. */
 export function lookupUsers(
   workspaceId: string,

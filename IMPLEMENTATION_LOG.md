@@ -4,6 +4,18 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M3.2–3.3 — Reply templates & reply session
+
+- Models `ReplyTemplate`, `TargetPost`, `ReplyLog` (OPENED/UNDONE), `TargetAccount.postsFetchedAt` (RLS on all). Migration `reply_assistant`.
+- `domain/reply-rules.ts`: 1 reply per account per 24 h, 15 per workspace-local day, 280-char guard, X composer intent URL (`x.com/intent/post?in_reply_to=…&text=…`).
+- Services: templates (≤ 50, ≤ 280 chars), load a target's latest 5 posts (throttled 10 min, budget-checked, billed as Post reads with day dedup), `openReply` (only loaded posts of the caller's own targets; limits enforced server-side; logs + marks account), `undoReply` (frees the slot, restores last reply time).
+- UI: templates section and recent replies (Undo) on `/targets`; "Reply →" per account; `/targets/[id]` session — profile, today's counter, load posts, per-post composer (random template, "another template", counter, "Open in X ↗" opened synchronously to avoid popup blockers), block reasons, replies to this account.
+- `pnpm check` ✅ — 209 tests (new: 4 rules, 7 service: templates isolation, posts load/billing/throttle, intent URL + log, 24 h per account, 15/day + next-day reset, only loaded posts / cross-workspace denied, undo). `pnpm build` ✅. Production migrated before deploy.
+
+**Not covered:** the app cannot verify that the user actually posted (X composer is outside the app) — Undo keeps counts honest.
+
+---
+
 ## 2026-09-28 · M3.1 — Target list
 
 - `TargetAccount` (RLS on), `GET /2/users/by` client (`lookupUsers`, billed per returned user with day dedup), handle parser (@handle, x.com/twitter.com links, Excel columns; invalid reported), service: add (skip already listed without an X call, exclude own account, budget check, ≤ 100 per add, ≤ 500 total), notes (≤ 200), remove, list sorting, CSV export with formula-injection guard + UTF-8 BOM.
