@@ -21,6 +21,8 @@ export type XPost = {
   createdAt: Date;
   media: XPostMedia | null;
   isQuote: boolean;
+  /** Text of the quoted post (Quote posts only). */
+  quotedText: string | null;
   metrics: {
     reposts: number;
     replies: number;
@@ -56,7 +58,7 @@ export async function listOwnPosts(
   accessToken: string,
   xUserId: string,
   options: { maxResults?: number; paginationToken?: string } = {},
-): Promise<{ posts: XPost[]; nextToken: string | null }> {
+): Promise<{ posts: XPost[]; nextToken: string | null; quotedPostsRead: number }> {
   const maxResults = Math.min(Math.max(options.maxResults ?? 20, 5), 100);
   const url = new URL(`${X_API_BASE}/2/users/${encodeURIComponent(xUserId)}/tweets`);
   url.searchParams.set("max_results", String(maxResults));
@@ -75,10 +77,10 @@ export async function listOwnPosts(
   return {
     // `exclude=replies` still returns replies to one's own posts (e.g. a link left
     // under a post); those are comments, not Repost candidates.
-    posts: body.data
-      .filter((post) => !isReply(post))
-      .map((post) => toXPost(post, body.includes.media)),
+    posts: body.data.filter((post) => !isReply(post)).map((post) => toXPost(post, body.includes)),
     nextToken: body.meta.next_token ?? null,
+    // Quoted posts come back as expanded resources and are billed as Post reads.
+    quotedPostsRead: body.includes.tweets.length,
   };
 }
 
@@ -89,7 +91,7 @@ export async function listOwnPosts(
 export async function getPost(
   accessToken: string,
   postId: string,
-): Promise<(XPost & { authorId: string }) | null> {
+): Promise<(XPost & { authorId: string; quotedPostsRead: number }) | null> {
   const url = new URL(`${X_API_BASE}/2/tweets/${encodeURIComponent(postId)}`);
   url.searchParams.set(
     "tweet.fields",
@@ -102,7 +104,11 @@ export async function getPost(
       postByIdResponseSchema,
     );
     return body.data
-      ? { ...toXPost(body.data, body.includes.media), authorId: body.data.author_id }
+      ? {
+          ...toXPost(body.data, body.includes),
+          authorId: body.data.author_id,
+          quotedPostsRead: body.includes.tweets.length,
+        }
       : null;
   } catch (error) {
     if (error instanceof XApiError && error.code === "X_NOT_FOUND") return null;
@@ -131,7 +137,16 @@ type RawPost = {
       }
     | undefined;
   attachments?: { media_keys?: string[] | undefined } | undefined;
-  referenced_tweets?: { type: string }[] | undefined;
+  referenced_tweets?: { type: string; id: string }[] | undefined;
+};
+
+type RawIncludes = {
+  media: RawMedia[];
+  tweets: {
+    id: string;
+    text: string;
+    attachments?: { media_keys?: string[] | undefined } | undefined;
+  }[];
 };
 
 function isReply(post: {
@@ -152,18 +167,26 @@ function safeMediaUrl(value: string | undefined): string | null {
 }
 
 function setMediaParams(url: URL): void {
-  url.searchParams.set("expansions", "attachments.media_keys");
+  url.searchParams.set(
+    "expansions",
+    "attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys",
+  );
   url.searchParams.set("media.fields", "type,url,preview_image_url");
 }
 
-function toXPost(post: RawPost, media: RawMedia[]): XPost {
-  const keys = post.attachments?.media_keys ?? [];
-  const first = media.find((item) => item.media_key === keys[0]);
+function toXPost(post: RawPost, includes: RawIncludes): XPost {
+  const quotedId = post.referenced_tweets?.find((ref) => ref.type === "quoted")?.id;
+  const quoted = quotedId ? includes.tweets.find((item) => item.id === quotedId) : undefined;
+  // A Quote post usually has no media of its own — preview the quoted post's media.
+  const ownKeys = post.attachments?.media_keys ?? [];
+  const keys = ownKeys.length > 0 ? ownKeys : (quoted?.attachments?.media_keys ?? []);
+  const first = includes.media.find((item) => item.media_key === keys[0]);
   return {
     id: post.id,
     text: post.text,
     createdAt: new Date(post.created_at),
-    isQuote: (post.referenced_tweets ?? []).some((ref) => ref.type === "quoted"),
+    isQuote: quotedId !== undefined,
+    quotedText: quoted?.text ?? null,
     media:
       keys.length > 0
         ? {

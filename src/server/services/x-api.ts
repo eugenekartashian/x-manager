@@ -39,7 +39,13 @@ export function fetchOwnPosts(
 ): Promise<Result<{ posts: XPost[]; nextToken: string | null }, XActionError>> {
   return callX(workspaceId, "read", async ({ accessToken, xUserId }) => {
     const page = await listOwnPosts(accessToken, xUserId, options);
-    return { data: page, usage: { operation: "ownedPostRead", units: page.posts.length } };
+    return {
+      data: page,
+      usage: [
+        { operation: "ownedPostRead", units: page.posts.length },
+        { operation: "postRead", units: page.quotedPostsRead },
+      ],
+    };
   });
 }
 
@@ -60,7 +66,10 @@ export function fetchPost(
 ): Promise<Result<(XPost & { authorId: string }) | null, XActionError>> {
   return callX(workspaceId, "read", async ({ accessToken }) => {
     const post = await getPost(accessToken, postId);
-    return { data: post, usage: { operation: "postRead", units: post ? 1 : 0 } };
+    return {
+      data: post,
+      usage: { operation: "postRead", units: post ? 1 + post.quotedPostsRead : 0 },
+    };
   });
 }
 
@@ -110,7 +119,7 @@ const UNDO_REPOST_USAGE: Usage = { operation: "undoRepost", units: 1 };
 async function callX<T>(
   workspaceId: string,
   kind: CallKind,
-  call: (credentials: XCredentials) => Promise<{ data: T; usage: Usage }>,
+  call: (credentials: XCredentials) => Promise<{ data: T; usage: Usage | Usage[] }>,
   // Recorded when a write's outcome is unknown: X may have applied (and billed) it.
   usageIfUnknown?: Usage,
 ): Promise<Result<T, XActionError>> {
@@ -119,7 +128,7 @@ async function callX<T>(
 
   try {
     const { data, usage } = await call(credentials.data);
-    await record(workspaceId, usage);
+    for (const item of Array.isArray(usage) ? usage : [usage]) await record(workspaceId, item);
     return ok(data);
   } catch (error) {
     if (!(error instanceof XApiError)) throw error;

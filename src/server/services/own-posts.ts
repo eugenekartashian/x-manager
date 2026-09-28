@@ -16,11 +16,14 @@ import {
 
 export const RECENT_PAGE_SIZE = 20;
 export const REFRESH_MIN_INTERVAL_MS = 60_000;
-/** Upper bound for one refresh: a page of posts, the profile (pinned id), maybe the pinned post. */
+/** Base cost of one refresh: a page of posts, the profile (pinned id), maybe the pinned post. */
 export const REFRESH_ESTIMATE_MICROS =
   RECENT_PAGE_SIZE * X_PRICE_MICROS.ownedPostRead +
   X_PRICE_MICROS.userRead +
   X_PRICE_MICROS.postRead;
+/** Budget guard uses the worst case: every post in the page quotes another post. */
+const REFRESH_WORST_CASE_MICROS =
+  REFRESH_ESTIMATE_MICROS + (RECENT_PAGE_SIZE + 1) * X_PRICE_MICROS.postRead;
 
 type Scope = posts.OwnPostScope;
 
@@ -39,7 +42,7 @@ export async function refreshOwnPosts(
 ): Promise<Result<{ synced: number }, RefreshError>> {
   const scope = await scopeFor(workspaceId);
   if (!scope.ok) return scope;
-  if (!(await canSpend(workspaceId, REFRESH_ESTIMATE_MICROS, now))) return err("budget_exceeded");
+  if (!(await canSpend(workspaceId, REFRESH_WORST_CASE_MICROS, now))) return err("budget_exceeded");
   if (!(await claimPostsSync(workspaceId, now, REFRESH_MIN_INTERVAL_MS))) return err("too_soon");
 
   const page = await fetchOwnPosts(workspaceId, { maxResults: RECENT_PAGE_SIZE });

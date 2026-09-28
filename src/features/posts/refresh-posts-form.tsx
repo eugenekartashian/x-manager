@@ -12,7 +12,8 @@ export function RefreshPostsForm({ costLabel }: { costLabel: string }) {
   return (
     <form action={action} className="flex flex-col items-end gap-2">
       <SubmitButton variant="secondary" pendingLabel="Loading from X…">
-        Refresh from X <span className="text-foreground/60">(≤ {costLabel})</span>
+        Refresh from X{" "}
+        <span className="text-foreground/60">(≈ {costLabel} + $0.005 per quote)</span>
       </SubmitButton>
       <ActionMessage state={state} />
     </form>

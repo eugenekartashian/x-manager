@@ -37,9 +37,15 @@ const mediaSchema = z.object({
   preview_image_url: z.string().optional(),
 });
 
-export const mediaIncludesSchema = z
-  .object({ media: z.array(mediaSchema).default([]) })
-  .default({ media: [] });
+// Expanded resources: media (own and quoted posts) and the quoted posts themselves.
+export const includesSchema = z
+  .object({
+    media: z.array(mediaSchema).default([]),
+    tweets: z
+      .array(z.object({ id: z.string(), text: z.string(), attachments: attachmentsSchema }))
+      .default([]),
+  })
+  .default({ media: [], tweets: [] });
 
 export const userPostsResponseSchema = z.object({
   // X omits `data` entirely when there are no posts.
@@ -56,7 +62,7 @@ export const userPostsResponseSchema = z.object({
       }),
     )
     .default([]),
-  includes: mediaIncludesSchema,
+  includes: includesSchema,
   meta: z.object({
     result_count: z.number().int(),
     next_token: z.string().optional(),
@@ -82,5 +88,5 @@ export const postByIdResponseSchema = z.object({
       referenced_tweets: referencedPostsSchema,
     })
     .optional(),
-  includes: mediaIncludesSchema,
+  includes: includesSchema,
 });

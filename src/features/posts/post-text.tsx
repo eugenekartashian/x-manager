@@ -10,6 +10,11 @@ export function PostText({ post, timeZone }: { post: OwnPost; timeZone: string }
         <p className="line-clamp-2 text-sm break-words whitespace-pre-line">
           {post.text || <span className="text-foreground/50 italic">(media only)</span>}
         </p>
+        {post.isQuote && post.quotedText && (
+          <p className="border-foreground/20 text-foreground/60 mt-1 line-clamp-1 border-l-2 pl-2 text-xs break-words">
+            Quoting: {post.quotedText}
+          </p>
+        )}
         <p className="text-foreground/60 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           {post.isQuote && (
             <span

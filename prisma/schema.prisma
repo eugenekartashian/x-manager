@@ -183,6 +183,7 @@ model OwnPost {
   mediaCount       Int               @default(0)
   // Quote post: its media belongs to the quoted post, so there is no own preview.
   isQuote          Boolean           @default(false)
+  quotedText       String?
   // Repost rotation: posts the user chose for scheduled Reposts, in order.
   inRotation       Boolean           @default(false)
   rotationPosition Int?

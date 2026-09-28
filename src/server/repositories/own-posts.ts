@@ -45,6 +45,7 @@ export async function upsertPosts(scope: OwnPostScope, posts: XPost[], now: Date
         mediaPreviewUrl: post.media?.previewUrl ?? null,
         mediaCount: post.media?.count ?? 0,
         isQuote: post.isQuote,
+        quotedText: post.quotedText?.slice(0, 500) ?? null,
       };
       return prisma.ownPost.upsert({
         where: { workspaceId_xPostId: { workspaceId: scope.workspaceId, xPostId: post.id } },

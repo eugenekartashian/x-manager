@@ -51,7 +51,8 @@ describe("fetchOwnPosts", () => {
       max_results: "20",
       exclude: "replies,retweets",
       "tweet.fields": "created_at,public_metrics,attachments,in_reply_to_user_id,referenced_tweets",
-      expansions: "attachments.media_keys",
+      expansions:
+        "attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys",
       "media.fields": "type,url,preview_image_url",
     });
     expect(call?.headers.get("authorization")).toBe("Bearer access-a");
@@ -77,7 +78,7 @@ describe("fetchOwnPosts", () => {
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({
       ok: true,
-      data: { posts: [], nextToken: null },
+      data: { posts: [], nextToken: null, quotedPostsRead: 0 },
     });
     expect(await usageRows(owner.workspaceId)).toEqual([]);
   });
@@ -223,6 +224,69 @@ describe("media previews", () => {
       { type: "photo", previewUrl: null, count: 1 },
       null,
     ]);
+  });
+});
+
+describe("quote posts", () => {
+  it("previews the quoted post's media and text and bills the quoted post as a Post read", async () => {
+    const owner = await connectedOwner();
+    withFakeX({
+      posts: () => ({
+        status: 200,
+        body: {
+          data: [
+            {
+              id: "10",
+              text: "Subscribe to my page",
+              created_at: "2026-09-28T13:12:00.000Z",
+              referenced_tweets: [{ type: "quoted", id: "99" }],
+            },
+            {
+              id: "11",
+              text: "own photo, also quoting",
+              created_at: "2026-09-28T12:00:00.000Z",
+              attachments: { media_keys: ["own"] },
+              referenced_tweets: [{ type: "quoted", id: "98" }],
+            },
+          ],
+          includes: {
+            tweets: [
+              { id: "99", text: "Want some? video", attachments: { media_keys: ["q"] } },
+              { id: "98", text: "older post" },
+            ],
+            media: [
+              { media_key: "q", type: "video", preview_image_url: "https://pbs.twimg.com/q.jpg" },
+              { media_key: "own", type: "photo", url: "https://pbs.twimg.com/own.jpg" },
+            ],
+          },
+          meta: { result_count: 2 },
+        },
+      }),
+    });
+
+    const result = await fetchOwnPosts(owner.workspaceId);
+
+    expect(
+      result.ok &&
+        result.data.posts.map(({ isQuote, quotedText, media }) => ({ isQuote, quotedText, media })),
+    ).toEqual([
+      {
+        isQuote: true,
+        quotedText: "Want some? video",
+        media: { type: "video", previewUrl: "https://pbs.twimg.com/q.jpg", count: 1 },
+      },
+      {
+        isQuote: true,
+        quotedText: "older post",
+        media: { type: "photo", previewUrl: "https://pbs.twimg.com/own.jpg", count: 1 }, // own media wins
+      },
+    ]);
+    expect(await usageRows(owner.workspaceId)).toEqual(
+      expect.arrayContaining([
+        { operation: "ownedPostRead", units: 2, costMicros: 2_000n },
+        { operation: "postRead", units: 2, costMicros: 10_000n },
+      ]),
+    );
   });
 });
 
