@@ -50,8 +50,9 @@ export async function refreshOwnPosts(
   if (!pinned.ok) return pinned;
   const pinnedId = pinned.data;
 
-  // The pinned post is often old and outside the recent page — fetch it directly.
-  if (pinnedId && !(await posts.findByXPostId(scope.data, pinnedId))) {
+  // The pinned post is often old and outside the recent page — fetch it directly on
+  // every refresh so its media and metrics stay current (X dedupes same-day reads).
+  if (pinnedId && !page.data.posts.some((post) => post.id === pinnedId)) {
     const post = await fetchPost(workspaceId, pinnedId);
     if (!post.ok) return post;
     if (post.data && post.data.authorId === scope.data.xUserId) {

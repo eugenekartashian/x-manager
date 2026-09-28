@@ -101,6 +101,65 @@ describe("refreshOwnPosts", () => {
     expect(pinned.xPostId).toBe("old-9");
   });
 
+  it("re-fetches an old pinned post on every refresh to update media and metrics", async () => {
+    const owner = await connectedOwner();
+    withFakeX({
+      posts: () => postsReply(["3"]),
+      me: () => meReply("x-a", "a", "old-9"),
+      post: (id) => postReply(id, "x-a"),
+    });
+    await refreshOwnPosts(owner.workspaceId, T0);
+
+    const x = withFakeX({
+      posts: () => postsReply(["3"]),
+      me: () => meReply("x-a", "a", "old-9"),
+      post: (id) => ({
+        status: 200,
+        body: {
+          data: {
+            id,
+            text: "pinned",
+            author_id: "x-a",
+            created_at: "2025-07-30T09:28:00.000Z",
+            attachments: { media_keys: ["v1"] },
+          },
+          includes: {
+            media: [
+              {
+                media_key: "v1",
+                type: "video",
+                preview_image_url: "https://pbs.twimg.com/thumb/v.jpg",
+              },
+            ],
+          },
+        },
+      }),
+    });
+    await refreshOwnPosts(owner.workspaceId, later(REFRESH_MIN_INTERVAL_MS + 1));
+
+    expect(x.calls.some((call) => call.url.pathname === "/2/tweets/old-9")).toBe(true);
+    const pinned = await prisma.ownPost.findFirstOrThrow({
+      where: { workspaceId: owner.workspaceId, xPostId: "old-9" },
+    });
+    expect(pinned).toMatchObject({
+      isPinned: true,
+      mediaType: "video",
+      mediaPreviewUrl: "https://pbs.twimg.com/thumb/v.jpg",
+    });
+  });
+
+  it("does not fetch the pinned post separately when it is in the recent page", async () => {
+    const owner = await connectedOwner();
+    const x = withFakeX({
+      posts: () => postsReply(["3", "2"]),
+      me: () => meReply("x-a", "a", "2"),
+    });
+
+    await refreshOwnPosts(owner.workspaceId, T0);
+
+    expect(x.calls.some((call) => call.url.pathname.startsWith("/2/tweets/"))).toBe(false);
+  });
+
   it("moves the pinned flag when the user pins another post", async () => {
     const owner = await connectedOwner();
     await seedPosts(owner.workspaceId, ["2", "1"], "1");
