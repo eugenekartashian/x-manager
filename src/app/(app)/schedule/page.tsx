@@ -70,6 +70,7 @@ export default async function SchedulePage() {
           timezones={SCHEDULE_TIMEZONES}
           defaultTimezone={tz}
           disabled={data.slots.length >= MAX_SLOTS}
+          listSize={data.listSize}
         />
       </section>
 

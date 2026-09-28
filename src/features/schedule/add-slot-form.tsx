@@ -6,13 +6,19 @@ import type { ActionState } from "@/features/posts/actions";
 import { SubmitButton } from "@/features/posts/submit-button";
 import { Select } from "@/components/ui/select";
 import { addSlotAction } from "./actions";
+import { REPOST_LIST_NAME } from "./list-badge";
 
 const initial: ActionState = { status: "idle", message: "" };
 
 type Option = { value: string; label: string };
-type Props = { timezones: readonly Option[]; defaultTimezone: string; disabled: boolean };
+type Props = {
+  timezones: readonly Option[];
+  defaultTimezone: string;
+  disabled: boolean;
+  listSize: number;
+};
 
-export function AddSlotForm({ timezones, defaultTimezone, disabled }: Props) {
+export function AddSlotForm({ timezones, defaultTimezone, disabled, listSize }: Props) {
   const [state, action] = useActionState(addSlotAction, initial);
 
   return (
@@ -42,6 +48,15 @@ export function AddSlotForm({ timezones, defaultTimezone, disabled }: Props) {
                 {zone.label}
               </option>
             ))}
+          </Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Repost from
+          {/* One list for now; more lists with their own schedules come later (ROADMAP). */}
+          <Select name="list" defaultValue="main" disabled={disabled} className="min-w-48">
+            <option value="main">
+              {REPOST_LIST_NAME} ({listSize} posts)
+            </option>
           </Select>
         </label>
         <SubmitButton variant="primary" pendingLabel="Adding…">

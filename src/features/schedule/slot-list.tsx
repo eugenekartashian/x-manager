@@ -3,6 +3,7 @@ import { localDateOf, zonedToUtc } from "@/lib/zoned-time";
 import { SubmitButton } from "@/features/posts/submit-button";
 import { deleteSlotAction } from "./actions";
 import { formatTime, timezoneLabel } from "./labels";
+import { ListBadge } from "./list-badge";
 
 type Props = { slots: SlotWithPost[]; workspaceTimezone: string; now: Date };
 
@@ -48,7 +49,14 @@ export function SlotList({ slots, workspaceTimezone, now }: Props) {
               </p>
             )}
           </div>
-          <p className="min-w-0 flex-1 truncate text-sm">{targetLabel(slot)}</p>
+          {slot.target === "NEXT_FROM_LIST" ? (
+            <p className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+              <ListBadge />
+              <span className="text-foreground/70 truncate">next post in order</span>
+            </p>
+          ) : (
+            <p className="min-w-0 flex-1 truncate text-sm">{targetLabel(slot)}</p>
+          )}
           <form action={deleteSlotAction}>
             <input type="hidden" name="slotId" value={slot.id} />
             <SubmitButton variant="ghost" pendingLabel="…">

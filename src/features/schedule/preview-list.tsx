@@ -1,6 +1,7 @@
 import type { OwnPost } from "@/generated/prisma/client";
 import type { PlannedRepost } from "@/server/domain/repost-plan";
 import { formatDay, formatTime, SKIP_LABELS, timezoneLabel } from "./labels";
+import { ListBadge } from "./list-badge";
 
 type Props = { items: (PlannedRepost & { post: OwnPost | null })[]; workspaceTimezone: string };
 
@@ -31,7 +32,8 @@ export function PreviewList({ items, workspaceTimezone }: Props) {
               </p>
             )}
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            {item.target === "next" && <ListBadge />}
             {item.post && (
               <p className="truncate">
                 {item.target === "pinned" && "📌 "}
