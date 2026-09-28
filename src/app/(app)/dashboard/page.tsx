@@ -1,7 +1,10 @@
+import { XAccountCard } from "@/features/x-account/x-account-card";
 import { requireWorkspace } from "@/server/auth/session";
+import { findConnection } from "@/server/repositories/x-accounts";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const { workspace } = await requireWorkspace();
+  const [connection, query] = await Promise.all([findConnection(workspace.id), searchParams]);
 
   return (
     <>
@@ -9,12 +12,11 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{workspace.name}</h1>
         <p className="text-foreground/70 text-sm">Timezone: {workspace.timezone}</p>
       </div>
-      <section className="border-foreground/10 rounded-lg border p-4">
-        <h2 className="font-medium">X account</h2>
-        <p className="text-foreground/70 mt-1 text-sm">
-          Not connected yet. Connecting your X account comes in the next step.
-        </p>
-      </section>
+      <XAccountCard
+        connection={connection}
+        status={typeof query.x === "string" ? query.x : undefined}
+        error={typeof query.x_error === "string" ? query.x_error : undefined}
+      />
     </>
   );
 }

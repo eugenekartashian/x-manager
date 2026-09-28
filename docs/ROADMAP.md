@@ -27,10 +27,10 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped/de
   - Done when: `typecheck`, `lint`, `test`, `build` pass on an empty app.
 - [x] **1.2 App login & workspace** — Better Auth + Google with email allowlist, one workspace per user created on first login, `requireWorkspace()` helper, seed with two isolated users.
   - Done when: cross-workspace denial tests pass; non-allowlisted email cannot sign in.
-- [ ] **1.3 X OAuth** — OAuth 2.0 + state + PKCE, minimal scopes (`tweet.read`, `tweet.write`, `users.read`, `offline.access`), AES-256-GCM encrypted tokens with key version, refresh, reconnect, disconnect, status UI.
+- [x] **1.3 X OAuth** (live connect verified 2026-09-28) — OAuth 2.0 + state + PKCE, minimal scopes (`tweet.read`, `tweet.write`, `users.read`, `offline.access`), AES-256-GCM encrypted tokens with key version, refresh, reconnect, disconnect, status UI.
   - Done when: callback can't bind an X account to another workspace (tested); tokens never reach client/logs. First live connection only with your OK.
 
-> **Gate 1:** two test users can't see each other's resources; X connected, tokens server-only.
+> **Gate 1 ✅ passed 2026-09-28:** two test users can't see each other's resources; X connected, tokens server-only.
 
 ---
 

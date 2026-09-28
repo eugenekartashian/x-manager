@@ -88,5 +88,61 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  xAccount XAccount?
+  usage    ExternalUsage[]
+
   @@map("workspace")
+}
+
+// ─── X account connection (M1.3) ────────────────────────────────────────────
+
+enum XAccountStatus {
+  CONNECTED
+  NEEDS_RECONNECT
+}
+
+// One X account per workspace (MVP). Disconnecting deletes the row, so an X
+// account can be connected again later — to this or another workspace.
+// Tokens are AES-256-GCM encrypted (src/server/crypto.ts), bound to workspaceId.
+model XAccount {
+  id                   String         @id @default(uuid(7))
+  workspaceId          String         @unique
+  workspace            Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  xUserId              String         @unique
+  username             String
+  name                 String
+  accessTokenEnc       String
+  refreshTokenEnc      String
+  accessTokenExpiresAt DateTime
+  scopes               String
+  status               XAccountStatus @default(CONNECTED)
+  connectedAt          DateTime       @default(now())
+  lastRefreshedAt      DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  @@map("x_account")
+}
+
+// ─── Cost accounting ────────────────────────────────────────────────────────
+
+enum UsageProvider {
+  X
+  AI
+}
+
+// Estimated external spend per call. Money in micro-dollars ($0.010 = 10_000).
+// Estimates only — the X Developer Console is the source of truth.
+model ExternalUsage {
+  id          String        @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  provider    UsageProvider
+  operation   String
+  units       Int
+  costMicros  BigInt
+  occurredAt  DateTime      @default(now())
+
+  @@index([workspaceId, occurredAt])
+  @@map("external_usage")
 }

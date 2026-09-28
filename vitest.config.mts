@@ -32,6 +32,12 @@ export default defineConfig({
       AUTH_GOOGLE_ID: "test-google-id",
       AUTH_GOOGLE_SECRET: "test-google-secret",
       ALLOWED_EMAILS: "owner-a@example.com,owner-b@example.com",
+      X_CLIENT_ID: "test-x-client-id",
+      X_CLIENT_SECRET: "test-x-client-secret",
+      X_REDIRECT_URI: "http://127.0.0.1:3000/api/x/oauth/callback",
+      // Test-only key (32 zero bytes), never used outside tests.
+      TOKEN_ENCRYPTION_KEYS: "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      TOKEN_ENCRYPTION_CURRENT: "v1",
     },
   },
 });

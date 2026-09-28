@@ -4,6 +4,34 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M1.3 — X OAuth connection
+
+**Changed**
+- `src/server/crypto.ts`: AES-256-GCM, versioned key ring (`TOKEN_ENCRYPTION_KEYS`/`_CURRENT`), 16-byte tags, context bound as AAD (`x-account:<workspaceId>:access|refresh`) so ciphertexts can't be moved between rows; rotation via `needsReencryption`.
+- Prisma: `XAccount` (one per workspace, `xUserId` unique, encrypted tokens, `CONNECTED`/`NEEDS_RECONNECT`) and `ExternalUsage` (micro-dollars). Migration `x_account_and_usage`.
+- X integration (`src/server/integrations/x/`): single-shot HTTP helper (10 s timeout, no retries, typed `XApiError` codes incl. 402/429 reset), Zod response schemas, OAuth 2.0 + PKCE S256 (Basic client auth), `users/me`, estimated pricing.
+- `src/server/services/x-connection.ts`: start (state + verifier sealed in an encrypted httpOnly cookie, 10 min TTL, bound to user + workspace), callback checks (denied, state, expiry, session mismatch, required scopes, already linked), usage recording, token refresh under `SELECT … FOR UPDATE`, disconnect with best-effort revoke.
+- Routes `/api/x/oauth/start`, `/api/x/oauth/callback`; dashboard X card (connect / connected / needs reconnect / disconnect, error messages); disconnect via server action.
+
+**Decisions**
+- Disconnect deletes the `XAccount` row (tokens wiped) so the X account can be reconnected later; key version lives in the ciphertext prefix instead of a separate column.
+- Refresh failures: `invalid_grant`/401 → `NEEDS_RECONNECT`; 5xx/network → keep `CONNECTED`, retry later.
+
+**Verification**
+- 56 tests pass (new: crypto round-trip/tamper/context/rotation; OAuth start URL; callback success with encrypted storage + PKCE verifier/challenge match + usage row; denied; bad/missing/tampered state; expiry; cross-user callback; already-linked; missing scopes; 402; network; token fresh/refresh/rotation; concurrent refresh = one X call; invalid_grant; 503; cross-workspace token access; disconnect + revoke, revoke failure, isolation, reconnect elsewhere).
+- Tests mock X. **Live connect verified** by the user: @eugenebarcelona connected, all 4 scopes granted, tokens stored as `v1:` ciphertexts, access token TTL ≈ 2 h, one `users.me` usage row ($0.010).
+- `pnpm check` ✅ · `pnpm build` ✅
+
+**Limitations**
+- Refresh token is single-use at X: if a refresh request times out after X consumed it, the next refresh fails and the account needs a reconnect (surfaced in UI).
+- Reconnecting a workspace to a different X account does not revoke the previous account's token.
+
+**Costs:** ≈ $0.010 (one `users/me`) — confirm in X Console → Usage.
+
+**Next:** M2.1 — X client for own posts, Repost, undo Repost.
+
+---
+
 ## 2026-09-28 · M1.2 — App login & workspace
 
 **Changed**

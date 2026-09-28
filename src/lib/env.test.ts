@@ -8,6 +8,11 @@ const validEnv = {
   AUTH_GOOGLE_ID: "google-id",
   AUTH_GOOGLE_SECRET: "google-secret",
   ALLOWED_EMAILS: "Me@Gmail.com, friend@example.com",
+  X_CLIENT_ID: "x-client-id",
+  X_CLIENT_SECRET: "x-client-secret",
+  X_REDIRECT_URI: "http://127.0.0.1:3000/api/x/oauth/callback",
+  TOKEN_ENCRYPTION_KEYS: "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  TOKEN_ENCRYPTION_CURRENT: "v1",
 };
 
 describe("parseServerEnv", () => {

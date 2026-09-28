@@ -15,6 +15,12 @@ const serverEnvSchema = z.object({
     .string()
     .transform(parseAllowlist)
     .pipe(z.array(z.email()).min(1, "at least one email is required")),
+  X_CLIENT_ID: z.string().min(1),
+  X_CLIENT_SECRET: z.string().min(1),
+  X_REDIRECT_URI: z.url({ protocol: /^https?$/ }),
+  // Parsed and validated as a key ring in src/server/keyring.ts.
+  TOKEN_ENCRYPTION_KEYS: z.string().min(1),
+  TOKEN_ENCRYPTION_CURRENT: z.string().regex(/^v\d+$/),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
