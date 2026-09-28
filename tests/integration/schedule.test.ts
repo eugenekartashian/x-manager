@@ -1,10 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/server/db";
-import {
-  refreshOwnPosts,
-  REFRESH_MIN_INTERVAL_MS,
-  setInRotation,
-} from "@/server/services/own-posts";
+import { refreshOwnPosts, setInRotation } from "@/server/services/own-posts";
 import {
   addSlot,
   getSchedulePageData,
@@ -122,59 +118,26 @@ describe("slots", () => {
     });
   });
 
-  it("allows at most 8 daily times", async () => {
+  it("allows at most 8 daily times, all taking the next post from the list", async () => {
     const { workspace } = await setup();
     for (let hour = 8; hour < 16; hour++) {
-      const result = await addSlot(
-        workspace,
-        {
-          localTime: `${String(hour).padStart(2, "0")}:00`,
-          timezone: "Europe/Madrid",
-          target: "NEXT_FROM_LIST",
-          ownPostId: null,
-        },
-        NOW,
+      const localTime = `${String(hour).padStart(2, "0")}:00`;
+      expect((await addSlot(workspace, { localTime, timezone: "Europe/Madrid" }, NOW)).ok).toBe(
+        true,
       );
-      expect(result.ok).toBe(true);
     }
-    expect(
-      await addSlot(
-        workspace,
-        { localTime: "20:00", timezone: "UTC", target: "PINNED", ownPostId: null },
-        NOW,
-      ),
-    ).toEqual({ ok: false, error: "too_many_slots" });
-  });
-
-  it("only lets a slot target the workspace's own posts", async () => {
-    const a = await setup("a");
-    const b = await setup("b", ["9"], "9");
-    const postOfB = await postId(b.workspaceId, "9");
-
-    expect(
-      await addSlot(
-        a.workspace,
-        { localTime: "09:00", timezone: "UTC", target: "POST", ownPostId: postOfB },
-        NOW,
-      ),
-    ).toEqual({ ok: false, error: "not_found" });
-    expect(
-      await addSlot(
-        a.workspace,
-        { localTime: "09:00", timezone: "UTC", target: "POST", ownPostId: null },
-        NOW,
-      ),
-    ).toEqual({ ok: false, error: "post_required" });
+    expect(await addSlot(workspace, { localTime: "20:00", timezone: "UTC" }, NOW)).toEqual({
+      ok: false,
+      error: "too_many_slots",
+    });
+    const targets = await prisma.repostSlot.findMany({ select: { target: true } });
+    expect(new Set(targets.map((slot) => slot.target))).toEqual(new Set(["NEXT_FROM_LIST"]));
   });
 
   it("never deletes another workspace's slot", async () => {
     const a = await setup("a");
     const b = await setup("b", ["9"], "9");
-    await addSlot(
-      a.workspace,
-      { localTime: "09:00", timezone: "UTC", target: "PINNED", ownPostId: null },
-      NOW,
-    );
+    await addSlot(a.workspace, { localTime: "09:00", timezone: "UTC" }, NOW);
     const slotOfA = await prisma.repostSlot.findFirstOrThrow({
       where: { workspaceId: a.workspaceId },
     });
@@ -183,48 +146,17 @@ describe("slots", () => {
     expect(await prisma.repostSlot.count()).toBe(1);
     expect(await removeSlot(a.workspaceId, slotOfA.id)).toEqual({ ok: true, data: null });
   });
-
-  it("keeps a post chosen by a slot when posts are refreshed", async () => {
-    const { workspace, workspaceId } = await setup();
-    const chosen = await postId(workspaceId, "2");
-    await addSlot(
-      workspace,
-      { localTime: "09:00", timezone: "UTC", target: "POST", ownPostId: chosen },
-      NOW,
-    );
-    withFakeX({
-      posts: () => postsReply(["5"]),
-      me: () => meReply("x-a", "a", "1"),
-      post: () => ({ status: 404, body: {} }),
-    });
-
-    await refreshOwnPosts(workspaceId, new Date(NOW.getTime() + REFRESH_MIN_INTERVAL_MS + 1));
-
-    expect(await prisma.ownPost.findUnique({ where: { id: chosen } })).not.toBeNull();
-  });
 });
 
 describe("preview and estimate", () => {
-  it("previews the next 48 hours and estimates cost", async () => {
+  it("previews the next 48 hours from the repost list and estimates cost", async () => {
     const { workspace, workspaceId } = await setup();
-    for (const id of ["3", "2"])
+    for (const id of ["1", "3", "2"])
       await setInRotation(workspaceId, await postId(workspaceId, id), true);
     await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays: 1 });
-    await addSlot(
-      workspace,
-      { localTime: "10:00", timezone: "Europe/Madrid", target: "PINNED", ownPostId: null },
-      NOW,
-    );
-    await addSlot(
-      workspace,
-      { localTime: "13:00", timezone: "Europe/Madrid", target: "NEXT_FROM_LIST", ownPostId: null },
-      NOW,
-    );
-    await addSlot(
-      workspace,
-      { localTime: "10:00", timezone: "America/New_York", target: "PINNED", ownPostId: null },
-      NOW,
-    );
+    await addSlot(workspace, { localTime: "10:00", timezone: "Europe/Madrid" }, NOW);
+    await addSlot(workspace, { localTime: "13:00", timezone: "Europe/Madrid" }, NOW);
+    await addSlot(workspace, { localTime: "10:00", timezone: "America/New_York" }, NOW);
 
     const data = await getSchedulePageData(workspace, NOW);
 
@@ -237,8 +169,8 @@ describe("preview and estimate", () => {
     ).toEqual([
       ["08:00", "1", null],
       ["11:00", "3", null],
-      ["14:00", "1", null],
-    ]); // one day only (duration 1)
+      ["14:00", "2", null],
+    ]); // one day only (duration 1), list order 1 → 3 → 2
     expect(data.estimate).toEqual({
       repostsPerDay: 3,
       perDayMicros: 75_000,
@@ -246,23 +178,15 @@ describe("preview and estimate", () => {
     });
   });
 
-  it("ignores a slot's post that belongs to a previously connected X account", async () => {
+  it("skips a time when every listed post was reposted too recently", async () => {
     const { workspace, workspaceId } = await setup();
-    await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays: null });
-    await addSlot(
-      workspace,
-      {
-        localTime: "10:00",
-        timezone: "UTC",
-        target: "POST",
-        ownPostId: await postId(workspaceId, "2"),
-      },
-      NOW,
-    );
-    await prisma.xAccount.update({ where: { workspaceId }, data: { xUserId: "x-other" } });
+    await setInRotation(workspaceId, await postId(workspaceId, "1"), true);
+    await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays: 1 });
+    await addSlot(workspace, { localTime: "10:00", timezone: "Europe/Madrid" }, NOW);
+    await addSlot(workspace, { localTime: "12:00", timezone: "Europe/Madrid" }, NOW); // 2 h later, interval 4 h
 
     const data = await getSchedulePageData(workspace, NOW);
 
-    expect(data.preview[0]).toMatchObject({ postId: null, skipReason: "no_post" });
+    expect(data.preview.map((item) => item.skipReason)).toEqual([null, "interval"]);
   });
 });

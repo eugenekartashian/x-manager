@@ -1,5 +1,5 @@
 import "server-only";
-import type { OwnPost, RepostSchedule, SlotTarget } from "@/generated/prisma/client";
+import type { OwnPost, RepostSchedule } from "@/generated/prisma/client";
 import { err, ok, type Result } from "@/lib/result";
 import { isLocalDate, isLocalTime, localDateOf } from "@/lib/zoned-time";
 import {
@@ -35,8 +35,6 @@ type WorkspaceRef = {
 export type SchedulePageData = {
   schedule: RepostSchedule;
   slots: schedules.SlotWithPost[];
-  /** Posts a slot can target directly (repost list + pinned). */
-  choosablePosts: OwnPost[];
   pinned: OwnPost | null;
   listSize: number;
   preview: (PlannedRepost & { post: OwnPost | null })[];
@@ -95,9 +93,6 @@ export async function getSchedulePageData(
   return {
     schedule,
     slots,
-    choosablePosts: [
-      ...new Map([...(pinned ? [pinned] : []), ...list].map((post) => [post.id, post])).values(),
-    ],
     pinned,
     listSize: list.length,
     preview: plan.map((item) => ({
@@ -145,31 +140,17 @@ export async function saveSchedule(
   return ok(await schedules.updateSchedule(workspace.id, input));
 }
 
-export type SlotError =
-  "invalid_time" | "invalid_timezone" | "too_many_slots" | "post_required" | "not_found";
+export type SlotError = "invalid_time" | "invalid_timezone" | "too_many_slots";
 
+/** Adds a daily time. Every time reposts the next post from the repost list (D-013). */
 export async function addSlot(
   workspace: WorkspaceRef,
-  input: { localTime: string; timezone: string; target: SlotTarget; ownPostId: string | null },
+  input: { localTime: string; timezone: string },
   now = new Date(),
 ): Promise<Result<null, SlotError>> {
   if (!isLocalTime(input.localTime)) return err("invalid_time");
   if (!isScheduleTimezone(input.timezone)) return err("invalid_timezone");
   if ((await schedules.countSlots(workspace.id)) >= MAX_SLOTS) return err("too_many_slots");
-
-  let ownPostId: string | null = null;
-  if (input.target === "POST") {
-    if (!input.ownPostId) return err("post_required");
-    const xUserId = await connectedXUserId(workspace.id);
-    if (!xUserId.ok) return err("not_found");
-    // The chosen post must belong to this workspace's connected X account.
-    const post = await posts.findInScope(
-      { workspaceId: workspace.id, xUserId: xUserId.data },
-      input.ownPostId,
-    );
-    if (!post) return err("not_found");
-    ownPostId = post.id;
-  }
 
   const schedule = await schedules.getOrCreateSchedule(
     workspace.id,
@@ -178,8 +159,8 @@ export async function addSlot(
   await schedules.createSlot(workspace.id, schedule.id, {
     localTime: input.localTime,
     timezone: input.timezone,
-    target: input.target,
-    ownPostId,
+    target: "NEXT_FROM_LIST",
+    ownPostId: null,
   });
   return ok(null);
 }

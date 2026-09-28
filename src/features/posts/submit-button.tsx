@@ -7,6 +7,8 @@ type Props = {
   pendingLabel?: string;
   variant?: "primary" | "secondary" | "ghost";
   ariaLabel?: string;
+  /** For forms submitted without the `action` prop (useFormStatus cannot see those). */
+  pending?: boolean;
 };
 
 const VARIANTS = {
@@ -16,8 +18,15 @@ const VARIANTS = {
 };
 
 /** Submit button that disables itself while its form is pending (no double submits). */
-export function SubmitButton({ children, pendingLabel, variant = "secondary", ariaLabel }: Props) {
-  const { pending } = useFormStatus();
+export function SubmitButton({
+  children,
+  pendingLabel,
+  variant = "secondary",
+  ariaLabel,
+  pending: pendingOverride,
+}: Props) {
+  const status = useFormStatus();
+  const pending = pendingOverride ?? status.pending;
   return (
     <button
       type="submit"

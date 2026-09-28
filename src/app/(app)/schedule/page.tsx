@@ -21,14 +21,6 @@ export default async function SchedulePage() {
   const tz = workspace.timezone;
   const overBudget = BigInt(data.estimate.perMonthMicros) > data.budget.budgetMicros;
 
-  const postOptions = data.choosablePosts.map((post) => {
-    const text = post.text.replace(/\s+/g, " ").trim() || "(media only)";
-    return {
-      value: post.id,
-      label: `${post.isPinned ? "📌 " : ""}${text.slice(0, 50)}${text.length > 50 ? "…" : ""}`,
-    };
-  });
-
   return (
     <>
       <div className="flex flex-col gap-1">
@@ -66,7 +58,7 @@ export default async function SchedulePage() {
             </span>
           </h2>
           <p className="text-foreground/70 text-sm">
-            Each time runs every day of the schedule. “Next from repost list” takes your{" "}
+            Each time runs every day of the schedule and reposts the next post from your{" "}
             <Link href="/posts" className="underline underline-offset-2">
               repost list
             </Link>{" "}
@@ -77,7 +69,6 @@ export default async function SchedulePage() {
         <AddSlotForm
           timezones={SCHEDULE_TIMEZONES}
           defaultTimezone={tz}
-          posts={postOptions}
           disabled={data.slots.length >= MAX_SLOTS}
         />
       </section>

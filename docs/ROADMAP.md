@@ -76,6 +76,12 @@ API replies to other accounts are blocked by X unless summoned, so the app **pre
 
 ---
 
+## Later — ideas to revisit (user requests)
+
+- **Multiple repost lists, each with its own schedule** (e.g. "Main posts" at EU+US prime time, "Promo" on weekends). Today: one list + one schedule (D-012, D-013). Revisit after a few weeks of real use.
+- **Real balance with X's same-day deduplication** — model per-resource dedup so estimates match the Console (planned in 2.6); use `GET /2/usage/credits` if X makes it reliable.
+- **Media previews for posts that embed another post's video** (needs one extra read per post).
+
 ## Deferred (not in MVP)
 
 Payments, plans, teams/roles, multiple X accounts per workspace, auto-replies, network-wide search, auto-follow/likes, attribution modeling, NestJS, Redis/BullMQ. Commercial launch requires re-checking X rules and moving off Vercel Hobby.

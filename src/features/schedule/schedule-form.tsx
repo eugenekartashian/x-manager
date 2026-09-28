@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState, type FormEvent } from "react";
 import { ActionMessage } from "@/features/posts/action-message";
 import type { ActionState } from "@/features/posts/actions";
 import { SubmitButton } from "@/features/posts/submit-button";
@@ -15,7 +15,7 @@ const input =
 type Props = { active: boolean; startDate: string; durationDays: number | null; timeZone: string };
 
 export function ScheduleForm(saved: Props) {
-  const [state, action] = useActionState(saveScheduleAction, initial);
+  const [state, action, pending] = useActionState(saveScheduleAction, initial);
   const [active, setActive] = useState(saved.active);
   const [startDate, setStartDate] = useState(saved.startDate);
   const [noEnd, setNoEnd] = useState(saved.durationDays === null);
@@ -36,12 +36,20 @@ export function ScheduleForm(saved: Props) {
     summary = noEnd
       ? `From ${day(startDate)}, with no end date.`
       : validDays
-        ? `From ${day(startDate)} to ${day(addDays(startDate, days - 1))} (${days} day${days === 1 ? "" : "s"}).`
+        ? `From ${day(startDate)} to ${day(addDays(startDate, days - 1))} inclusive (${days} day${days === 1 ? "" : "s"}).`
         : "Duration must be 1–366 days.";
   }
 
+  // Submit via onSubmit, not the `action` prop: React resets forms after an `action`
+  // submit, which would flip these controlled checkboxes back to their initial DOM state.
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => action(formData));
+  }
+
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <label className="flex items-center gap-3">
         <input
           type="checkbox"
@@ -96,7 +104,7 @@ export function ScheduleForm(saved: Props) {
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton variant="primary" pendingLabel="Saving…">
+        <SubmitButton variant="primary" pendingLabel="Saving…" pending={pending}>
           Save schedule
         </SubmitButton>
         {dirty ? (

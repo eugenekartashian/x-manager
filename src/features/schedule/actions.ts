@@ -12,8 +12,6 @@ const MESSAGES: Record<string, string> = {
   invalid_time: "Pick a valid time.",
   invalid_timezone: "Pick a timezone from the list.",
   too_many_slots: "You already have the maximum number of daily times.",
-  post_required: "Choose which post to repost.",
-  not_found: "That post is not available any more — refresh your posts.",
   invalid_interval: "Pick an interval from the list.",
   invalid_cap: "Daily limit must be between 1 and 8.",
   invalid_input: "Please check the form and try again.",
@@ -68,20 +66,13 @@ export async function saveScheduleAction(
 const slotSchema = z.object({
   localTime: z.string().regex(/^\d{2}:\d{2}$/),
   timezone: z.string().min(1).max(64),
-  target: z.string().regex(/^(PINNED|NEXT_FROM_LIST|POST:[0-9a-f-]{36})$/),
 });
 
 export async function addSlotAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { workspace } = await requireWorkspace();
   const input = slotSchema.safeParse(Object.fromEntries(formData));
   if (!input.success) return failed("invalid_input");
-  const [kind, postId] = input.data.target.split(":");
-  const result = await addSlot(workspace, {
-    localTime: input.data.localTime,
-    timezone: input.data.timezone,
-    target: kind === "POST" ? "POST" : kind === "PINNED" ? "PINNED" : "NEXT_FROM_LIST",
-    ownPostId: postId ?? null,
-  });
+  const result = await addSlot(workspace, input.data);
   refresh();
   return result.ok ? done("Time added.") : failed(result.error);
 }

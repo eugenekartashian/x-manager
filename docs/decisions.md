@@ -83,3 +83,7 @@ First live usage: app recorded $0.055 (2× `users/me`, 20 owned post reads, prof
 - **One schedule per workspace**: on/off, start date, duration in days (or no end). Up to 8 daily times; each time has its own IANA timezone and target: pinned post, a specific post, or next from the repost list (cycled after a cursor).
 - DST: a skipped wall time runs after the gap; a repeated wall time runs once (earlier instant). Daily cap counted per local day in the workspace timezone.
 - Multiple overlapping schedules deferred until the user asks.
+
+## D-013 · 2026-09-28 · Accepted — Every daily time reposts the next post from the repost list
+
+User decision: keep one simple model — daily times + one repost list cycled in order. The "pinned" and "specific post" slot targets are removed from the UI and service (the pinned post can simply be in the list). The `SlotTarget` enum and planner support stay for existing data and the planned multi-list feature (see ROADMAP "Later"). Schedule length is inclusive: start 28 Sept + 3 days = 28, 29, 30 Sept.
