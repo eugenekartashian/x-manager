@@ -4,6 +4,15 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · Batch model — whole list at every time (D-017)
+
+- Planner rewritten: each daily time yields one Repost per listed post (bottom → top), per-post interval and daily cap, empty-list skip; dead pinned/specific/cursor logic removed.
+- Processor: pause between Reposts (1.5 s), 45 s time budget with continuation on the next call, 60-item safety bound; list cursor no longer updated.
+- UI: preview grouped per time ("N of M to repost"), slot rows "Repost list · reposts all N posts", warning when times are closer than the interval, updated copy on Posts/Schedule; estimate = min(times × posts, daily cap).
+- `pnpm check` ✅ — 177 tests (planner rewritten; processor: batch order, repeat per time, pause, time-budget continuation, per-post exactly-once incl. concurrency, cap, empty list, deleted post mid-batch).
+
+---
+
 ## 2026-09-28 · M2.7 — Live test + quote previews
 
 - Quote posts: `Quote` badge, preview of the quoted post's media and text (expansion `referenced_tweets.id`), quoted reads billed as Post reads; budget guard uses worst case per refresh. Migrations `own_post_quote`, `own_post_quoted_text` (applied to production first).

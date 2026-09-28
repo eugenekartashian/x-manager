@@ -35,9 +35,9 @@ export default async function PostsPage() {
             Repost list <span className="text-foreground/50">({data.rotation.length})</span>
           </h2>
           <p className="text-foreground/70 text-sm">
-            Daily times set to “next from repost list” take these posts top to bottom, in a loop.
-            Each post is reposted at most once every {workspace.perPostMinIntervalMinutes / 60} h —
-            set times and limits on the{" "}
+            At every daily time, all posts in this list are reposted. The first post ends up on top
+            of your timeline. Each post is reposted at most once every{" "}
+            {workspace.perPostMinIntervalMinutes / 60} h — set times and limits on the{" "}
             <Link href="/schedule" className="underline underline-offset-2">
               Schedule
             </Link>{" "}

@@ -110,3 +110,13 @@ User decision: keep one simple model — daily times + one repost list cycled in
 - Console balance $4.96 → $4.94 (cent rounding) — consistent with the $0.025 estimate for undo + Repost. Per-endpoint prices still to confirm on the Console Usage page; keep current estimates.
 - Still UNVERIFIED: X's response to a duplicate Repost (not triggered in this test).
 - `X_WRITES_ENABLED=true` in production since 2026-09-28 16:37 (user-approved live test).
+
+## D-017 · 2026-09-28 · Accepted — Every daily time reposts the whole repost list (supersedes D-013 cycling)
+
+User decision after the live test: at each daily time, **all** posts in the repost list are reposted (matching the user's manual routine), not one post per time.
+- Order: bottom → top of the list, so the first post ends up on top of the timeline (put the pinned post first).
+- Each post: undo → Repost (same rules as D-014); ~1.5 s pause between posts; a 45 s time budget per invocation — the next scheduler call (within the 30 min grace) finishes the batch.
+- Dedupe key per time + local date + post, so each post runs once per time.
+- Per-post interval still applies (a whole batch is skipped if times are closer than the interval — the UI warns); the daily cap counts individual Reposts.
+- Cost ≈ times × posts × $0.025/day, capped by the daily limit (8). The list cursor is no longer used.
+- Rollout note: deploy only after the grace window of the day's already-run time has passed (old dedupe keys differ).

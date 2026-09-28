@@ -3,7 +3,16 @@ import type { PlannedRepost } from "@/server/domain/repost-plan";
 import { formatDay, formatTime, SKIP_LABELS, timezoneLabel } from "./labels";
 import { ListBadge } from "./list-badge";
 
-type Props = { items: (PlannedRepost & { post: OwnPost | null })[]; workspaceTimezone: string };
+type Item = PlannedRepost & { post: OwnPost | null };
+type Props = { items: Item[]; workspaceTimezone: string };
+
+/** Groups planned Reposts into batches (one per daily time and date). */
+function batches(items: Item[]): Item[][] {
+  const groups = new Map<string, Item[]>();
+  for (const item of items) groups.set(item.batchKey, [...(groups.get(item.batchKey) ?? []), item]);
+  // Items run bottom → top; show them in list order (first = ends on top of the timeline).
+  return [...groups.values()].map((group) => [...group].reverse());
+}
 
 export function PreviewList({ items, workspaceTimezone }: Props) {
   if (items.length === 0) {
@@ -16,36 +25,45 @@ export function PreviewList({ items, workspaceTimezone }: Props) {
 
   return (
     <ol className="divide-foreground/10 border-foreground/10 flex flex-col divide-y rounded-lg border">
-      {items.map((item) => (
-        <li
-          key={item.key}
-          className={`flex gap-3 p-3 text-sm ${item.skipReason ? "opacity-60" : ""}`}
-        >
-          <div className="w-40 shrink-0 tabular-nums">
-            <p className="font-medium">
-              {formatDay(item.runAt, workspaceTimezone)},{" "}
-              {formatTime(item.runAt, workspaceTimezone)}
-            </p>
-            {item.timezone !== workspaceTimezone && (
-              <p className="text-foreground/60 text-xs">
-                {item.localTime} {timezoneLabel(item.timezone)}
+      {batches(items).map((batch) => {
+        const first = batch[0];
+        if (!first) return null;
+        const planned = batch.filter((item) => !item.skipReason).length;
+        return (
+          <li key={first.batchKey} className="flex flex-col gap-2 p-3 text-sm sm:flex-row sm:gap-3">
+            <div className="w-40 shrink-0 tabular-nums">
+              <p className="font-medium">
+                {formatDay(first.runAt, workspaceTimezone)},{" "}
+                {formatTime(first.runAt, workspaceTimezone)}
               </p>
-            )}
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            {item.target === "next" && <ListBadge />}
-            {item.post && (
-              <p className="truncate">
-                {item.target === "pinned" && "📌 "}
-                {item.post.text.replace(/\s+/g, " ").trim() || "(media only)"}
+              {first.timezone !== workspaceTimezone && (
+                <p className="text-foreground/60 text-xs">
+                  {first.localTime} {timezoneLabel(first.timezone)}
+                </p>
+              )}
+              <p className="text-foreground/60 mt-1 text-xs">
+                {planned} of {batch.length} to repost
               </p>
-            )}
-            {item.skipReason && (
-              <p className="text-amber-700 dark:text-amber-400">{SKIP_LABELS[item.skipReason]}</p>
-            )}
-          </div>
-        </li>
-      ))}
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <ListBadge />
+              <ul className="flex flex-col gap-0.5">
+                {batch.map((item) => (
+                  <li key={item.key} className={`truncate ${item.skipReason ? "opacity-60" : ""}`}>
+                    {item.post ? item.post.text.replace(/\s+/g, " ").trim() || "(media only)" : ""}
+                    {item.skipReason && (
+                      <span className="text-amber-700 dark:text-amber-400">
+                        {item.post ? " · " : ""}
+                        {SKIP_LABELS[item.skipReason]}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }

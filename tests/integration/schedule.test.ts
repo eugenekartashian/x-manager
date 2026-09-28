@@ -149,7 +149,7 @@ describe("slots", () => {
 });
 
 describe("preview and estimate", () => {
-  it("previews the next 48 hours from the repost list and estimates cost", async () => {
+  it("previews the whole list at every time and estimates cost", async () => {
     const { workspace, workspaceId } = await setup();
     for (const id of ["1", "3", "2"])
       await setInRotation(workspaceId, await postId(workspaceId, id), true);
@@ -160,22 +160,26 @@ describe("preview and estimate", () => {
 
     const data = await getSchedulePageData(workspace, NOW);
 
-    expect(
-      data.preview.map((item) => [
-        item.runAt.toISOString().slice(11, 16),
-        item.post?.xPostId ?? null,
-        item.skipReason,
-      ]),
-    ).toEqual([
-      ["08:00", "1", null],
-      ["11:00", "3", null],
-      ["14:00", "2", null],
-    ]); // one day only (duration 1), list order 1 → 3 → 2
-    expect(data.estimate).toEqual({
-      repostsPerDay: 3,
-      perDayMicros: 75_000,
-      perMonthMicros: 2_250_000,
+    const byTime = new Map<string, string[]>();
+    for (const item of data.preview) {
+      const time = item.runAt.toISOString().slice(11, 16);
+      byTime.set(time, [
+        ...(byTime.get(time) ?? []),
+        `${item.post?.xPostId}${item.skipReason ? `:${item.skipReason}` : ""}`,
+      ]);
+    }
+    expect(Object.fromEntries(byTime)).toEqual({
+      "08:00": ["2", "3", "1"], // bottom → top, so "1" (first in list) ends on top
+      "11:00": ["2:interval", "3:interval", "1:interval"], // only 3 h later, interval 4 h
+      "14:00": ["2", "3", "1"],
     });
+    // 3 times × 3 posts = 9, capped at 8 per day.
+    expect(data.estimate).toEqual({
+      repostsPerDay: 8,
+      perDayMicros: 200_000,
+      perMonthMicros: 6_000_000,
+    });
+    expect(data.minGapMinutes).toBe(180);
   });
 
   it("skips a time when every listed post was reposted too recently", async () => {

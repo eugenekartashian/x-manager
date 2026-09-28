@@ -12,9 +12,6 @@ function input(overrides: Partial<PlanInput> = {}): PlanInput {
       { id: "B", lastRepostedAt: null },
       { id: "C", lastRepostedAt: null },
     ],
-    pinned: { id: "P", lastRepostedAt: null },
-    posts: [],
-    listCursorPostId: null,
     limits: { minIntervalMs: 4 * H, dailyCap: 8 },
     workspaceTimezone: "Europe/Madrid",
     from: new Date("2026-10-01T00:00:00Z"),
@@ -23,19 +20,11 @@ function input(overrides: Partial<PlanInput> = {}): PlanInput {
   };
 }
 
-const slot = (
-  id: string,
-  localTime: string,
-  timezone: string,
-  target: PlanSlot["target"],
-): PlanSlot => ({
+const slot = (id: string, localTime: string, timezone = "UTC"): PlanSlot => ({
   id,
   localTime,
   timezone,
-  target,
 });
-const pinned = { kind: "pinned" } as const;
-const next = { kind: "next" } as const;
 
 const summary = (plan: ReturnType<typeof planReposts>) =>
   plan.map(
@@ -43,40 +32,48 @@ const summary = (plan: ReturnType<typeof planReposts>) =>
       `${item.runAt.toISOString().slice(11, 16)} ${item.postId ?? "-"}${item.skipReason ? ` (${item.skipReason})` : ""}`,
   );
 
-describe("planReposts", () => {
-  it("plans EU and US prime-time slots with the pinned post in both", () => {
+describe("planReposts — whole list at every time", () => {
+  it("reposts every post in the list, bottom to top, so the first ends on top", () => {
+    const plan = planReposts(input({ slots: [slot("s", "10:00")] }));
+    expect(summary(plan)).toEqual(["10:00 C", "10:00 B", "10:00 A"]);
+    expect(plan.map((item) => item.key)).toEqual([
+      "s:2026-10-01:C",
+      "s:2026-10-01:B",
+      "s:2026-10-01:A",
+    ]);
+    expect(new Set(plan.map((item) => item.batchKey))).toEqual(new Set(["s:2026-10-01"]));
+  });
+
+  it("repeats the whole list at each daily time (EU + US)", () => {
     const plan = planReposts(
       input({
-        slots: [
-          slot("eu", "10:00", "Europe/Madrid", pinned),
-          slot("mid", "13:00", "Europe/Madrid", next),
-          slot("us", "10:00", "America/New_York", pinned),
-          slot("usEve", "21:00", "America/New_York", next),
+        list: [
+          { id: "A", lastRepostedAt: null },
+          { id: "B", lastRepostedAt: null },
         ],
-        to: new Date("2026-10-02T06:00:00Z"),
+        slots: [slot("eu", "10:00", "Europe/Madrid"), slot("us", "10:00", "America/New_York")],
       }),
     );
-
-    // 10:00 Madrid = 08:00Z, 13:00 Madrid = 11:00Z, 10:00 NY = 14:00Z, 21:00 NY = 01:00Z next day.
-    expect(summary(plan)).toEqual(["08:00 P", "11:00 A", "14:00 P", "01:00 B"]);
-    expect(plan[0]?.key).toBe("eu:2026-10-01");
+    // 10:00 Madrid = 08:00Z, 10:00 NY = 14:00Z (6 h apart ≥ 4 h interval).
+    expect(summary(plan)).toEqual(["08:00 B", "08:00 A", "14:00 B", "14:00 A"]);
   });
 
   it("returns nothing when the schedule is off", () => {
     const plan = planReposts(
       input({
         schedule: { active: false, startDate: "2026-10-01", durationDays: null },
-        slots: [slot("s", "10:00", "Europe/Madrid", pinned)],
+        slots: [slot("s", "10:00")],
       }),
     );
     expect(plan).toEqual([]);
   });
 
-  it("respects the start date and duration in each slot's local calendar", () => {
+  it("respects the start date and duration in each time's local calendar", () => {
     const plan = planReposts(
       input({
+        list: [{ id: "A", lastRepostedAt: null }],
         schedule: { active: true, startDate: "2026-10-02", durationDays: 2 },
-        slots: [slot("s", "12:00", "Europe/Madrid", next)],
+        slots: [slot("s", "12:00", "Europe/Madrid")],
         from: new Date("2026-09-30T00:00:00Z"),
         to: new Date("2026-10-06T00:00:00Z"),
       }),
@@ -84,64 +81,39 @@ describe("planReposts", () => {
     expect(plan.map((item) => item.localDate)).toEqual(["2026-10-02", "2026-10-03"]);
   });
 
-  it("cycles through the repost list and continues after the cursor", () => {
-    const slots = [
-      slot("a", "08:00", "UTC", next),
-      slot("b", "14:00", "UTC", next),
-      slot("c", "20:00", "UTC", next),
-    ];
-    const plan = planReposts(
-      input({ slots, listCursorPostId: "B", to: new Date("2026-10-02T15:00:00Z") }),
-    );
-    expect(summary(plan)).toEqual(["08:00 C", "14:00 A", "20:00 B", "08:00 C", "14:00 A"]);
-  });
-
-  it("starts from the top when the cursor post left the list", () => {
-    const plan = planReposts(
-      input({ slots: [slot("a", "08:00", "UTC", next)], listCursorPostId: "gone" }),
-    );
-    expect(summary(plan)).toEqual(["08:00 A"]);
-  });
-
-  it("skips a post reposted less than the minimum interval ago", () => {
-    const plan = planReposts(
-      input({
-        slots: [
-          slot("a", "08:00", "UTC", pinned),
-          slot("b", "10:00", "UTC", pinned),
-          slot("c", "12:00", "UTC", pinned),
-        ],
-      }),
-    );
-    expect(summary(plan)).toEqual(["08:00 P", "10:00 P (interval)", "12:00 P"]);
-  });
-
-  it("takes the next cooled-down post from the list, or skips when all are cooling", () => {
-    const recent = new Date("2026-10-01T07:00:00Z");
+  it("skips a post reposted less than the minimum interval ago, keeping the others", () => {
     const plan = planReposts(
       input({
         list: [
-          { id: "A", lastRepostedAt: recent },
+          { id: "A", lastRepostedAt: new Date("2026-10-01T08:00:00Z") },
           { id: "B", lastRepostedAt: null },
         ],
-        slots: [slot("a", "08:00", "UTC", next), slot("b", "09:00", "UTC", next)],
+        slots: [slot("s", "10:00")],
       }),
     );
-    expect(summary(plan)).toEqual(["08:00 B", "09:00 - (interval)"]);
+    expect(summary(plan)).toEqual(["10:00 B", "10:00 A (interval)"]);
+  });
+
+  it("skips the whole second batch when times are closer than the interval", () => {
+    const plan = planReposts(
+      input({
+        list: [{ id: "A", lastRepostedAt: null }],
+        slots: [slot("a", "08:00"), slot("b", "10:00"), slot("c", "12:00")],
+      }),
+    );
+    expect(summary(plan)).toEqual(["08:00 A", "10:00 A (interval)", "12:00 A"]);
   });
 
   it("stops at the daily cap, counting reposts already done today", () => {
-    const slots = ["06", "08", "10", "12", "14"].map((hour) =>
-      slot(`s${hour}`, `${hour}:00`, "Europe/Madrid", next),
-    );
     const plan = planReposts(
       input({
-        slots,
-        limits: { minIntervalMs: 0, dailyCap: 3 },
+        slots: [slot("a", "08:00"), slot("b", "14:00")],
+        limits: { minIntervalMs: 0, dailyCap: 4 },
         doneByDay: new Map([["2026-10-01", 1]]),
       }),
     );
     expect(plan.map((item) => item.skipReason)).toEqual([
+      null,
       null,
       null,
       "daily_cap",
@@ -154,10 +126,8 @@ describe("planReposts", () => {
     // 20:00 NY = 02:00 Madrid next day → belongs to the next Madrid day.
     const plan = planReposts(
       input({
-        slots: [
-          slot("eu", "19:00", "Europe/Madrid", next),
-          slot("us", "20:00", "America/New_York", next),
-        ],
+        list: [{ id: "A", lastRepostedAt: null }],
+        slots: [slot("eu", "19:00", "Europe/Madrid"), slot("us", "20:00", "America/New_York")],
         limits: { minIntervalMs: 0, dailyCap: 1 },
         to: new Date("2026-10-02T03:00:00Z"),
       }),
@@ -165,42 +135,34 @@ describe("planReposts", () => {
     expect(plan.map((item) => item.skipReason)).toEqual([null, null]);
   });
 
-  it("explains why a slot cannot run", () => {
-    const plan = planReposts(
-      input({
-        pinned: null,
-        list: [],
-        slots: [
-          slot("p", "08:00", "UTC", pinned),
-          slot("n", "09:00", "UTC", next),
-          slot("x", "10:00", "UTC", { kind: "post", ownPostId: null }),
-          slot("y", "11:00", "UTC", { kind: "post", ownPostId: "unknown" }),
-        ],
-      }),
-    );
-    expect(plan.map((item) => item.skipReason)).toEqual([
-      "no_pinned",
-      "empty_list",
-      "no_post",
-      "no_post",
+  it("records a single skip when the list is empty", () => {
+    const plan = planReposts(input({ list: [], slots: [slot("s", "10:00")] }));
+    expect(plan).toMatchObject([
+      { key: "s:2026-10-01:empty", postId: null, skipReason: "empty_list" },
     ]);
   });
 
-  it("reposts a specific chosen post", () => {
+  it("skips recorded reposts and continues the batch from stored state", () => {
     const plan = planReposts(
       input({
-        posts: [{ id: "X", lastRepostedAt: null }],
-        slots: [slot("x", "10:00", "UTC", { kind: "post", ownPostId: "X" })],
+        list: [
+          { id: "A", lastRepostedAt: null },
+          { id: "B", lastRepostedAt: new Date("2026-10-01T10:00:00Z") },
+        ],
+        slots: [slot("s", "10:00")],
+        skipKeys: new Set(["s:2026-10-01:B"]),
+        doneByDay: new Map([["2026-10-01", 1]]),
       }),
     );
-    expect(summary(plan)).toEqual(["10:00 X"]);
+    expect(summary(plan)).toEqual(["10:00 A"]);
   });
 
   it("keeps the local wall time across the European DST change", () => {
     const plan = planReposts(
       input({
+        list: [{ id: "A", lastRepostedAt: null }],
         schedule: { active: true, startDate: "2026-10-24", durationDays: 3 },
-        slots: [slot("s", "09:00", "Europe/Madrid", pinned)],
+        slots: [slot("s", "09:00", "Europe/Madrid")],
         limits: { minIntervalMs: 0, dailyCap: 8 },
         from: new Date("2026-10-24T00:00:00Z"),
         to: new Date("2026-10-27T00:00:00Z"),
@@ -211,24 +173,5 @@ describe("planReposts", () => {
       "2026-10-25T08:00:00.000Z",
       "2026-10-26T08:00:00.000Z",
     ]);
-  });
-});
-
-describe("planReposts with recorded occurrences", () => {
-  it("skips recorded occurrences and continues from the stored state", () => {
-    const slots = [slot("a", "08:00", "UTC", next), slot("b", "12:00", "UTC", next)];
-    // 08:00 already ran and reposted A (cursor = A, A.lastRepostedAt = 08:00).
-    const plan = planReposts(
-      input({
-        slots,
-        list: [
-          { id: "A", lastRepostedAt: new Date("2026-10-01T08:00:00Z") },
-          { id: "B", lastRepostedAt: null },
-        ],
-        listCursorPostId: "A",
-        skipKeys: new Set(["a:2026-10-01"]),
-      }),
-    );
-    expect(summary(plan)).toEqual(["12:00 B"]);
   });
 });

@@ -6,10 +6,8 @@ export function timezoneLabel(zone: string): string {
 }
 
 export const SKIP_LABELS: Record<SkipReason, string> = {
-  no_pinned: "skipped — no pinned post loaded (refresh posts)",
-  no_post: "skipped — the chosen post is gone",
   empty_list: "skipped — repost list is empty",
-  interval: "skipped — post reposted too recently",
+  interval: "skipped — reposted too recently (per-post interval)",
   daily_cap: "skipped — daily limit reached",
 };
 

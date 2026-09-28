@@ -92,7 +92,7 @@ export async function finishRun(
   await prisma.scheduledRepost.update({ where: { id }, data: { ...data, leaseUntil: null } });
 }
 
-/** Success or unknown outcome: record the Repost on the post and advance the list cursor. */
+/** Success or unknown outcome: record the Repost on the post. */
 export async function finishRepost(
   run: ScheduledRepost,
   status: "SUCCEEDED" | "UNKNOWN",
@@ -109,14 +109,6 @@ export async function finishRepost(
           prisma.ownPost.updateMany({
             where: { id: run.ownPostId, workspaceId: run.workspaceId },
             data: { lastRepostedAt: now },
-          }),
-        ]
-      : []),
-    ...(run.fromList && run.ownPostId
-      ? [
-          prisma.repostSchedule.updateMany({
-            where: { workspaceId: run.workspaceId },
-            data: { listCursorPostId: run.ownPostId },
           }),
         ]
       : []),

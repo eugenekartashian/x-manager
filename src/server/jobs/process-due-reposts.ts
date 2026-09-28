@@ -22,9 +22,19 @@ import {
 /** How late an occurrence may still run (scheduler runs every ~5 min). */
 export const GRACE_MS = 30 * 60_000;
 export const LEASE_MS = 2 * 60_000;
-const MAX_OCCURRENCES_PER_WORKSPACE = 8;
+/** Safety bound on planned items handled per workspace in one invocation. */
+const MAX_ITEMS_PER_WORKSPACE = 60;
+/** Stop starting new Reposts after this long; the next scheduler call continues. */
+const DEFAULT_TIME_BUDGET_MS = 45_000;
+/** Pause between Reposts of one batch, like manual clicks. */
+const DEFAULT_PAUSE_BETWEEN_MS = 1_500;
 
-export type JobOptions = { writesEnabled: boolean; batchSize?: number };
+export type JobOptions = {
+  writesEnabled: boolean;
+  batchSize?: number;
+  pauseBetweenMs?: number;
+  timeBudgetMs?: number;
+};
 export type JobSummary = {
   workspaces: number;
   succeeded: number;
@@ -79,8 +89,14 @@ async function processWorkspace(
   const from = new Date(now.getTime() - GRACE_MS);
   const to = new Date(now.getTime() + 1); // include occurrences due exactly now
 
-  // Re-plan after each occurrence: its outcome changes the state the next one depends on.
-  for (let step = 0; step < MAX_OCCURRENCES_PER_WORKSPACE; step++) {
+  const startedAt = Date.now();
+  const timeBudget = options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
+  const pause = options.pauseBetweenMs ?? DEFAULT_PAUSE_BETWEEN_MS;
+  let previousWroteToX = false;
+
+  // Re-plan after each Repost: its outcome changes the state the next one depends on.
+  for (let step = 0; step < MAX_ITEMS_PER_WORKSPACE; step++) {
+    if (Date.now() - startedAt > timeBudget) return; // the rest runs on the next call
     const context = await loadContext(workspaceId, now);
     if (!context) return;
     const item = planReposts({
@@ -90,7 +106,10 @@ async function processWorkspace(
       skipKeys: await runs.recordedKeys(workspaceId, from),
     })[0];
     if (!item) return;
+    if (previousWroteToX && !item.skipReason && pause > 0) await sleep(pause);
+    const writesBefore = summary.succeeded + summary.failed + summary.unknown;
     await executeOccurrence(workspaceId, item, context, now, options, summary);
+    previousWroteToX = summary.succeeded + summary.failed + summary.unknown > writesBefore;
   }
 }
 
@@ -127,17 +146,13 @@ async function loadContext(workspaceId: string, now: Date): Promise<Context | nu
     xUserId: scope?.xUserId ?? null,
     planInput: {
       schedule,
-      // Every time takes the next post from the list (D-013).
+      // Every time reposts the whole list (D-017).
       slots: schedule.slots.map((slot) => ({
         id: slot.id,
         localTime: slot.localTime,
         timezone: slot.timezone,
-        target: { kind: "next" as const },
       })),
       list: list.map(toPlanPost),
-      pinned: null,
-      posts: [],
-      listCursorPostId: schedule.listCursorPostId,
       limits: {
         minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000,
         dailyCap: workspace.dailyRepostCap,
@@ -173,7 +188,7 @@ async function executeOccurrence(
     localDate: item.localDate,
     ownPostId: post?.id ?? null,
     xPostId: post?.xPostId ?? null,
-    fromList: item.target === "next",
+    fromList: true,
     status: skipReason ? "SKIPPED" : "PROCESSING",
     skipReason,
     leaseUntil: skipReason ? null : new Date(now.getTime() + LEASE_MS),
@@ -283,4 +298,8 @@ async function attempt<T>(
     finishedAt: new Date(),
   });
   return result;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

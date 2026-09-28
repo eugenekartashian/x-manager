@@ -72,14 +72,27 @@ export default async function SchedulePage() {
             </span>
           </h2>
           <p className="text-foreground/70 text-sm">
-            Each time runs every day of the schedule and reposts the next post from your{" "}
+            At each time, every day of the schedule, <strong>all posts</strong> in your{" "}
             <Link href="/posts" className="underline underline-offset-2">
               repost list
             </Link>{" "}
-            ({data.listSize} posts) in order.
+            ({data.listSize} posts) are reposted — the first post in the list ends up on top of your
+            timeline.
           </p>
         </div>
-        <SlotList slots={data.slots} workspaceTimezone={tz} now={now} />
+        <SlotList slots={data.slots} workspaceTimezone={tz} now={now} listSize={data.listSize} />
+        {data.minGapMinutes !== null &&
+          data.minGapMinutes < workspace.perPostMinIntervalMinutes && (
+            <p
+              role="alert"
+              className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300"
+            >
+              Two of your times are only {Math.floor(data.minGapMinutes / 60)} h{" "}
+              {data.minGapMinutes % 60} min apart, but a post can be reposted at most every{" "}
+              {workspace.perPostMinIntervalMinutes / 60} h — the later batch will be skipped. Space
+              the times further apart or lower the interval below.
+            </p>
+          )}
         <AddSlotForm
           timezones={SCHEDULE_TIMEZONES}
           defaultTimezone={tz}

@@ -20,7 +20,7 @@ afterEach(() => {
 });
 afterAll(() => prisma.$disconnect());
 
-const LIVE = { writesEnabled: true };
+const LIVE = { writesEnabled: true, pauseBetweenMs: 0 };
 // 10:00 Madrid on 1 Oct 2026 = 08:00Z
 const AT_10 = new Date("2026-10-01T08:00:00Z");
 const minutes = (date: Date, delta: number) => new Date(date.getTime() + delta * 60_000);
@@ -72,60 +72,99 @@ async function setup(
 }
 
 const okX = () => ({ undoRepost: () => repostReply(false), repost: () => repostReply(true) });
+const alreadyReposted = () => ({
+  status: 403,
+  body: { detail: "You have already retweeted this Post." },
+});
 
 async function runsOf(workspaceId: string) {
   return prisma.scheduledRepost.findMany({
     where: { workspaceId },
-    orderBy: { runAt: "asc" },
-    include: { attempts: true },
+    orderBy: { startedAt: "asc" },
+    include: { attempts: { orderBy: { startedAt: "asc" } } },
   });
 }
 
-describe("processDueReposts — happy path", () => {
-  it("undoes then reposts the next post from the list and records everything", async () => {
-    const { workspaceId, ids } = await setup();
+describe("processDueReposts — whole list at every time", () => {
+  it("reposts every listed post, bottom to top, each with undo then Repost", async () => {
+    const { workspaceId, ids } = await setup({ list: ["A", "B", "C"] });
     const x = withFakeX(okX());
 
     const summary = await processDueReposts(minutes(AT_10, 2), LIVE);
 
     expect(summary).toMatchObject({
       workspaces: 1,
-      succeeded: 1,
+      succeeded: 3,
       skipped: 0,
       failed: 0,
       unknown: 0,
     });
     expect(x.calls.map((call) => `${call.method} ${call.url.pathname}`)).toEqual([
+      "DELETE /2/users/x-a/retweets/a-C",
+      "POST /2/users/x-a/retweets",
+      "DELETE /2/users/x-a/retweets/a-B",
+      "POST /2/users/x-a/retweets",
       "DELETE /2/users/x-a/retweets/a-A",
       "POST /2/users/x-a/retweets",
     ]);
-    const [run] = await runsOf(workspaceId);
-    expect(run).toMatchObject({ status: "SUCCEEDED", xPostId: "a-A", localDate: "2026-10-01" });
-    expect(run?.attempts.map((item) => [item.step, item.outcome])).toEqual([
+    const runs = await runsOf(workspaceId);
+    expect(runs.map((run) => [run.xPostId, run.status])).toEqual([
+      ["a-C", "SUCCEEDED"],
+      ["a-B", "SUCCEEDED"],
+      ["a-A", "SUCCEEDED"], // first in the list is reposted last → on top of the timeline
+    ]);
+    expect(runs[0]?.attempts.map((item) => [item.step, item.outcome])).toEqual([
       ["UNDO", "undone"],
       ["REPOST", "reposted"],
     ]);
-    expect(
-      (await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.A } })).lastRepostedAt,
-    ).not.toBeNull();
-    expect(
-      (await prisma.repostSchedule.findUniqueOrThrow({ where: { workspaceId } })).listCursorPostId,
-    ).toBe(ids.A);
+    const post = await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.A } });
+    expect(post.lastRepostedAt).not.toBeNull();
     const usage = await prisma.externalUsage.aggregate({
       where: { workspaceId },
       _sum: { costMicros: true },
     });
-    expect(usage._sum.costMicros).toBe(25_000n);
+    expect(usage._sum.costMicros).toBe(75_000n);
   });
 
-  it("continues with the next post on the following occurrence", async () => {
+  it("reposts the whole list again at the next time", async () => {
     const { workspaceId } = await setup({ times: ["10:00", "15:00"] });
     withFakeX(okX());
 
     await processDueReposts(minutes(AT_10, 1), LIVE);
     await processDueReposts(minutes(AT_10, 5 * 60 + 1), LIVE);
 
-    expect((await runsOf(workspaceId)).map((run) => run.xPostId)).toEqual(["a-A", "a-B"]);
+    expect((await runsOf(workspaceId)).map((run) => run.xPostId)).toEqual([
+      "a-B",
+      "a-A",
+      "a-B",
+      "a-A",
+    ]);
+  });
+
+  it("pauses between Reposts of one batch", async () => {
+    await setup({ list: ["A", "B"] });
+    withFakeX(okX());
+    const started = Date.now();
+
+    await processDueReposts(minutes(AT_10, 1), { writesEnabled: true, pauseBetweenMs: 150 });
+
+    expect(Date.now() - started).toBeGreaterThanOrEqual(150);
+  });
+
+  it("stops within its time budget and lets the next call finish the batch", async () => {
+    const { workspaceId } = await setup({ list: ["A", "B", "C"] });
+    withFakeX(okX());
+
+    await processDueReposts(minutes(AT_10, 1), {
+      writesEnabled: true,
+      pauseBetweenMs: 60,
+      timeBudgetMs: 30,
+    });
+    const afterFirst = (await runsOf(workspaceId)).length;
+    await processDueReposts(minutes(AT_10, 6), LIVE);
+
+    expect(afterFirst).toBeLessThan(3);
+    expect((await runsOf(workspaceId)).map((run) => run.xPostId)).toEqual(["a-C", "a-B", "a-A"]);
   });
 
   it("does nothing before the time or after the grace window", async () => {
@@ -149,7 +188,7 @@ describe("processDueReposts — happy path", () => {
 });
 
 describe("processDueReposts — exactly once", () => {
-  it("runs an occurrence once across repeated scheduler calls", async () => {
+  it("reposts each post once per time across repeated scheduler calls", async () => {
     await setup();
     const x = withFakeX(okX());
 
@@ -157,24 +196,25 @@ describe("processDueReposts — exactly once", () => {
     await processDueReposts(minutes(AT_10, 6), LIVE);
     await processDueReposts(minutes(AT_10, 11), LIVE);
 
-    expect(x.calls.filter((call) => call.method === "POST")).toHaveLength(1);
-    expect(await prisma.scheduledRepost.count()).toBe(1);
+    expect(x.calls.filter((call) => call.method === "POST")).toHaveLength(2);
+    expect(await prisma.scheduledRepost.count()).toBe(2);
   });
 
-  it("lets only one of two concurrent workers repost", async () => {
+  it("lets concurrent workers repost each post only once", async () => {
     await setup();
-    const x = withFakeX({
-      undoRepost: () => repostReply(false),
-      repost: () => repostReply(true),
-    });
+    const x = withFakeX(okX());
 
     await Promise.all([
       processDueReposts(minutes(AT_10, 1), LIVE),
       processDueReposts(minutes(AT_10, 1), LIVE),
     ]);
 
-    expect(x.calls.filter((call) => call.method === "POST")).toHaveLength(1);
-    expect(await prisma.scheduledRepost.count()).toBe(1);
+    const reposted = x.calls
+      .filter((call) => call.method === "POST")
+      .map((call) => (call.json as { tweet_id: string }).tweet_id)
+      .sort();
+    expect(reposted).toEqual(["a-A", "a-B"]);
+    expect(await prisma.scheduledRepost.count()).toBe(2);
   });
 });
 
@@ -185,20 +225,19 @@ describe("processDueReposts — safety switches", () => {
 
     const summary = await processDueReposts(minutes(AT_10, 1), { writesEnabled: false });
 
-    expect(summary.skipped).toBe(1);
+    expect(summary.skipped).toBe(2);
     expect(x.calls).toHaveLength(0);
-    expect((await runsOf(workspaceId))[0]).toMatchObject({
-      status: "SKIPPED",
-      skipReason: "dry_run",
-      xPostId: "a-A",
-    });
+    expect((await runsOf(workspaceId)).map((run) => run.skipReason)).toEqual([
+      "dry_run",
+      "dry_run",
+    ]);
     expect(
       (await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.A } })).lastRepostedAt,
     ).toBeNull();
   });
 
   it("skips without calling X when the monthly budget is used up", async () => {
-    const { workspaceId } = await setup();
+    const { workspaceId } = await setup({ list: ["A"] });
     await prisma.externalUsage.create({
       data: {
         workspaceId,
@@ -221,7 +260,7 @@ describe("processDueReposts — safety switches", () => {
   });
 
   it("records a skip when X is not connected", async () => {
-    const { workspaceId } = await setup();
+    const { workspaceId } = await setup({ list: ["A"] });
     await prisma.xAccount.deleteMany({ where: { workspaceId } });
     const x = withFakeX({});
 
@@ -234,37 +273,50 @@ describe("processDueReposts — safety switches", () => {
     });
   });
 
-  it("honours the daily cap across scheduler calls", async () => {
-    const { workspaceId } = await setup({
-      list: ["A", "B", "C"],
-      times: ["10:00", "10:10", "10:20"],
-    });
+  it("honours the daily cap within a batch and across times", async () => {
+    const { workspaceId } = await setup({ list: ["A", "B", "C"], times: ["10:00", "15:00"] });
     await prisma.workspace.update({
       where: { id: workspaceId },
-      data: { dailyRepostCap: 2, perPostMinIntervalMinutes: 120 },
+      data: { dailyRepostCap: 4, perPostMinIntervalMinutes: 120 },
     });
     withFakeX(okX());
 
-    await processDueReposts(minutes(AT_10, 25), LIVE);
+    await processDueReposts(minutes(AT_10, 1), LIVE);
 
-    expect(
-      (await runsOf(workspaceId)).map(
-        (run) => run.status + (run.skipReason ? `:${run.skipReason}` : ""),
-      ),
-    ).toEqual(["SUCCEEDED", "SUCCEEDED", "SKIPPED:daily_cap"]);
+    await processDueReposts(minutes(AT_10, 5 * 60 + 1), LIVE);
+
+    const runs = await runsOf(workspaceId);
+    // 3 posts at 10:00, then only 1 more at 15:00 before the cap of 4 is reached.
+    expect(runs.map((run) => run.skipReason ?? run.status)).toEqual([
+      "SUCCEEDED",
+      "SUCCEEDED",
+      "SUCCEEDED",
+      "SUCCEEDED",
+      "daily_cap",
+      "daily_cap",
+    ]);
+  });
+
+  it("records one skip for an empty list", async () => {
+    const { workspaceId } = await setup({ list: [] });
+    const x = withFakeX({});
+
+    await processDueReposts(minutes(AT_10, 1), LIVE);
+
+    expect(x.calls).toHaveLength(0);
+    expect(await runsOf(workspaceId)).toMatchObject([
+      { status: "SKIPPED", skipReason: "empty_list" },
+    ]);
   });
 });
 
 describe("processDueReposts — ambiguous and failed writes", () => {
   it("re-checks once after an unknown Repost outcome and succeeds on 'already reposted'", async () => {
-    const { workspaceId } = await setup();
+    const { workspaceId } = await setup({ list: ["A"] });
     let call = 0;
     withFakeX({
       undoRepost: () => repostReply(false),
-      repost: () =>
-        ++call === 1
-          ? "network-error"
-          : { status: 403, body: { detail: "You have already retweeted this Post." } },
+      repost: () => (++call === 1 ? "network-error" : alreadyReposted()),
     });
 
     await processDueReposts(minutes(AT_10, 1), LIVE);
@@ -279,7 +331,7 @@ describe("processDueReposts — ambiguous and failed writes", () => {
   });
 
   it("marks UNKNOWN after a failed re-check and never retries automatically", async () => {
-    const { workspaceId, ids } = await setup();
+    const { workspaceId, ids } = await setup({ list: ["A"] });
     const x = withFakeX({ undoRepost: () => repostReply(false), repost: () => "network-error" });
 
     await processDueReposts(minutes(AT_10, 1), LIVE);
@@ -288,29 +340,34 @@ describe("processDueReposts — ambiguous and failed writes", () => {
     expect(x.calls.filter((call) => call.method === "POST")).toHaveLength(2); // repost + one re-check
     const [run] = await runsOf(workspaceId);
     expect(run).toMatchObject({ status: "UNKNOWN", errorCode: "unknown_outcome" });
-    // Counted as reposted for the interval, since it may have happened.
     expect(
       (await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.A } })).lastRepostedAt,
     ).not.toBeNull();
   });
 
-  it("fails on a deleted post and takes it out of the list", async () => {
-    const { workspaceId, ids } = await setup();
-    withFakeX({ undoRepost: () => ({ status: 404, body: { title: "Not Found" } }) });
+  it("fails on a deleted post, removes it from the list and continues the batch", async () => {
+    const { workspaceId, ids } = await setup({ list: ["A", "B"] });
+    withFakeX({
+      undoRepost: (postId) =>
+        postId === "a-B" ? { status: 404, body: { title: "Not Found" } } : repostReply(false),
+      repost: () => repostReply(true),
+    });
 
     await processDueReposts(minutes(AT_10, 1), LIVE);
 
-    expect((await runsOf(workspaceId))[0]).toMatchObject({
-      status: "FAILED",
-      errorCode: "not_found",
-    });
-    expect((await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.A } })).inRotation).toBe(
+    expect(
+      (await runsOf(workspaceId)).map((run) => [run.xPostId, run.status, run.errorCode]),
+    ).toEqual([
+      ["a-B", "FAILED", "not_found"],
+      ["a-A", "SUCCEEDED", null],
+    ]);
+    expect((await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.B } })).inRotation).toBe(
       false,
     );
   });
 
   it("recovers a run left PROCESSING by a crashed worker with a Repost re-check only", async () => {
-    const { workspaceId, ids } = await setup();
+    const { workspaceId, ids } = await setup({ list: ["A"] });
     await prisma.scheduledRepost.create({
       data: {
         workspaceId,
@@ -324,9 +381,7 @@ describe("processDueReposts — ambiguous and failed writes", () => {
       },
     });
     await prisma.repostSchedule.update({ where: { workspaceId }, data: { active: false } });
-    const x = withFakeX({
-      repost: () => ({ status: 403, body: { detail: "You have already retweeted this Post." } }),
-    });
+    const x = withFakeX({ repost: alreadyReposted });
 
     const summary = await processDueReposts(new Date(AT_10.getTime() + LEASE_MS + 60_000), LIVE);
 
@@ -342,8 +397,8 @@ describe("processDueReposts — ambiguous and failed writes", () => {
 
 describe("processDueReposts — isolation", () => {
   it("uses each workspace's own X account and posts", async () => {
-    await setup({ suffix: "a" });
-    await setup({ suffix: "b" });
+    await setup({ suffix: "a", list: ["A"] });
+    await setup({ suffix: "b", list: ["A"] });
     const x = withFakeX(okX());
 
     await processDueReposts(minutes(AT_10, 1), LIVE);

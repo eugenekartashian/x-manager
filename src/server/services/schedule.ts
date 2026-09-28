@@ -1,7 +1,7 @@
 import "server-only";
 import type { OwnPost, RepostSchedule } from "@/generated/prisma/client";
 import { err, ok, type Result } from "@/lib/result";
-import { isLocalDate, isLocalTime, localDateOf } from "@/lib/zoned-time";
+import { isLocalDate, isLocalTime, localDateOf, zonedToUtc } from "@/lib/zoned-time";
 import { planReposts, type PlannedRepost, type PlanPost } from "@/server/domain/repost-plan";
 import {
   HARD_MAX_REPOSTS_PER_DAY,
@@ -34,6 +34,8 @@ export type SchedulePageData = {
   listSize: number;
   preview: (PlannedRepost & { post: OwnPost | null })[];
   recentRuns: Awaited<ReturnType<typeof runs.listRecentRuns>>;
+  /** Smallest gap between daily times; below the per-post interval, batches get skipped. */
+  minGapMinutes: number | null;
   estimate: { repostsPerDay: number; perDayMicros: number; perMonthMicros: number };
   budget: BudgetStatus;
   connected: boolean;
@@ -68,12 +70,8 @@ export async function getSchedulePageData(
       id: slot.id,
       localTime: slot.localTime,
       timezone: slot.timezone,
-      target: { kind: "next" as const }, // D-013
     })),
     list: list.map(toPlanPost),
-    pinned: null,
-    posts: [],
-    listCursorPostId: schedule.listCursorPostId,
     limits: {
       minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000,
       dailyCap: workspace.dailyRepostCap,
@@ -85,7 +83,8 @@ export async function getSchedulePageData(
     to: new Date(now.getTime() + PREVIEW_HOURS * 3_600_000),
   });
 
-  const repostsPerDay = Math.min(slots.length, workspace.dailyRepostCap);
+  // Every daily time reposts the whole list (D-017), capped by the daily limit.
+  const repostsPerDay = Math.min(slots.length * list.length, workspace.dailyRepostCap);
   const perDayMicros = repostsPerDay * REPOST_PAIR_COST_MICROS;
 
   return {
@@ -98,9 +97,28 @@ export async function getSchedulePageData(
     })),
     recentRuns,
     estimate: { repostsPerDay, perDayMicros, perMonthMicros: perDayMicros * 30 },
+    minGapMinutes: minGapBetweenTimes(slots, now),
     budget,
     connected: scope !== null,
   };
+}
+
+/** Smallest gap between two daily times (wrapping over midnight), in minutes. */
+export function minGapBetweenTimes(
+  slots: { localTime: string; timezone: string }[],
+  now: Date,
+): number | null {
+  if (slots.length < 2) return null;
+  const minutes = slots
+    .map((slot) => {
+      const at = zonedToUtc(localDateOf(now, slot.timezone), slot.localTime, slot.timezone);
+      return (at.getUTCHours() * 60 + at.getUTCMinutes()) % 1440;
+    })
+    .sort((a, b) => a - b);
+  const gaps = minutes.map((value, index) =>
+    index === 0 ? value + 1440 - (minutes.at(-1) ?? value) : value - (minutes[index - 1] ?? value),
+  );
+  return Math.min(...gaps);
 }
 
 function toPlanPost(post: OwnPost): PlanPost {

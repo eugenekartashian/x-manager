@@ -5,7 +5,7 @@ import { deleteSlotAction } from "./actions";
 import { formatTime, timezoneLabel } from "./labels";
 import { ListBadge } from "./list-badge";
 
-type Props = { slots: SlotWithPost[]; workspaceTimezone: string; now: Date };
+type Props = { slots: SlotWithPost[]; workspaceTimezone: string; now: Date; listSize: number };
 
 function targetLabel(slot: SlotWithPost): string {
   if (slot.target === "PINNED") return "📌 Pinned post";
@@ -15,7 +15,7 @@ function targetLabel(slot: SlotWithPost): string {
   return `“${text.length > 60 ? `${text.slice(0, 60)}…` : text || "(media only)"}”`;
 }
 
-export function SlotList({ slots, workspaceTimezone, now }: Props) {
+export function SlotList({ slots, workspaceTimezone, now, listSize }: Props) {
   if (slots.length === 0) {
     return (
       <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-6 text-center text-sm">
@@ -52,7 +52,7 @@ export function SlotList({ slots, workspaceTimezone, now }: Props) {
           {slot.target === "NEXT_FROM_LIST" ? (
             <p className="flex min-w-0 flex-1 items-center gap-2 text-sm">
               <ListBadge />
-              <span className="text-foreground/70 truncate">next post in order</span>
+              <span className="text-foreground/70 truncate">reposts all {listSize} posts</span>
             </p>
           ) : (
             <p className="min-w-0 flex-1 truncate text-sm">{targetLabel(slot)}</p>
