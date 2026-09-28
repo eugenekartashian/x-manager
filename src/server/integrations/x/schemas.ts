@@ -26,6 +26,19 @@ const publicMetricsSchema = z.object({
   impression_count: z.number().int().optional(),
 });
 
+const attachmentsSchema = z.object({ media_keys: z.array(z.string()).optional() }).optional();
+
+const mediaSchema = z.object({
+  media_key: z.string(),
+  type: z.string(),
+  url: z.string().optional(),
+  preview_image_url: z.string().optional(),
+});
+
+export const mediaIncludesSchema = z
+  .object({ media: z.array(mediaSchema).default([]) })
+  .default({ media: [] });
+
 export const userPostsResponseSchema = z.object({
   // X omits `data` entirely when there are no posts.
   data: z
@@ -35,9 +48,11 @@ export const userPostsResponseSchema = z.object({
         text: z.string(),
         created_at: z.iso.datetime(),
         public_metrics: publicMetricsSchema.optional(),
+        attachments: attachmentsSchema,
       }),
     )
     .default([]),
+  includes: mediaIncludesSchema,
   meta: z.object({
     result_count: z.number().int(),
     next_token: z.string().optional(),
@@ -59,6 +74,8 @@ export const postByIdResponseSchema = z.object({
       author_id: z.string().min(1),
       created_at: z.iso.datetime(),
       public_metrics: publicMetricsSchema.optional(),
+      attachments: attachmentsSchema,
     })
     .optional(),
+  includes: mediaIncludesSchema,
 });

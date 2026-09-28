@@ -149,6 +149,7 @@ Full model and deploy checklist: [docs/security.md](docs/security.md) — keep i
 ## Git
 
 - Conventional commits (`feat:`, `fix:`, `refactor:`, `test:`, `chore:`, `docs:`), imperative, scoped to one logical change.
+- No `Co-Authored-By` / Claude attribution lines in commit messages (user preference).
 - Commit or push only when the user asks. Never commit secrets, `.env`, credentials, or real user media.
 
 ## Definition of done (per task)

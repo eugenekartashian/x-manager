@@ -21,6 +21,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    // Post previews come from X's media CDN only (validated again in the X client).
+    remotePatterns: [{ protocol: "https", hostname: "pbs.twimg.com", pathname: "/**" }],
+  },
   headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

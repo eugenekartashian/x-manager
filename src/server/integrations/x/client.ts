@@ -13,10 +13,13 @@ import {
 
 export type XUser = { id: string; username: string; name: string; pinnedPostId: string | null };
 
+export type XPostMedia = { type: string; previewUrl: string | null; count: number };
+
 export type XPost = {
   id: string;
   text: string;
   createdAt: Date;
+  media: XPostMedia | null;
   metrics: {
     reposts: number;
     replies: number;
@@ -57,7 +60,8 @@ export async function listOwnPosts(
   const url = new URL(`${X_API_BASE}/2/users/${encodeURIComponent(xUserId)}/tweets`);
   url.searchParams.set("max_results", String(maxResults));
   url.searchParams.set("exclude", "replies,retweets");
-  url.searchParams.set("tweet.fields", "created_at,public_metrics");
+  url.searchParams.set("tweet.fields", "created_at,public_metrics,attachments");
+  setMediaParams(url);
   if (options.paginationToken) url.searchParams.set("pagination_token", options.paginationToken);
 
   const body = await xRequest(
@@ -65,7 +69,7 @@ export async function listOwnPosts(
     userPostsResponseSchema,
   );
   return {
-    posts: body.data.map(toXPost),
+    posts: body.data.map((post) => toXPost(post, body.includes.media)),
     nextToken: body.meta.next_token ?? null,
   };
 }
@@ -79,18 +83,28 @@ export async function getPost(
   postId: string,
 ): Promise<(XPost & { authorId: string }) | null> {
   const url = new URL(`${X_API_BASE}/2/tweets/${encodeURIComponent(postId)}`);
-  url.searchParams.set("tweet.fields", "author_id,created_at,public_metrics");
+  url.searchParams.set("tweet.fields", "author_id,created_at,public_metrics,attachments");
+  setMediaParams(url);
   try {
     const body = await xRequest(
       { method: "GET", url: url.toString(), headers: bearer(accessToken) },
       postByIdResponseSchema,
     );
-    return body.data ? { ...toXPost(body.data), authorId: body.data.author_id } : null;
+    return body.data
+      ? { ...toXPost(body.data, body.includes.media), authorId: body.data.author_id }
+      : null;
   } catch (error) {
     if (error instanceof XApiError && error.code === "X_NOT_FOUND") return null;
     throw error;
   }
 }
+
+type RawMedia = {
+  media_key: string;
+  type: string;
+  url?: string | undefined;
+  preview_image_url?: string | undefined;
+};
 
 type RawPost = {
   id: string;
@@ -105,13 +119,38 @@ type RawPost = {
         impression_count?: number | undefined;
       }
     | undefined;
+  attachments?: { media_keys?: string[] | undefined } | undefined;
 };
 
-function toXPost(post: RawPost): XPost {
+// Media URLs come from X and are rendered in our pages: accept X's image CDN only.
+const MEDIA_HOST = "https://pbs.twimg.com/";
+
+function safeMediaUrl(value: string | undefined): string | null {
+  return value && value.startsWith(MEDIA_HOST) ? value : null;
+}
+
+function setMediaParams(url: URL): void {
+  url.searchParams.set("expansions", "attachments.media_keys");
+  url.searchParams.set("media.fields", "type,url,preview_image_url");
+}
+
+function toXPost(post: RawPost, media: RawMedia[]): XPost {
+  const keys = post.attachments?.media_keys ?? [];
+  const first = media.find((item) => item.media_key === keys[0]);
   return {
     id: post.id,
     text: post.text,
     createdAt: new Date(post.created_at),
+    media:
+      keys.length > 0
+        ? {
+            type: first?.type ?? "photo",
+            previewUrl: safeMediaUrl(
+              first?.type === "photo" ? first.url : first?.preview_image_url,
+            ),
+            count: keys.length,
+          }
+        : null,
     metrics: post.public_metrics
       ? {
           reposts: post.public_metrics.retweet_count,

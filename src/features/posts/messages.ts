@@ -11,7 +11,7 @@ const MESSAGES: Record<string, string> = {
   too_soon: "Posts were refreshed less than a minute ago.",
   budget_exceeded: "Monthly API budget reached — nothing was requested from X.",
   invalid_url: "Paste a link like https://x.com/you/status/123…",
-  not_own_post: "Only your own posts can be added to the rotation.",
+  not_own_post: "Only your own posts can be added to the repost list.",
 };
 
 export function errorMessage(code: string): string {

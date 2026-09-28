@@ -170,6 +170,10 @@ model OwnPost {
   replyCount       Int?
   impressionCount  Int?
   metricsUpdatedAt DateTime?
+  // First attachment preview (photo URL or video/GIF thumbnail), pbs.twimg.com only.
+  mediaType        String?
+  mediaPreviewUrl  String?
+  mediaCount       Int       @default(0)
   // Repost rotation: posts the user chose for scheduled Reposts, in order.
   inRotation       Boolean   @default(false)
   rotationPosition Int?

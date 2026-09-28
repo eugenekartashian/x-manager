@@ -11,7 +11,7 @@ export function RotationList({ posts, timeZone, now }: Props) {
   if (posts.length === 0) {
     return (
       <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-6 text-center text-sm">
-        No posts in the rotation yet. Add them from your posts below or paste a link.
+        Your repost list is empty. Add posts with “+ Add to repost list” below, or paste a link.
       </p>
     );
   }

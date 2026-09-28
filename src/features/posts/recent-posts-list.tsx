@@ -17,16 +17,24 @@ export function RecentPostsList({ posts, timeZone }: { posts: OwnPost[]; timeZon
       {posts.map((post) => (
         <li key={post.id} className="flex flex-wrap items-start gap-3 p-3 sm:flex-nowrap">
           <PostText post={post} timeZone={timeZone} />
-          <form action={toggleRotationAction} className="shrink-0">
+          <form
+            action={toggleRotationAction}
+            className="flex shrink-0 items-center gap-2 self-center"
+          >
             <input type="hidden" name="postId" value={post.id} />
             <input type="hidden" name="inRotation" value={post.inRotation ? "false" : "true"} />
             {post.inRotation ? (
-              <SubmitButton variant="ghost" pendingLabel="…">
-                ✓ In rotation
-              </SubmitButton>
+              <>
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                  ✓ In repost list
+                </span>
+                <SubmitButton variant="secondary" pendingLabel="Removing…">
+                  Remove
+                </SubmitButton>
+              </>
             ) : (
               <SubmitButton variant="secondary" pendingLabel="Adding…">
-                Add to rotation
+                + Add to repost list
               </SubmitButton>
             )}
           </form>

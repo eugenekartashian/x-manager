@@ -34,7 +34,7 @@ export async function addPostByUrlAction(
   if (!input.success) return failed("invalid_url");
   const result = await addPostToRotationByUrl(workspace.id, input.data.url);
   revalidatePath("/posts");
-  return result.ok ? done("Added to the rotation.") : failed(result.error);
+  return result.ok ? done("Added to the repost list.") : failed(result.error);
 }
 
 const toggleSchema = z.object({ postId: z.uuid(), inRotation: z.enum(["true", "false"]) });

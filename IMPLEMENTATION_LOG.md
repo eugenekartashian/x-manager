@@ -4,6 +4,16 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M2.2 follow-up — media previews, clearer labels, dev Prisma cache fix
+
+- Dev bug: after `prisma generate`, the running dev server kept a cached PrismaClient of the old class (`prisma.ownPost` undefined). `src/server/db.ts` now replaces a cached instance that is not of the current class.
+- Posts now request `attachments.media_keys` (+ `type,url,preview_image_url`); first media preview stored (`mediaType`, `mediaPreviewUrl`, `mediaCount`, migration `own_post_media`). Only `https://pbs.twimg.com/` URLs are kept; rendered with `next/image` (remote pattern pbs.twimg.com, unoptimized, no-referrer).
+- UI wording: "rotation" → "Repost list"; recent posts show "✓ In repost list" + visible "Remove"; list count in heading.
+- Cost reconciliation → D-011 (app $0.055 estimate vs Console $0.03).
+- `pnpm check` ✅ (119 tests, new: media mapping + CDN allowlist) · `pnpm build` ✅.
+
+---
+
 ## 2026-09-28 · M2.2 — Own posts & Repost rotation UI
 
 **Changed**

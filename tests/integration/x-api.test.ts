@@ -50,7 +50,9 @@ describe("fetchOwnPosts", () => {
     expect(Object.fromEntries(call?.url.searchParams ?? [])).toEqual({
       max_results: "20",
       exclude: "replies,retweets",
-      "tweet.fields": "created_at,public_metrics",
+      "tweet.fields": "created_at,public_metrics,attachments",
+      expansions: "attachments.media_keys",
+      "media.fields": "type,url,preview_image_url",
     });
     expect(call?.headers.get("authorization")).toBe("Bearer access-a");
     expect(result).toMatchObject({
@@ -124,6 +126,62 @@ describe("fetchOwnPosts", () => {
 
     expect(await fetchOwnPosts(owner.workspaceId)).toEqual({ ok: false, error: "not_connected" });
     expect(x.calls).toHaveLength(0);
+  });
+});
+
+describe("media previews", () => {
+  it("maps photo and video previews and drops URLs outside X's media CDN", async () => {
+    const owner = await connectedOwner();
+    withFakeX({
+      posts: () => ({
+        status: 200,
+        body: {
+          data: [
+            {
+              id: "1",
+              text: "photo",
+              created_at: "2026-09-20T10:00:00.000Z",
+              attachments: { media_keys: ["m1", "m2"] },
+            },
+            {
+              id: "2",
+              text: "video",
+              created_at: "2026-09-19T10:00:00.000Z",
+              attachments: { media_keys: ["m3"] },
+            },
+            {
+              id: "3",
+              text: "evil",
+              created_at: "2026-09-18T10:00:00.000Z",
+              attachments: { media_keys: ["m4"] },
+            },
+            { id: "4", text: "plain", created_at: "2026-09-17T10:00:00.000Z" },
+          ],
+          includes: {
+            media: [
+              { media_key: "m1", type: "photo", url: "https://pbs.twimg.com/media/a.jpg" },
+              { media_key: "m2", type: "photo", url: "https://pbs.twimg.com/media/b.jpg" },
+              {
+                media_key: "m3",
+                type: "video",
+                preview_image_url: "https://pbs.twimg.com/ext_tw_video_thumb/c.jpg",
+              },
+              { media_key: "m4", type: "photo", url: "https://evil.example/tracker.gif" },
+            ],
+          },
+          meta: { result_count: 4 },
+        },
+      }),
+    });
+
+    const result = await fetchOwnPosts(owner.workspaceId);
+
+    expect(result.ok && result.data.posts.map((post) => post.media)).toEqual([
+      { type: "photo", previewUrl: "https://pbs.twimg.com/media/a.jpg", count: 2 },
+      { type: "video", previewUrl: "https://pbs.twimg.com/ext_tw_video_thumb/c.jpg", count: 1 },
+      { type: "photo", previewUrl: null, count: 1 },
+      null,
+    ]);
   });
 });
 
