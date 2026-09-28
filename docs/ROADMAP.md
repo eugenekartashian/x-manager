@@ -49,14 +49,14 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped/de
 
 ---
 
-## M3 — Reply assistant (manual publish in X, D-008)
+## M3 — Reply assistant (manual publish in X, D-008, D-020)
 
 API replies to other accounts are blocked by X unless summoned, so the app **prepares** and the user **posts in X**.
-- [ ] **3.1 Target accounts** — manual list of niche accounts (handle, topic, priority, last engaged); optional cheap check of their latest post within budget.
-- [ ] **3.2 Reply session** — paste a post URL (or pick from fetched latest posts) → app shows the post, suggests reply text and a media item from the library → "Open in X" launches X's composer with the reply text prefilled; user attaches media and posts. App logs it.
-- [ ] **3.3 AI suggestions** — short, relevant reply drafts (Zod-validated, prompt-injection-safe, cost-accounted); no publish capability.
-- [ ] **3.4 Media library (images/video)** — private storage, tags, quick download/copy for attaching in X.
-- [ ] **3.5 Daily limits** — soft caps per day/per target account, cooldown per account, to keep replies non-spammy.
+- [x] **3.1 Target list** — add by @handle or paste a column from Excel (≤ 100 per add, $0.01 per new account via `GET /2/users/by`), profile snapshot (followers, bio, avatar), notes, sort, remove, CSV export for Excel.
+- [ ] **3.2 Reply templates** — the user's own phrases; a random one is suggested and editable. AI suggestions come later.
+- [ ] **3.3 Reply session** — target → its latest 3–5 posts (on demand) → template → "Open in X" (composer prefilled with the reply text; media attached manually by the user) → logged. Limits: 1 reply per account per 24 h, 15 replies per day.
+- [ ] **3.4 AI suggestions (later)** — short, relevant drafts (Zod-validated, prompt-injection-safe, cost-accounted); no publish capability.
+- [ ] **3.5 Discovery (later, paid)** — hashtag search (Recent Search ≈ $0.50/search), bio keyword search (User Search), import from own following.
 
 ## M4 — Measurement
 

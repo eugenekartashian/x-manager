@@ -133,3 +133,10 @@ Sources: [X API rate limits](https://docs.x.com/x-api/fundamentals/rate-limits),
 ## D-019 · 2026-09-28 · Accepted — Spend estimate models X's same-day deduplication
 
 X pricing: "All resources are deduplicated within a 24-hour UTC day window". Reads now record the returned resource ids in `billed_resource` (workspace, UTC day, kind, id); only ids new for the day are billed (`external_usage.billedUnits`, `costMicros`). Writes (Repost, undo) are billed per request. Every post X returns is billed, including replies we filter out. Dedup is modelled per workspace (conservative: X may dedup across the whole developer account). The Console remains the source of truth.
+
+## D-020 · 2026-09-28 · Accepted — Reply assistant scope
+
+- Targets are added manually by @handle (single or pasted column from Excel/Sheets; CSV export for Excel). Paid discovery (hashtag search, bio search, following import) deferred.
+- Reply text: user-defined templates first; AI later.
+- Limits: 1 reply per target account per 24 h, 15 replies per day. Replies are posted by the user on x.com via the composer intent (media attached manually — the intent cannot attach media).
+- Target list ≤ 500 accounts; lookups ≤ 100 handles per call; handles already listed are not looked up again.

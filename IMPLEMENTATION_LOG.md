@@ -4,6 +4,14 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-28 · M3.1 — Target list
+
+- `TargetAccount` (RLS on), `GET /2/users/by` client (`lookupUsers`, billed per returned user with day dedup), handle parser (@handle, x.com/twitter.com links, Excel columns; invalid reported), service: add (skip already listed without an X call, exclude own account, budget check, ≤ 100 per add, ≤ 500 total), notes (≤ 200), remove, list sorting, CSV export with formula-injection guard + UTF-8 BOM.
+- `/targets` page (connect-gated) with add form, list (avatar, followers, bio, note, last replied), sort, Export CSV; `/api/targets/export` (session-scoped, no-store). Nav: Targets. Decision D-020.
+- `pnpm check` ✅ — 198 tests (new: 4 parser, 10 targets incl. cross-workspace edits, dedup/no-call for existing, self skip, budget stop, CSV injection). `pnpm build` ✅. Production migrated before deploy.
+
+---
+
 ## 2026-09-28 · M2.6 — History & real spend
 
 - `billed_resource` table (RLS on) + `external_usage.billedUnits`; `recordUsage` bills read resources once per UTC day (D-019). Filtered replies are now counted (X bills them). Migration `billed_resources` (existing rows: billedUnits = units).

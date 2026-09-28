@@ -97,6 +97,7 @@ model Workspace {
   xAccount        XAccount?
   usage           ExternalUsage[]
   billedResources BilledResource[]
+  targets         TargetAccount[]
   posts           OwnPost[]
   schedule        RepostSchedule?
   slots           RepostSlot[]
@@ -319,4 +320,32 @@ model BilledResource {
 
   @@unique([workspaceId, day, kind, resourceId])
   @@map("billed_resource")
+}
+
+// ─── Reply assistant (M3) ───────────────────────────────────────────────────
+
+// Niche accounts the user wants to reply to (added by @handle). Profile data is a
+// snapshot from the last lookup. Replies are always posted by the user on x.com (D-008).
+model TargetAccount {
+  id             String    @id @default(uuid(7))
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  xUserId        String
+  username       String
+  name           String
+  bio            String?
+  avatarUrl      String? // pbs.twimg.com only
+  verified       Boolean   @default(false)
+  followersCount Int?
+  followingCount Int?
+  postsCount     Int?
+  note           String?
+  lastRepliedAt  DateTime?
+  lookedUpAt     DateTime
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([workspaceId, xUserId])
+  @@index([workspaceId, followersCount])
+  @@map("target_account")
 }

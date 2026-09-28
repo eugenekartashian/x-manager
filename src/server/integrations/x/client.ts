@@ -4,6 +4,7 @@ import { X_API_BASE, xRequest } from "./http";
 import {
   meResponseSchema,
   postByIdResponseSchema,
+  usersByResponseSchema,
   repostResponseSchema,
   userPostsResponseSchema,
 } from "./schemas";
@@ -214,6 +215,48 @@ function toXPost(post: RawPost, includes: RawIncludes): XPost {
         }
       : null,
   };
+}
+
+export type XProfile = {
+  id: string;
+  username: string;
+  name: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  verified: boolean;
+  followers: number | null;
+  following: number | null;
+  posts: number | null;
+};
+
+/**
+ * GET /2/users/by — up to 100 public profiles by @handle. Billed per returned user.
+ * Handles that don't exist (or are suspended) are simply missing from the result.
+ */
+export async function getUsersByUsernames(
+  accessToken: string,
+  usernames: string[],
+): Promise<XProfile[]> {
+  if (usernames.length === 0) return [];
+  if (usernames.length > 100) throw new Error("At most 100 usernames per lookup");
+  const url = new URL(`${X_API_BASE}/2/users/by`);
+  url.searchParams.set("usernames", usernames.join(","));
+  url.searchParams.set("user.fields", "description,profile_image_url,public_metrics,verified");
+  const body = await xRequest(
+    { method: "GET", url: url.toString(), headers: bearer(accessToken) },
+    usersByResponseSchema,
+  );
+  return body.data.map((user) => ({
+    id: user.id,
+    username: user.username,
+    name: user.name,
+    bio: user.description || null,
+    avatarUrl: safeMediaUrl(user.profile_image_url),
+    verified: user.verified ?? false,
+    followers: user.public_metrics?.followers_count ?? null,
+    following: user.public_metrics?.following_count ?? null,
+    posts: user.public_metrics?.tweet_count ?? null,
+  }));
 }
 
 export type RepostOutcome = "reposted" | "already_reposted";

@@ -16,6 +16,7 @@ type Handlers = {
   revoke?: () => Reply;
   posts?: (url: URL) => Reply;
   post?: (postId: string) => Reply;
+  usersBy?: (usernames: string[]) => Reply;
   repost?: (postId: string) => Reply;
   undoRepost?: (postId: string) => Reply;
 };
@@ -55,6 +56,8 @@ function route(
   if (path === "/2/oauth2/token") return h.token?.(body ?? new URLSearchParams());
   if (path === "/2/oauth2/revoke") return h.revoke?.();
   if (path === "/2/users/me") return h.me?.();
+  if (path === "/2/users/by")
+    return h.usersBy?.((url.searchParams.get("usernames") ?? "").split(","));
   if (/^\/2\/users\/[^/]+\/tweets$/.test(path)) return h.posts?.(url);
   const single = /^\/2\/tweets\/([^/]+)$/.exec(path);
   if (single) return h.post?.(decodeURIComponent(single[1] ?? ""));
@@ -133,3 +136,32 @@ export const postReply = (
     },
   },
 });
+
+/** Fake /2/users/by: returns a profile for each known handle (case-insensitive). */
+export const usersByReply =
+  (known: Record<string, { id: string; followers?: number }>) => (usernames: string[]) => ({
+    status: 200,
+    body: {
+      data: usernames
+        .map((name) => {
+          const entry = Object.entries(known).find(
+            ([handle]) => handle.toLowerCase() === name.toLowerCase(),
+          );
+          return entry
+            ? {
+                id: entry[1].id,
+                username: entry[0],
+                name: `Name ${entry[0]}`,
+                description: `bio of ${entry[0]}`,
+                profile_image_url: `https://pbs.twimg.com/profile_images/${entry[1].id}.jpg`,
+                public_metrics: {
+                  followers_count: entry[1].followers ?? 100,
+                  following_count: 10,
+                  tweet_count: 50,
+                },
+              }
+            : null;
+        })
+        .filter(Boolean),
+    },
+  });

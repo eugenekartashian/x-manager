@@ -4,11 +4,13 @@ import { err, ok, type Result } from "@/lib/result";
 import {
   getMe,
   getPost,
+  getUsersByUsernames,
   listOwnPosts,
   repost,
   undoRepost,
   type RepostOutcome,
   type XPost,
+  type XProfile,
 } from "@/server/integrations/x/client";
 import { XApiError } from "@/server/integrations/x/errors";
 import { X_PRICE_MICROS, type XBillableOperation } from "@/server/integrations/x/pricing";
@@ -53,6 +55,24 @@ export function fetchOwnPosts(
           resources: { kind: "post", ids: page.quotedPostIds },
         },
       ],
+    };
+  });
+}
+
+/** Public profiles by @handle (≤ 100). Billed per returned user, once per UTC day. */
+export function lookupUsers(
+  workspaceId: string,
+  usernames: string[],
+): Promise<Result<XProfile[], XActionError>> {
+  return callX(workspaceId, "read", async ({ accessToken }) => {
+    const users = await getUsersByUsernames(accessToken, usernames);
+    return {
+      data: users,
+      usage: {
+        operation: "userRead",
+        units: users.length,
+        resources: { kind: "user", ids: users.map((user) => user.id) },
+      },
     };
   });
 }

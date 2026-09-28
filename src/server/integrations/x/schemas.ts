@@ -90,3 +90,25 @@ export const postByIdResponseSchema = z.object({
     .optional(),
   includes: includesSchema,
 });
+
+export const usersByResponseSchema = z.object({
+  data: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        username: z.string().min(1),
+        name: z.string(),
+        description: z.string().optional(),
+        profile_image_url: z.string().optional(),
+        verified: z.boolean().optional(),
+        public_metrics: z
+          .object({
+            followers_count: z.number().int(),
+            following_count: z.number().int(),
+            tweet_count: z.number().int(),
+          })
+          .optional(),
+      }),
+    )
+    .default([]),
+});
