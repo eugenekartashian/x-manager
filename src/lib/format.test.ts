@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatAge, formatCount, formatDateTime, formatUsd } from "./format";
+import {
+  formatAge,
+  formatCount,
+  formatDateTime,
+  formatSpreadsheetDateTime,
+  formatUsd,
+} from "./format";
 
 describe("formatUsd", () => {
   it.each([
@@ -41,5 +47,19 @@ describe("formatAge", () => {
     ["2026-10-01T12:05:00Z", "just now"], // clock skew: never negative
   ])("%s → %s", (iso, expected) => {
     expect(formatAge(new Date(iso), now)).toBe(expected);
+  });
+});
+
+describe("formatSpreadsheetDateTime", () => {
+  it("renders minutes in the workspace timezone without seconds or Z", () => {
+    const date = new Date("2026-09-28T16:42:03.317Z");
+    expect(formatSpreadsheetDateTime(date, "Europe/Madrid")).toBe("2026-09-28 18:42");
+    expect(formatSpreadsheetDateTime(date, "UTC")).toBe("2026-09-28 16:42");
+  });
+
+  it("uses 00 for midnight, not 24", () => {
+    expect(formatSpreadsheetDateTime(new Date("2026-09-28T22:05:00Z"), "Europe/Madrid")).toBe(
+      "2026-09-29 00:05",
+    );
   });
 });

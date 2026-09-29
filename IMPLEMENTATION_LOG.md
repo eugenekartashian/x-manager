@@ -279,3 +279,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 - D-023: a batch now reposts in list order (#1 first); the last post ends on top of the timeline. Planner, preview and copy updated; tests updated.
 - Targets CSV export: added `stats_as_of` (when followers/following/posts were looked up) and `added_at`.
+
+### 2026-09-29 — UI polish
+
+- Targets CSV: dates as `YYYY-MM-DD HH:MM` in the workspace timezone (Excel recognises them), no seconds/`Z`.
+- Mobile: header collapses to a burger menu below `sm` (links, email, sign out); current page highlighted (`aria-current`). Not checked on a real phone yet.
+- Dashboard content plan recorded in `docs/ROADMAP.md`.

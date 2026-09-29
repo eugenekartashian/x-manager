@@ -63,6 +63,17 @@ API replies to other accounts are blocked by X unless summoned, so the app **pre
 - [ ] **4.1** Own post metrics + follower count snapshots (source-labeled, "unavailable" ≠ 0).
 - [ ] **4.2** Descriptive comparison (e.g. repost slot times, EU vs US windows) with sample size, no causal claims.
 
+## Dashboard — what to show (plan recorded 2026-09-29, not started)
+
+Today the dashboard only shows the workspace and the X connection. Goal: one screen answering "is everything running, and what needs me?". Only data we already store — no extra X reads just to fill the dashboard.
+
+1. **Needs attention** (top, only when non-empty): X needs reconnect; Reposts in `UNKNOWN` (manual check) or `FAILED` in the last 24 h; budget ≥ 80 %; posts removed from the list because they were deleted.
+2. **Next Repost batch:** schedule on/off, next time (workspace timezone) and the posts in order; result of the last batch (n succeeded / skipped / failed).
+3. **Today:** replies opened n / daily limit, AI idea requests, API spend today and this month vs budget (estimate label).
+4. **Quick links:** open Targets (sorted by who you can reply to now — not in cooldown), Posts, History.
+5. **Later with M4:** simple trends of own reposted posts (views/likes over time, sample size shown, no causal claims).
+6. **Later with the commercial version:** admin view — users, their plan, spend and limits.
+
 ## M5 — Publishing from the app (later, only if needed — D-009)
 
 - [ ] **5.1** Compose & publish now, strict no-blind-retry UNKNOWN flow.

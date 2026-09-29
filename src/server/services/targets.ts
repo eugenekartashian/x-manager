@@ -1,5 +1,6 @@
 import "server-only";
 import type { TargetAccount } from "@/generated/prisma/client";
+import { formatSpreadsheetDateTime } from "@/lib/format";
 import { parseHandles } from "@/lib/handles";
 import { err, ok, type Result } from "@/lib/result";
 import { X_PRICE_MICROS } from "@/server/integrations/x/pricing";
@@ -95,26 +96,31 @@ export async function saveTargetNote(
 
 // ─── CSV export (opens in Excel) ─────────────────────────────────────────────
 
-const CSV_COLUMNS: [string, (target: TargetAccount) => string][] = [
-  ["username", (t) => `@${t.username}`],
-  ["name", (t) => t.name],
-  ["followers", (t) => (t.followersCount === null ? "" : String(t.followersCount))],
-  ["following", (t) => (t.followingCount === null ? "" : String(t.followingCount))],
-  ["posts", (t) => (t.postsCount === null ? "" : String(t.postsCount))],
-  ["bio", (t) => t.bio ?? ""],
-  ["note", (t) => t.note ?? ""],
-  ["last_replied_at", (t) => t.lastRepliedAt?.toISOString() ?? ""],
-  ["profile_url", (t) => `https://x.com/${t.username}`],
-  // Followers/following/posts are a snapshot from this lookup, not live numbers.
-  ["stats_as_of", (t) => t.lookedUpAt.toISOString()],
-  ["added_at", (t) => t.createdAt.toISOString()],
-];
+// Dates are in the workspace timezone, to the minute.
+function csvColumns(timeZone: string): [string, (target: TargetAccount) => string][] {
+  const date = (value: Date | null) => (value ? formatSpreadsheetDateTime(value, timeZone) : "");
+  return [
+    ["username", (t) => `@${t.username}`],
+    ["name", (t) => t.name],
+    ["followers", (t) => (t.followersCount === null ? "" : String(t.followersCount))],
+    ["following", (t) => (t.followingCount === null ? "" : String(t.followingCount))],
+    ["posts", (t) => (t.postsCount === null ? "" : String(t.postsCount))],
+    ["bio", (t) => t.bio ?? ""],
+    ["note", (t) => t.note ?? ""],
+    ["last_replied_at", (t) => date(t.lastRepliedAt)],
+    ["profile_url", (t) => `https://x.com/${t.username}`],
+    // Followers/following/posts are a snapshot from this lookup, not live numbers.
+    ["stats_as_of", (t) => date(t.lookedUpAt)],
+    ["added_at", (t) => date(t.createdAt)],
+  ];
+}
 
-export async function exportTargetsCsv(workspaceId: string): Promise<string> {
+export async function exportTargetsCsv(workspaceId: string, timeZone: string): Promise<string> {
   const rows = await targets.listTargets(workspaceId, "followers");
+  const columns = csvColumns(timeZone);
   const lines = [
-    CSV_COLUMNS.map(([header]) => header).join(","),
-    ...rows.map((row) => CSV_COLUMNS.map(([, value]) => csvCell(value(row))).join(",")),
+    columns.map(([header]) => header).join(","),
+    ...rows.map((row) => columns.map(([, value]) => csvCell(value(row))).join(",")),
   ];
   return lines.join("\r\n");
 }

@@ -187,7 +187,7 @@ describe("CSV export", () => {
     const target = (await listTargets(owner.workspaceId, "followers"))[0];
     await saveTargetNote(owner.workspaceId, target?.id ?? "", '=HYPERLINK("http://evil")');
 
-    const csv = await exportTargetsCsv(owner.workspaceId);
+    const csv = await exportTargetsCsv(owner.workspaceId, "Europe/Madrid");
 
     const [header, row] = csv.split("\r\n");
     expect(header).toBe(
@@ -196,6 +196,7 @@ describe("CSV export", () => {
     expect(row).toContain('"@alex__ink"');
     expect(row).toContain(`"'=HYPERLINK(""http://evil"")"`);
     expect(row).toContain('"https://x.com/alex__ink"');
+    expect(row).toMatch(/"\d{4}-\d{2}-\d{2} \d{2}:\d{2}","\d{4}-\d{2}-\d{2} \d{2}:\d{2}"$/);
   });
 
   it("neutralises formulas but keeps plain @handles", () => {
