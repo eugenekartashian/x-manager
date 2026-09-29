@@ -63,6 +63,18 @@ API replies to other accounts are blocked by X unless summoned, so the app **pre
 - [ ] **4.1** Own post metrics + follower count snapshots (source-labeled, "unavailable" ≠ 0).
 - [ ] **4.2** Descriptive comparison (e.g. repost slot times, EU vs US windows) with sample size, no causal claims.
 
+## Next steps after the real-use test (plan recorded 2026-09-29)
+
+Order is a proposal; each step starts only after the user approves its short plan.
+
+1. **Test feedback round** — fix whatever the 1–2 days of real use surface (bugs, UX friction, copy). Review spend in History vs the X Developer Console.
+2. **Dashboard v1** — see "Dashboard — what to show" below (needs-attention, next batch, today's numbers). No new X reads.
+3. **Multi-user foundation (admin + users)** — roles `admin` / `user`; the admin (main account) sees all workspaces, their spend and limits; users see only their own workspace and a simplified UI (hide cost internals, dev-only info). Per-user limits (list size, daily times, replies/day, AI ideas/day, monthly budget) stored per workspace and enforced server-side. Replace the email allowlist with admin-managed invites. Cross-workspace isolation audit (M6).
+4. **Plans & payments (decision first, then code)** — plan tiers derived from real unit costs (≈ $0.025 per Repost, AI ≈ $0.001 per ideas request); payment provider choice (e.g. Stripe), subscription → limits mapping, what happens on failed payment. Re-check X Developer Agreement/Policy for a multi-user commercial app before charging anyone.
+5. **Legal & hosting before paying users** — Terms, Privacy Policy, data deletion; move from Vercel Hobby / Supabase free to paid plans.
+6. **Metrics (M4)** — own post trends and descriptive comparisons, once there is enough data.
+7. **Backlog** — custom list name, multiple lists with their own schedules, target tags (e.g. category), paid discovery (3.5).
+
 ## Dashboard — what to show (plan recorded 2026-09-29, not started)
 
 Today the dashboard only shows the workspace and the X connection. Goal: one screen answering "is everything running, and what needs me?". Only data we already store — no extra X reads just to fill the dashboard.
