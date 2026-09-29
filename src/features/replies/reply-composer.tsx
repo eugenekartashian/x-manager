@@ -102,7 +102,7 @@ export function ReplyComposer({ targetId, xPostId, templates, disabledReason, ai
             title={
               aiEnabled
                 ? "3 reply ideas for this post (≈ $0.01)"
-                : "Add ANTHROPIC_API_KEY to enable"
+                : "Add the AI API key (OPENAI_API_KEY or ANTHROPIC_API_KEY) to enable"
             }
             className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-2 py-1 text-sm disabled:opacity-50"
           >
