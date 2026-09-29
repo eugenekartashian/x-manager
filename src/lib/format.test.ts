@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCount, formatDateTime, formatUsd } from "./format";
+import { formatAge, formatCount, formatDateTime, formatUsd } from "./format";
 
 describe("formatUsd", () => {
   it.each([
@@ -27,5 +27,19 @@ describe("formatCount", () => {
     expect(formatCount(null)).toBe("—");
     expect(formatCount(0)).toBe("0");
     expect(formatCount(12_300)).toBe("12K");
+  });
+});
+
+describe("formatAge", () => {
+  const now = new Date("2026-10-01T12:00:00Z");
+  it.each([
+    ["2026-10-01T11:59:30Z", "just now"],
+    ["2026-10-01T11:35:00Z", "25 min ago"],
+    ["2026-10-01T09:00:00Z", "3 h ago"],
+    ["2026-09-30T12:00:00Z", "1 d ago"],
+    ["2026-09-01T12:00:00Z", "30 d ago"],
+    ["2026-10-01T12:05:00Z", "just now"], // clock skew: never negative
+  ])("%s → %s", (iso, expected) => {
+    expect(formatAge(new Date(iso), now)).toBe(expected);
   });
 });

@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 import { LoadPostsForm } from "@/features/replies/load-posts-form";
 import { RecentReplies } from "@/features/replies/recent-replies";
 import { ReplyComposer } from "@/features/replies/reply-composer";
-import { formatCount, formatDateTime } from "@/lib/format";
+import { formatAge, formatCount, formatDateTime } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
+import { isFreshPost } from "@/server/domain/reply-rules";
 import { isAiEnabled } from "@/server/services/ai-replies";
 import { getSessionData, listRecentReplies } from "@/server/services/replies";
 
@@ -16,6 +17,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
   if (!data) notFound();
   const { target, posts, templates, block } = data;
   const tz = workspace.timezone;
+  const now = new Date();
 
   const blockMessage =
     block?.reason === "daily_limit"
@@ -89,7 +91,9 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
         </div>
         {posts.length === 0 ? (
           <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-6 text-center text-sm">
-            Load the latest posts to pick one to reply to.
+            {target.postsFetchedAt
+              ? `No new original posts from @${target.username} — lately they’ve only been replying or reposting. Try again later.`
+              : "Load the latest posts to pick one to reply to."}
           </p>
         ) : (
           <ul className="divide-foreground/10 border-foreground/10 flex flex-col divide-y rounded-lg border">
@@ -121,7 +125,21 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
                       {post.text}
                     </p>
                     <p className="text-foreground/60 mt-1 flex flex-wrap gap-x-3 text-xs">
-                      <span>{formatDateTime(post.postedAt, tz)}</span>
+                      {isFreshPost(post.postedAt, now) ? (
+                        <span className="rounded bg-green-600/10 px-1.5 font-medium text-green-700 dark:text-green-400">
+                          fresh
+                        </span>
+                      ) : (
+                        <span
+                          className="bg-foreground/10 rounded px-1.5 font-medium"
+                          title="Older than 24 h — few people will see a reply here."
+                        >
+                          old
+                        </span>
+                      )}
+                      <span title={formatDateTime(post.postedAt, tz)}>
+                        {formatAge(post.postedAt, now)}
+                      </span>
                       <span>♥ {formatCount(post.likeCount)}</span>
                       <span>💬 {formatCount(post.replyCount)}</span>
                       <span>👁 {formatCount(post.impressionCount)}</span>

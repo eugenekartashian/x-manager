@@ -18,6 +18,16 @@ export const TARGET_POSTS_SHOWN = 5;
 export const TARGET_POSTS_FETCHED = 10;
 export const TARGET_POSTS_MIN_INTERVAL_MS = 10 * 60 * 1000;
 
+/**
+ * Replies get seen while a post is still being shown to people. X publishes no post
+ * lifetime — 24 h is our heuristic, used only to label posts (they are never hidden).
+ */
+export const FRESH_POST_MAX_AGE_MS = 24 * 3_600_000;
+
+export function isFreshPost(postedAt: Date, now: Date): boolean {
+  return now.getTime() - postedAt.getTime() < FRESH_POST_MAX_AGE_MS;
+}
+
 export type ReplyBlock =
   { reason: "account_cooldown"; until: Date } | { reason: "daily_limit" } | null;
 

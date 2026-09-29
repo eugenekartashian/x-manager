@@ -64,6 +64,9 @@ export async function loadPostsAction(
   if (!id.success) return { status: "error", message: message("not_found") };
   const result = await loadTargetPosts(workspace.id, id.data);
   revalidatePath(`/targets/${id.data}`);
+  if (result.ok && result.data.loaded === 0) {
+    return { status: "success", message: "No new original posts — see below." };
+  }
   return result.ok
     ? { status: "success", message: `Loaded ${result.data.loaded} latest posts.` }
     : { status: "error", message: message(result.error) };

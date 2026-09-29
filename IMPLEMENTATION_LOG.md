@@ -13,7 +13,8 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 - Follow-up (D-022): provider seam `integrations/ai/{reply-ideas,claude,openai,index}.ts`; OpenAI Responses API (`gpt-5-mini`, strict JSON schema, low reasoning effort) is the default; Claude stays selectable. Snapshot-aware pricing (`gpt-5-mini-2025-08-07` → gpt-5-mini). 3 more tests (OpenAI request shape + cost, refusal, missing key).
 
-**Pending (user):** OpenAI key (Restricted: Responses = Write) in `.env.local` and `.env.production.local`, then `pnpm prod:env AI_PROVIDER OPENAI_API_KEY` + redeploy.
+- OpenAI key set locally and in Vercel (Sensitive), redeployed; smoke test OK; first live AI ideas cost 556 micros.
+- Reply session freshness (2026-09-29): posts show age ("3 h ago") and a `fresh` (< 24 h) / `old` label — heuristic, X publishes no post lifetime; old posts are labelled, not hidden. When X returns no original posts (account only replies/reposts lately), the page says so instead of "Loaded 0 posts". Deliberately no deeper pagination and no Reposts: replies only matter under the target's fresh own posts (a reply to a Repost lands under the original author).
 
 ---
 

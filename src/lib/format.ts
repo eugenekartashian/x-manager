@@ -18,3 +18,13 @@ export function formatCount(value: number | null): string {
   if (value === null) return "—";
   return new Intl.NumberFormat("en", { notation: "compact" }).format(value);
 }
+
+/** Compact age, e.g. "just now", "25 min ago", "3 h ago", "2 d ago". */
+export function formatAge(date: Date, now: Date): string {
+  const minutes = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 60_000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  return `${Math.floor(hours / 24)} d ago`;
+}

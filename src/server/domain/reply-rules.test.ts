@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_REPLY_LIMITS, replyBlock, replyIntentUrl } from "./reply-rules";
+import { DEFAULT_REPLY_LIMITS, isFreshPost, replyBlock, replyIntentUrl } from "./reply-rules";
 
 const limits = DEFAULT_REPLY_LIMITS;
 
@@ -51,5 +51,12 @@ describe("replyIntentUrl", () => {
     expect(url.origin + url.pathname).toBe("https://x.com/intent/post");
     expect(url.searchParams.get("in_reply_to")).toBe("123");
     expect(url.searchParams.get("text")).toBe("Hot 🔥 & bold #gym");
+  });
+});
+
+describe("isFreshPost", () => {
+  it("is fresh under 24 h and old from 24 h", () => {
+    expect(isFreshPost(new Date("2026-09-30T12:00:01Z"), NOW)).toBe(true);
+    expect(isFreshPost(new Date("2026-09-30T12:00:00Z"), NOW)).toBe(false);
   });
 });
