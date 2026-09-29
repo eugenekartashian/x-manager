@@ -1,10 +1,11 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import { env } from "@/lib/env";
 import { prisma } from "@/server/db";
 import { AI_DAILY_LIMIT, AI_OPERATION, suggestIdeasForPost } from "@/server/services/ai-replies";
 import { addTemplate, loadTargetPosts } from "@/server/services/replies";
 import { addTargets, listTargets } from "@/server/services/targets";
 import { connectXDirectly, createOwner, resetDatabase } from "../helpers/db";
-import { claudeReply, fakeX, postsReply, usersByReply } from "../helpers/fake-x";
+import { claudeReply, fakeX, openAiReply, postsReply, usersByReply } from "../helpers/fake-x";
 
 let restoreFetch: (() => void) | undefined;
 function withFakeX(...args: Parameters<typeof fakeX>) {
@@ -165,5 +166,76 @@ describe("AI reply ideas", () => {
       ok: false,
       error: "ai_unavailable",
     });
+  });
+});
+
+describe("AI reply ideas via OpenAI", () => {
+  const original = env.AI_PROVIDER;
+  beforeEach(() => {
+    env.AI_PROVIDER = "openai";
+  });
+  afterEach(() => {
+    env.AI_PROVIDER = original;
+  });
+
+  it("uses the Responses API with a strict JSON schema and the default gpt-5-mini", async () => {
+    const { workspaceId, targetId } = await setup();
+    const x = withFakeX({ openai: () => openAiReply({ ideas: ["So good 🔥", "Legend"] }) });
+
+    const result = await suggestIdeasForPost(workspaceId, { targetId, xPostId: "p1" }, T0);
+
+    expect(result).toEqual({ ok: true, data: ["So good 🔥", "Legend"] });
+    const call = x.calls.find((item) => item.url.hostname === "api.openai.com");
+    const body = call?.json as {
+      model: string;
+      instructions: string;
+      input: string;
+      reasoning: { effort: string };
+      text: { format: { type: string; strict: boolean; name: string } };
+      tools?: unknown;
+    };
+    expect(call?.url.pathname).toBe("/v1/responses");
+    expect(body.model).toBe("gpt-5-mini");
+    expect(body.reasoning.effort).toBe("low");
+    expect(body.text.format).toMatchObject({
+      type: "json_schema",
+      strict: true,
+      name: "reply_ideas",
+    });
+    expect(body.tools).toBeUndefined();
+    expect(body.instructions).toContain("untrusted data");
+    expect(body.input).toContain("<post>Post p1</post>");
+    // 500 in × $0.25/M + 300 out × $2/M = 125 + 600 micros (dated snapshot id priced as gpt-5-mini).
+    const usage = await prisma.externalUsage.findFirstOrThrow({
+      where: { workspaceId, operation: AI_OPERATION },
+    });
+    expect(usage.costMicros).toBe(725n);
+  });
+
+  it("reports an OpenAI refusal without recording spend", async () => {
+    const { workspaceId, targetId } = await setup();
+    withFakeX({ openai: () => openAiReply(null, { refusal: true }) });
+
+    expect(await suggestIdeasForPost(workspaceId, { targetId, xPostId: "p1" }, T0)).toEqual({
+      ok: false,
+      error: "ai_declined",
+    });
+    expect(
+      await prisma.externalUsage.count({ where: { workspaceId, operation: AI_OPERATION } }),
+    ).toBe(0);
+  });
+
+  it("is off when the selected provider has no key", async () => {
+    const { workspaceId, targetId } = await setup();
+    const key = env.OPENAI_API_KEY;
+    env.OPENAI_API_KEY = undefined;
+    try {
+      expect(await suggestIdeasForPost(workspaceId, { targetId, xPostId: "p1" }, T0)).toEqual({
+        ok: false,
+        error: "ai_not_configured",
+      });
+    } finally {
+      env.OPENAI_API_KEY = key;
+    }
   });
 });

@@ -147,3 +147,7 @@ X pricing: "All resources are deduplicated within a 24-hour UTC day window". Rea
 - Reply limits are user settings: cooldown per account 6/12/24 h, 10–50 replies/day (defaults 24 h / 15). X publishes no exact thresholds; account-level limits for non-Premium accounts are reported but unverified.
 - Target posts: fetch 10, keep the 5 latest originals (replies/Reposts are filtered out).
 - Automated replies (with or without AI) stay out of scope: X blocks unsummoned API replies (D-008) and its automation rules prohibit automated unsolicited replies.
+
+## D-022 · 2026-09-29 · Accepted — AI provider: OpenAI by default, Claude kept as an option
+
+User preference (existing OpenAI credit). The AI seam supports both providers via `AI_PROVIDER` (`openai` default | `anthropic`) and `AI_MODEL` (empty = provider default: `gpt-5-mini` via the Responses API with strict JSON-schema output and low reasoning effort; `claude-opus-5` via the Messages API with `fallbacks: "default"`). Shared prompt, untrusted-data delimiting, Zod validation, no tools, cost accounting and limits are provider-independent. OpenAI key scope: Restricted, Responses = Write only. Prices: developers.openai.com/api/docs/pricing (fetched 2026-09-29): gpt-5-mini $0.25 / $2 per 1M tokens.

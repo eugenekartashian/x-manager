@@ -2,6 +2,12 @@ import "server-only";
 import { z } from "zod";
 import { parseAllowlist } from "./allowlist";
 
+/** Empty strings in .env files mean "not set". */
+const optionalString = z
+  .string()
+  .optional()
+  .transform((value) => value || undefined);
+
 // Server-side environment, validated once on first import.
 // Extend this schema in the task that starts using a variable (see .env.example).
 const serverEnvSchema = z.object({
@@ -28,12 +34,11 @@ const serverEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
-  // AI reply suggestions (optional — the feature is off without a key).
-  ANTHROPIC_API_KEY: z
-    .string()
-    .optional()
-    .transform((value) => value || undefined),
-  AI_MODEL: z.string().min(1).default("claude-opus-5"),
+  // AI reply ideas (optional — off without the selected provider's key). D-021.
+  AI_PROVIDER: z.enum(["anthropic", "openai"]).default("openai"),
+  AI_MODEL: optionalString,
+  ANTHROPIC_API_KEY: optionalString,
+  OPENAI_API_KEY: optionalString,
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

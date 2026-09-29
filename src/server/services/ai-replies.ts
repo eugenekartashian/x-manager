@@ -1,7 +1,7 @@
 import "server-only";
 import { err, ok, type Result } from "@/lib/result";
 import { aiCostMicros } from "@/server/integrations/ai/pricing";
-import { aiConfigured, suggestReplyIdeas } from "@/server/integrations/ai/claude";
+import { aiConfigured, suggestReplyIdeas } from "@/server/integrations/ai";
 import * as replies from "@/server/repositories/replies";
 import { countUsageSince, recordUsage } from "@/server/repositories/usage";
 import { canSpend } from "@/server/services/budget";

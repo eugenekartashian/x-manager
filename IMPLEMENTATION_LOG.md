@@ -11,7 +11,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Env: `ANTHROPIC_API_KEY` (optional, empty = off), `AI_MODEL`; `pnpm prod:env` pushes optional vars only when set. Decision D-021.
 - `pnpm check` ✅ — 218 tests (new: 6 AI incl. request shape/headers, no tools, cost, invalid output, refusal, isolation, budget + daily cap, API error; reply limits settings; 10→5 posts). `pnpm build` ✅. Production migrated before deploy.
 
-**Pending (user):** add the Anthropic API key to `.env.local` and `.env.production.local`, then `pnpm prod:env ANTHROPIC_API_KEY AI_MODEL` + redeploy.
+- Follow-up (D-022): provider seam `integrations/ai/{reply-ideas,claude,openai,index}.ts`; OpenAI Responses API (`gpt-5-mini`, strict JSON schema, low reasoning effort) is the default; Claude stays selectable. Snapshot-aware pricing (`gpt-5-mini-2025-08-07` → gpt-5-mini). 3 more tests (OpenAI request shape + cost, refusal, missing key).
+
+**Pending (user):** OpenAI key (Restricted: Responses = Write) in `.env.local` and `.env.production.local`, then `pnpm prod:env AI_PROVIDER OPENAI_API_KEY` + redeploy.
 
 ---
 

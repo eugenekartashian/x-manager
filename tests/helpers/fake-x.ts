@@ -19,6 +19,8 @@ type Handlers = {
   usersBy?: (usernames: string[]) => Reply;
   /** Fake Claude Messages API (api.anthropic.com/v1/messages). */
   anthropic?: (body: unknown) => Reply;
+  /** Fake OpenAI Responses API (api.openai.com/v1/responses). */
+  openai?: (body: unknown) => Reply;
   repost?: (postId: string) => Reply;
   undoRepost?: (postId: string) => Reply;
 };
@@ -57,6 +59,8 @@ function route(
   const path = url.pathname;
   if (url.hostname === "api.anthropic.com")
     return path === "/v1/messages" ? h.anthropic?.(json) : undefined;
+  if (url.hostname === "api.openai.com")
+    return path === "/v1/responses" ? h.openai?.(json) : undefined;
   if (path === "/2/oauth2/token") return h.token?.(body ?? new URLSearchParams());
   if (path === "/2/oauth2/revoke") return h.revoke?.();
   if (path === "/2/users/me") return h.me?.();
@@ -186,5 +190,29 @@ export const claudeReply = (
     stop_reason: options.stopReason ?? "end_turn",
     stop_sequence: null,
     usage: { input_tokens: options.input ?? 400, output_tokens: options.output ?? 120 },
+  },
+});
+
+/** An OpenAI Responses API reply carrying the given JSON text (or a refusal). */
+export const openAiReply = (payload: unknown, options: { refusal?: boolean } = {}) => ({
+  status: 200,
+  body: {
+    id: "resp_test",
+    object: "response",
+    created_at: 1_790_000_000,
+    status: "completed",
+    model: "gpt-5-mini-2025-08-07",
+    output: [
+      {
+        type: "message",
+        id: "msg_test",
+        role: "assistant",
+        status: "completed",
+        content: options.refusal
+          ? [{ type: "refusal", refusal: "I can't help with that." }]
+          : [{ type: "output_text", text: JSON.stringify(payload), annotations: [] }],
+      },
+    ],
+    usage: { input_tokens: 500, output_tokens: 300, total_tokens: 800 },
   },
 });

@@ -40,8 +40,9 @@ export default defineConfig({
       TOKEN_ENCRYPTION_CURRENT: "v1",
       CRON_SECRET: "test-cron-secret-test-cron-secret-0000",
       X_WRITES_ENABLED: "true",
+      AI_PROVIDER: "anthropic",
       ANTHROPIC_API_KEY: "test-anthropic-key",
-      AI_MODEL: "claude-opus-5",
+      OPENAI_API_KEY: "test-openai-key",
     },
   },
 });
