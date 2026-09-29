@@ -65,7 +65,7 @@ Sources: [@XDevelopers announcement](https://x.com/XDevelopers/status/2026084506
 
 ## D-009 · 2026-09-28 · Proposed — Scheduled original posts deprioritized
 
-The user schedules their own posts manually; X's composer has built-in scheduling (availability per account tier `UNVERIFIED`). In-app publishing/scheduling (old M3) moves to "later, if needed". Reposts are the core feature.
+The user schedules their own posts manually; X's composer has built-in scheduling (verified on the user's account in the x.com web composer on 2026-09-29: date, time, timezone, "Scheduled posts" list). In-app publishing/scheduling (old M3) moves to "later, if needed". Reposts are the core feature.
 
 ## D-010 · 2026-09-28 · Accepted — App login library: Better Auth (supersedes Auth.js in D-006)
 
