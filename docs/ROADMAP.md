@@ -118,6 +118,20 @@ Goal: sell scheduled Reposts as a service to creators who don't want to do it by
 - **Legal & hosting:** Terms of Service, Privacy Policy, data retention/deletion, GDPR (EU users); move off Vercel Hobby (noncommercial) and Supabase free tier to paid plans.
 - **Marketing constraints:** no "get more followers" promises (X rules, PRD §4).
 
+### Pricing idea: subscription + credits (to think about later, recorded 2026-09-29)
+
+Not decided — revisit after the friend beta shows real usage.
+
+Unit costs (X API, estimates): Repost (undo + Repost) ≈ $0.025; 5 posts × 2 times/day ≈ $7.50/mo; × 4 times/day ≈ $15/mo; one Target load (10 posts) ≈ $0.05, 10 loads/day ≈ $15/mo; AI ideas ≈ $0.001/request (negligible). An active user costs ~$15–30/mo in X API alone, before VAT (21 % in Spain) and payment fees (3–5 %). Rule of thumb: price ≥ 2.5–3× X cost; below ~€15/mo it does not cover costs.
+
+Options:
+
+1. **Subscription with included volume + credit top-ups** (preferred idea): e.g. Basic ~€19 (Reposts only: 5 posts, 2 times/day), Pro ~€39 (3–4 times/day, Targets ~5 loads/day, AI ideas), credit packs (e.g. €10) for extra Reposts/loads. Credits map naturally onto `ExternalUsage` (already tracked per action).
+2. **Split by features only** (Basic = Reposts, Pro = + Targets/AI) — simplest to explain, but heavy users can exceed their payment.
+3. **Credits only** (pay-as-you-go) — fair, but unpredictable revenue and unusual for customers.
+
+Market check (from memory, unverified): similar X tools (Hypefury, Typefully, Tweet Hunter) ≈ $12–49/mo, usually without per-action X API costs.
+
 ### Scaling & hosting for many users (assessment 2026-09-29)
 
 Servers are not the bottleneck; these are:
