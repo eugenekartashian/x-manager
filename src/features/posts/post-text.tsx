@@ -7,7 +7,7 @@ export function PostText({ post, timeZone }: { post: OwnPost; timeZone: string }
     <div className="flex min-w-0 flex-1 gap-3">
       <MediaPreview post={post} />
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-sm break-words whitespace-pre-line">
+        <p className="line-clamp-3 text-sm break-words whitespace-pre-line">
           {post.text || <span className="text-foreground/50 italic">(media only)</span>}
         </p>
         {post.isQuote && post.quotedText && (

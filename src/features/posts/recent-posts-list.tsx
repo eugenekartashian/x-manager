@@ -18,12 +18,9 @@ export function RecentPostsList({ posts, timeZone, listFull }: Props) {
   return (
     <ul className="divide-foreground/10 border-foreground/10 flex flex-col divide-y rounded-lg border">
       {posts.map((post) => (
-        <li key={post.id} className="flex flex-wrap items-start gap-3 p-3 sm:flex-nowrap">
+        <li key={post.id} className="flex flex-col gap-3 p-3">
           <PostText post={post} timeZone={timeZone} />
-          <form
-            action={toggleRotationAction}
-            className="flex shrink-0 items-center gap-2 self-center"
-          >
+          <form action={toggleRotationAction} className="flex items-center justify-between gap-3">
             <input type="hidden" name="postId" value={post.id} />
             <input type="hidden" name="inRotation" value={post.inRotation ? "false" : "true"} />
             {post.inRotation ? (
@@ -31,16 +28,20 @@ export function RecentPostsList({ posts, timeZone, listFull }: Props) {
                 <span className="text-xs font-medium text-green-700 dark:text-green-400">
                   ✓ In repost list
                 </span>
-                <SubmitButton variant="secondary" pendingLabel="Removing…">
+                <SubmitButton variant="ghost" pendingLabel="Removing…">
                   Remove
                 </SubmitButton>
               </>
             ) : listFull ? (
-              <span className="text-foreground/60 text-xs">List full ({MAX_LIST_SIZE})</span>
+              <span className="text-foreground/60 ml-auto text-xs">
+                List full ({MAX_LIST_SIZE})
+              </span>
             ) : (
-              <SubmitButton variant="secondary" pendingLabel="Adding…">
-                + Add to repost list
-              </SubmitButton>
+              <span className="ml-auto">
+                <SubmitButton variant="secondary" pendingLabel="Adding…">
+                  + Add to repost list
+                </SubmitButton>
+              </span>
             )}
           </form>
         </li>
