@@ -18,7 +18,7 @@ export function AppNav({ items, email }: Props) {
       <div className="flex items-center justify-between gap-4">
         <nav aria-label="Main" className="flex items-center gap-x-4">
           <span className="font-semibold">X Manager</span>
-          <ul className="hidden items-center gap-x-4 md:flex">
+          <ul className="hidden items-center gap-x-4 min-[769px]:flex">
             {items.map((item) => (
               <li key={item.href}>
                 <Link
@@ -32,7 +32,7 @@ export function AppNav({ items, email }: Props) {
             ))}
           </ul>
         </nav>
-        <div className="hidden min-w-0 items-center gap-3 md:flex">
+        <div className="hidden min-w-0 items-center gap-3 min-[769px]:flex">
           <span className="text-foreground/70 truncate text-sm">{email}</span>
           <SignOutButton />
         </div>
@@ -42,7 +42,7 @@ export function AppNav({ items, email }: Props) {
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? "Close menu" : "Open menu"}
-          className="hover:bg-foreground/5 -mr-2 rounded-md p-2 focus-visible:ring-2 focus-visible:outline-none md:hidden"
+          className="hover:bg-foreground/5 -mr-2 rounded-md p-2 focus-visible:ring-2 focus-visible:outline-none min-[769px]:hidden"
         >
           <svg
             viewBox="0 0 24 24"
@@ -62,7 +62,7 @@ export function AppNav({ items, email }: Props) {
       </div>
 
       {open && (
-        <div id="mobile-menu" className="mt-3 flex flex-col gap-1 md:hidden">
+        <div id="mobile-menu" className="mt-3 flex flex-col gap-1 min-[769px]:hidden">
           <ul className="flex flex-col">
             {items.map((item) => (
               <li key={item.href}>

@@ -283,7 +283,7 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 ### 2026-09-29 — UI polish
 
 - Targets CSV: dates as `YYYY-MM-DD HH:MM` in the workspace timezone (Excel recognises them), no seconds/`Z`.
-- Mobile: header collapses to a burger menu below `md` (768 px) (links, email, sign out); current page highlighted (`aria-current`). Not checked on a real phone yet.
+- Mobile: header collapses to a burger menu at ≤ 768 px (inline from 769 px) (links, email, sign out); current page highlighted (`aria-current`). Not checked on a real phone yet.
 - Dashboard content plan recorded in `docs/ROADMAP.md`.
 
 - Posts page (mobile): list items now stack — post content full width, footer row with position badge, status and actions (↑/↓ as 40 px icon buttons, disabled at the ends; Remove as a quiet text button). Recent posts use the same footer.
