@@ -118,6 +118,25 @@ Goal: sell scheduled Reposts as a service to creators who don't want to do it by
 - **Legal & hosting:** Terms of Service, Privacy Policy, data retention/deletion, GDPR (EU users); move off Vercel Hobby (noncommercial) and Supabase free tier to paid plans.
 - **Marketing constraints:** no "get more followers" promises (X rules, PRD §4).
 
+### Scaling & hosting for many users (assessment 2026-09-29)
+
+Servers are not the bottleneck; these are:
+
+- **Repost job throughput.** Today one cron call (every 5 min) processes all workspaces sequentially within a 45 s budget. Example: 100 users × 5 posts × 1.5 s pause ≈ 12 min — does not fit. Before multi-user: fan out per workspace (e.g. the cron call enqueues/dispatches one invocation per due workspace) so batches run in parallel. Do this as part of "Multi-user foundation".
+- **X API cost** is paid by our developer account and grows linearly with users → plan limits and per-workspace budgets are mandatory (budget guard exists).
+- **X rate limits** are per user token (e.g. 50 Reposts / 15 min) — enough for this use case.
+
+How to verify before opening up:
+
+1. Separate staging environment (copy of prod config, own DB, `X_WRITES_ENABLED=false`).
+2. Load test of the job processor against fake X (e.g. 200 workspaces), as in the integration tests.
+3. Error monitoring (e.g. Sentry) + uptime check with alerts to the admin.
+4. Gradual rollout: 3–5 friends → ~20 users → public.
+
+Hosting decision: **stay on Vercel + Supabase.** Hundreds of users are a small load for them; AWS/GCP would add ops work (servers, networking, DB, backups, security) that only pays off at a much larger scale. Mandatory for commercial use: paid plans (Vercel Hobby is noncommercial; approx. Vercel Pro ~$20/mo, Supabase Pro ~$25/mo — re-check prices before switching). Low lock-in: standard Next.js + Postgres (only pg_cron/Vault setup is Supabase-specific), so migrating later is possible.
+
+Payments & taxes: **the user will research the provider and tax setup (Spain) independently.** Open question to answer first: whether the chosen payment provider accepts a SaaS tool for adult-content creators.
+
 ## Deferred (not in MVP)
 
 Payments, plans, teams/roles, multiple X accounts per workspace, auto-replies, network-wide search, auto-follow/likes, attribution modeling, NestJS, Redis/BullMQ. Commercial launch requires re-checking X rules and moving off Vercel Hobby.
