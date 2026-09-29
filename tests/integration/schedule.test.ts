@@ -164,9 +164,9 @@ describe("preview and estimate", () => {
       ]);
     }
     expect(Object.fromEntries(byTime)).toEqual({
-      "08:00": ["2", "3", "1"], // bottom → top, so "1" (first in list) ends on top
-      "11:00": ["2", "3", "1"], // 3 h later ≥ 2 h interval
-      "14:00": ["2", "3", "1"],
+      "08:00": ["1", "3", "2"], // list order, first to last
+      "11:00": ["1", "3", "2"], // 3 h later ≥ 2 h interval
+      "14:00": ["1", "3", "2"],
     });
     // 3 times × 3 posts = 9, no daily cap (D-018).
     expect(data.estimate).toEqual({

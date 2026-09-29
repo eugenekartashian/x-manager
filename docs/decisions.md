@@ -151,3 +151,7 @@ X pricing: "All resources are deduplicated within a 24-hour UTC day window". Rea
 ## D-022 · 2026-09-29 · Accepted — AI provider: OpenAI by default, Claude kept as an option
 
 User preference (existing OpenAI credit). The AI seam supports both providers via `AI_PROVIDER` (`openai` default | `anthropic`) and `AI_MODEL` (empty = provider default: `gpt-5-mini` via the Responses API with strict JSON-schema output and low reasoning effort; `claude-opus-5` via the Messages API with `fallbacks: "default"`). Shared prompt, untrusted-data delimiting, Zod validation, no tools, cost accounting and limits are provider-independent. OpenAI key scope: Restricted, Responses = Write only. Prices: developers.openai.com/api/docs/pricing (fetched 2026-09-29): gpt-5-mini $0.25 / $2 per 1M tokens.
+
+## D-023 · 2026-09-29 · Accepted — Repost batch runs in list order (supersedes the order part of D-017)
+
+User preference: #1 in the repost list is reposted first, then #2, … Because X timelines show the newest item first, the LAST post of the list ends up on top of the profile. UI copy on Posts and Schedule says so. Dedupe keys (`slotId:localDate:postId`) do not depend on order, so switching mid-window cannot duplicate a Repost.

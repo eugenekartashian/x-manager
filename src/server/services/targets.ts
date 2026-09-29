@@ -105,6 +105,9 @@ const CSV_COLUMNS: [string, (target: TargetAccount) => string][] = [
   ["note", (t) => t.note ?? ""],
   ["last_replied_at", (t) => t.lastRepliedAt?.toISOString() ?? ""],
   ["profile_url", (t) => `https://x.com/${t.username}`],
+  // Followers/following/posts are a snapshot from this lookup, not live numbers.
+  ["stats_as_of", (t) => t.lookedUpAt.toISOString()],
+  ["added_at", (t) => t.createdAt.toISOString()],
 ];
 
 export async function exportTargetsCsv(workspaceId: string): Promise<string> {

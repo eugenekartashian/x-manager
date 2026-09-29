@@ -32,13 +32,13 @@ const summary = (plan: ReturnType<typeof planReposts>) =>
   );
 
 describe("planReposts — whole list at every time", () => {
-  it("reposts every post in the list, bottom to top, so the first ends on top", () => {
+  it("reposts every post in list order, first to last", () => {
     const plan = planReposts(input({ slots: [slot("s", "10:00")] }));
-    expect(summary(plan)).toEqual(["10:00 C", "10:00 B", "10:00 A"]);
+    expect(summary(plan)).toEqual(["10:00 A", "10:00 B", "10:00 C"]);
     expect(plan.map((item) => item.key)).toEqual([
-      "s:2026-10-01:C",
-      "s:2026-10-01:B",
       "s:2026-10-01:A",
+      "s:2026-10-01:B",
+      "s:2026-10-01:C",
     ]);
     expect(new Set(plan.map((item) => item.batchKey))).toEqual(new Set(["s:2026-10-01"]));
   });
@@ -54,7 +54,7 @@ describe("planReposts — whole list at every time", () => {
       }),
     );
     // 10:00 Madrid = 08:00Z, 10:00 NY = 14:00Z (6 h apart ≥ 4 h interval).
-    expect(summary(plan)).toEqual(["08:00 B", "08:00 A", "14:00 B", "14:00 A"]);
+    expect(summary(plan)).toEqual(["08:00 A", "08:00 B", "14:00 A", "14:00 B"]);
   });
 
   it("returns nothing when the schedule is off", () => {
@@ -90,7 +90,7 @@ describe("planReposts — whole list at every time", () => {
         slots: [slot("s", "10:00")],
       }),
     );
-    expect(summary(plan)).toEqual(["10:00 B", "10:00 A (interval)"]);
+    expect(summary(plan)).toEqual(["10:00 A (interval)", "10:00 B"]);
   });
 
   it("skips the whole second batch when times are closer than the interval", () => {

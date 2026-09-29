@@ -10,8 +10,8 @@ type Props = { items: Item[]; workspaceTimezone: string };
 function batches(items: Item[]): Item[][] {
   const groups = new Map<string, Item[]>();
   for (const item of items) groups.set(item.batchKey, [...(groups.get(item.batchKey) ?? []), item]);
-  // Items run bottom → top; show them in list order (first = ends on top of the timeline).
-  return [...groups.values()].map((group) => [...group].reverse());
+  // Items run in list order (first = reposted first).
+  return [...groups.values()];
 }
 
 export function PreviewList({ items, workspaceTimezone }: Props) {

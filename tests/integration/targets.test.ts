@@ -191,7 +191,7 @@ describe("CSV export", () => {
 
     const [header, row] = csv.split("\r\n");
     expect(header).toBe(
-      "username,name,followers,following,posts,bio,note,last_replied_at,profile_url",
+      "username,name,followers,following,posts,bio,note,last_replied_at,profile_url,stats_as_of,added_at",
     );
     expect(row).toContain('"@alex__ink"');
     expect(row).toContain(`"'=HYPERLINK(""http://evil"")"`);

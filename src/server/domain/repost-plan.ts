@@ -3,8 +3,8 @@
 // and the job processor, so the preview shows exactly what will run.
 //
 // Model (D-017, D-018): at every daily time (max 8 per day), EVERY post in the repost list
-// is reposted. The batch runs bottom → top, so the first post in the list ends up on top
-// of the timeline. The only per-post limit is the minimum interval between its Reposts.
+// is reposted. The batch runs in list order (D-023): the first post is reposted first, so
+// the last one ends up on top of the timeline. The only per-post limit is the minimum interval between its Reposts.
 
 import { addDays, localDateOf, zonedToUtc, type LocalDate, type LocalTime } from "@/lib/zoned-time";
 
@@ -17,7 +17,7 @@ export type PlanPost = { id: string; lastRepostedAt: Date | null };
 export type PlanInput = {
   schedule: PlanSchedule;
   slots: PlanSlot[];
-  /** Repost list in display order (first = should end on top of the timeline). */
+  /** Repost list in display order (first = reposted first). */
   list: PlanPost[];
   /** A post is reposted at most once per this interval (our anti-spam rule, D-018). */
   limits: { minIntervalMs: number };
@@ -83,8 +83,7 @@ export function occurrences(input: Pick<PlanInput, "schedule" | "slots" | "from"
 
 export function planReposts(input: PlanInput): PlannedRepost[] {
   const lastReposted = new Map(input.list.map((post) => [post.id, post.lastRepostedAt]));
-  // Bottom → top, so the first post in the list is reposted last and shows on top.
-  const batchOrder = [...input.list].reverse();
+  const batchOrder = input.list;
   const planned: PlannedRepost[] = [];
 
   for (const { slot, localDate, runAt } of occurrences(input)) {

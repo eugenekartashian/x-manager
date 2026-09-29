@@ -274,3 +274,8 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 **Costs:** $0 (no external calls).
 
 **Next:** M1.2 — Auth.js + Google login with email allowlist, `Workspace`, `requireWorkspace()`, first migration, seed, cross-workspace tests. Needs Google OAuth client credentials from the user.
+
+### 2026-09-29 — Repost order + target export dates
+
+- D-023: a batch now reposts in list order (#1 first); the last post ends on top of the timeline. Planner, preview and copy updated; tests updated.
+- Targets CSV export: added `stats_as_of` (when followers/following/posts were looked up) and `added_at`.

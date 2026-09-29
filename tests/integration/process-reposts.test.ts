@@ -86,7 +86,7 @@ async function runsOf(workspaceId: string) {
 }
 
 describe("processDueReposts — whole list at every time", () => {
-  it("reposts every listed post, bottom to top, each with undo then Repost", async () => {
+  it("reposts every listed post in list order, each with undo then Repost", async () => {
     const { workspaceId, ids } = await setup({ list: ["A", "B", "C"] });
     const x = withFakeX(okX());
 
@@ -100,18 +100,18 @@ describe("processDueReposts — whole list at every time", () => {
       unknown: 0,
     });
     expect(x.calls.map((call) => `${call.method} ${call.url.pathname}`)).toEqual([
-      "DELETE /2/users/x-a/retweets/a-C",
+      "DELETE /2/users/x-a/retweets/a-A",
       "POST /2/users/x-a/retweets",
       "DELETE /2/users/x-a/retweets/a-B",
       "POST /2/users/x-a/retweets",
-      "DELETE /2/users/x-a/retweets/a-A",
+      "DELETE /2/users/x-a/retweets/a-C",
       "POST /2/users/x-a/retweets",
     ]);
     const runs = await runsOf(workspaceId);
     expect(runs.map((run) => [run.xPostId, run.status])).toEqual([
-      ["a-C", "SUCCEEDED"],
+      ["a-A", "SUCCEEDED"], // first in the list is reposted first
       ["a-B", "SUCCEEDED"],
-      ["a-A", "SUCCEEDED"], // first in the list is reposted last → on top of the timeline
+      ["a-C", "SUCCEEDED"],
     ]);
     expect(runs[0]?.attempts.map((item) => [item.step, item.outcome])).toEqual([
       ["UNDO", "undone"],
@@ -134,10 +134,10 @@ describe("processDueReposts — whole list at every time", () => {
     await processDueReposts(minutes(AT_10, 5 * 60 + 1), LIVE);
 
     expect((await runsOf(workspaceId)).map((run) => run.xPostId)).toEqual([
-      "a-B",
       "a-A",
       "a-B",
       "a-A",
+      "a-B",
     ]);
   });
 
@@ -164,7 +164,7 @@ describe("processDueReposts — whole list at every time", () => {
     await processDueReposts(minutes(AT_10, 6), LIVE);
 
     expect(afterFirst).toBeLessThan(3);
-    expect((await runsOf(workspaceId)).map((run) => run.xPostId)).toEqual(["a-C", "a-B", "a-A"]);
+    expect((await runsOf(workspaceId)).map((run) => run.xPostId)).toEqual(["a-A", "a-B", "a-C"]);
   });
 
   it("does nothing before the time or after the grace window", async () => {
@@ -336,7 +336,7 @@ describe("processDueReposts — ambiguous and failed writes", () => {
     const { workspaceId, ids } = await setup({ list: ["A", "B"] });
     withFakeX({
       undoRepost: (postId) =>
-        postId === "a-B" ? { status: 404, body: { title: "Not Found" } } : repostReply(false),
+        postId === "a-A" ? { status: 404, body: { title: "Not Found" } } : repostReply(false),
       repost: () => repostReply(true),
     });
 
@@ -345,10 +345,10 @@ describe("processDueReposts — ambiguous and failed writes", () => {
     expect(
       (await runsOf(workspaceId)).map((run) => [run.xPostId, run.status, run.errorCode]),
     ).toEqual([
-      ["a-B", "FAILED", "not_found"],
-      ["a-A", "SUCCEEDED", null],
+      ["a-A", "FAILED", "not_found"],
+      ["a-B", "SUCCEEDED", null],
     ]);
-    expect((await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.B } })).inRotation).toBe(
+    expect((await prisma.ownPost.findUniqueOrThrow({ where: { id: ids.A } })).inRotation).toBe(
       false,
     );
   });

@@ -75,8 +75,8 @@ export default async function SchedulePage() {
             <Link href="/posts" className="underline underline-offset-2">
               repost list
             </Link>{" "}
-            ({data.listSize} posts) are reposted — the first post in the list ends up on top of your
-            timeline.
+            ({data.listSize} posts) are reposted in list order, first to last — the last one ends up
+            on top of your timeline.
           </p>
         </div>
         <SlotList slots={data.slots} workspaceTimezone={tz} now={now} listSize={data.listSize} />
