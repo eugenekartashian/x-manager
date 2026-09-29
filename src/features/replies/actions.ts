@@ -5,11 +5,13 @@ import { z } from "zod";
 import type { ActionState } from "@/features/posts/actions";
 import { errorMessage } from "@/features/posts/messages";
 import { requireWorkspace } from "@/server/auth/session";
+import { suggestIdeasForPost } from "@/server/services/ai-replies";
 import {
   addTemplate,
   loadTargetPosts,
   openReply,
   removeTemplate,
+  saveReplyLimits,
   undoReply,
 } from "@/server/services/replies";
 
@@ -93,4 +95,46 @@ export async function undoReplyAction(formData: FormData): Promise<void> {
   if (!id.success) return;
   await undoReply(workspace.id, id.data);
   revalidatePath("/targets", "layout");
+}
+
+const limitsSchema = z.object({
+  cooldownHours: z.coerce.number().int(),
+  perDay: z.coerce.number().int(),
+});
+
+export async function saveReplyLimitsAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { workspace } = await requireWorkspace();
+  const input = limitsSchema.safeParse(Object.fromEntries(formData));
+  const result = input.success ? await saveReplyLimits(workspace.id, input.data) : null;
+  revalidatePath("/targets", "layout");
+  return result?.ok
+    ? { status: "success", message: "Reply limits saved." }
+    : { status: "error", message: "Pick values from the lists." };
+}
+
+const aiSchema = z.object({ targetId: z.uuid(), xPostId: z.string().regex(/^\d{1,19}$/) });
+
+const AI_MESSAGES: Record<string, string> = {
+  ai_not_configured: "AI is not set up yet (no API key).",
+  not_found: "This post is no longer available — reload the posts.",
+  budget_exceeded: "Monthly API budget reached — AI ideas are paused.",
+  ai_daily_limit: "Daily AI limit reached (100). Try again tomorrow.",
+  ai_declined: "The AI declined this post — write your own reply or use a template.",
+  ai_unavailable: "AI did not respond. Please try again.",
+};
+
+export type AiIdeasResult = { ok: true; ideas: string[] } | { ok: false; message: string };
+
+export async function aiIdeasAction(input: z.input<typeof aiSchema>): Promise<AiIdeasResult> {
+  const { workspace } = await requireWorkspace();
+  const parsed = aiSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: AI_MESSAGES.not_found ?? "" };
+  const result = await suggestIdeasForPost(workspace.id, parsed.data);
+  revalidatePath("/", "layout"); // spend banner / history
+  return result.ok
+    ? { ok: true, ideas: result.data }
+    : { ok: false, message: AI_MESSAGES[result.error] ?? "AI did not respond." };
 }

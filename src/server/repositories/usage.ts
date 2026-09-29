@@ -86,3 +86,13 @@ export async function monthSpendByOperation(
     }))
     .sort((a, b) => Number(b.costMicros - a.costMicros));
 }
+
+export function countUsageSince(
+  workspaceId: string,
+  operation: string,
+  since: Date,
+): Promise<number> {
+  return prisma.externalUsage.count({
+    where: { workspaceId, operation, occurredAt: { gte: since } },
+  });
+}

@@ -28,6 +28,12 @@ const serverEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  // AI reply suggestions (optional — the feature is off without a key).
+  ANTHROPIC_API_KEY: z
+    .string()
+    .optional()
+    .transform((value) => value || undefined),
+  AI_MODEL: z.string().min(1).default("claude-opus-5"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

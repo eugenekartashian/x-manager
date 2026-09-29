@@ -6,6 +6,7 @@ import {
   loadTargetPosts,
   openReply,
   removeTemplate,
+  saveReplyLimits,
   undoReply,
 } from "@/server/services/replies";
 import { addTargets, listTargets } from "@/server/services/targets";
@@ -44,7 +45,12 @@ async function workspaceWithTargets(suffix: "a" | "b" = "a", handles = ["alex", 
   await addTargets(owner.workspaceId, handles.join("\n"), T0);
   const targets = await listTargets(owner.workspaceId, "recent");
   const byName = Object.fromEntries(targets.map((target) => [target.username, target]));
-  const workspace = { id: owner.workspaceId, timezone: "Europe/Madrid" };
+  const workspace = {
+    id: owner.workspaceId,
+    timezone: "Europe/Madrid",
+    replyCooldownHours: 24,
+    replyDailyLimit: 15,
+  };
   return { workspace, byName };
 }
 
@@ -89,7 +95,7 @@ describe("loading a target's posts", () => {
       data: { loaded: 3 },
     });
     expect(x.calls[0]?.url.pathname).toBe(`/2/users/${target.xUserId}/tweets`);
-    expect(x.calls[0]?.url.searchParams.get("max_results")).toBe("5");
+    expect(x.calls[0]?.url.searchParams.get("max_results")).toBe("10");
 
     const usage = await prisma.externalUsage.findFirstOrThrow({
       where: { workspaceId: workspace.id, operation: "postRead" },
@@ -106,6 +112,55 @@ describe("loading a target's posts", () => {
     });
     const session = await getSessionData(workspace, target.id, hours(1));
     expect(session?.posts.map((post) => post.xPostId)).toEqual(["p9"]);
+  });
+});
+
+describe("loading keeps the latest original posts", () => {
+  it("shows at most 5 of the fetched posts", async () => {
+    const { workspace, byName } = await workspaceWithTargets();
+    const target = byName.alex;
+    if (!target) throw new Error("setup");
+
+    expect(await loadPosts(workspace.id, target.id, ["7", "6", "5", "4", "3", "2", "1"])).toEqual({
+      ok: true,
+      data: { loaded: 5 },
+    });
+    const session = await getSessionData(workspace, target.id, T0);
+    expect(session?.posts.map((post) => post.xPostId)).toEqual(["7", "6", "5", "4", "3"]);
+  });
+});
+
+describe("reply limits settings", () => {
+  it("accepts only the offered options and applies them", async () => {
+    const { workspace, byName } = await workspaceWithTargets();
+    const alex = byName.alex;
+    if (!alex) throw new Error("setup");
+
+    expect(await saveReplyLimits(workspace.id, { cooldownHours: 1, perDay: 15 })).toEqual({
+      ok: false,
+      error: "invalid_limits",
+    });
+    expect(await saveReplyLimits(workspace.id, { cooldownHours: 6, perDay: 500 })).toEqual({
+      ok: false,
+      error: "invalid_limits",
+    });
+    expect(await saveReplyLimits(workspace.id, { cooldownHours: 6, perDay: 20 })).toEqual({
+      ok: true,
+      data: null,
+    });
+
+    const custom = { ...workspace, replyCooldownHours: 6, replyDailyLimit: 20 };
+    await loadPosts(workspace.id, alex.id, ["p1", "p2"]);
+    await openReply(custom, { targetId: alex.id, xPostId: "p1", text: "hi" }, T0);
+    expect(
+      await openReply(custom, { targetId: alex.id, xPostId: "p2", text: "hi" }, hours(5)),
+    ).toEqual({
+      ok: false,
+      error: "account_cooldown",
+    });
+    expect(
+      (await openReply(custom, { targetId: alex.id, xPostId: "p2", text: "hi" }, hours(6))).ok,
+    ).toBe(true);
   });
 });
 

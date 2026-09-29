@@ -17,6 +17,8 @@ type Handlers = {
   posts?: (url: URL) => Reply;
   post?: (postId: string) => Reply;
   usersBy?: (usernames: string[]) => Reply;
+  /** Fake Claude Messages API (api.anthropic.com/v1/messages). */
+  anthropic?: (body: unknown) => Reply;
   repost?: (postId: string) => Reply;
   undoRepost?: (postId: string) => Reply;
 };
@@ -53,6 +55,8 @@ function route(
   json: unknown,
 ): Reply | Promise<Reply> | undefined {
   const path = url.pathname;
+  if (url.hostname === "api.anthropic.com")
+    return path === "/v1/messages" ? h.anthropic?.(json) : undefined;
   if (path === "/2/oauth2/token") return h.token?.(body ?? new URLSearchParams());
   if (path === "/2/oauth2/revoke") return h.revoke?.();
   if (path === "/2/users/me") return h.me?.();
@@ -165,3 +169,22 @@ export const usersByReply =
         .filter(Boolean),
     },
   });
+
+/** A Claude Messages API reply carrying the given JSON text. */
+export const claudeReply = (
+  payload: unknown,
+  options: { stopReason?: string; model?: string; input?: number; output?: number } = {},
+) => ({
+  status: 200,
+  body: {
+    id: "msg_test",
+    type: "message",
+    role: "assistant",
+    model: options.model ?? "claude-opus-5",
+    content:
+      options.stopReason === "refusal" ? [] : [{ type: "text", text: JSON.stringify(payload) }],
+    stop_reason: options.stopReason ?? "end_turn",
+    stop_sequence: null,
+    usage: { input_tokens: options.input ?? 400, output_tokens: options.output ?? 120 },
+  },
+});

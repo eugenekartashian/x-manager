@@ -163,3 +163,14 @@ export async function undoReply(workspaceId: string, id: string, now: Date): Pro
 export function listRecentReplies(workspaceId: string, take: number) {
   return prisma.replyLog.findMany({ where: { workspaceId }, orderBy: { openedAt: "desc" }, take });
 }
+
+export async function updateReplyLimits(
+  workspaceId: string,
+  cooldownHours: number,
+  perDay: number,
+): Promise<void> {
+  await prisma.workspace.update({
+    where: { id: workspaceId },
+    data: { replyCooldownHours: cooldownHours, replyDailyLimit: perDay },
+  });
+}

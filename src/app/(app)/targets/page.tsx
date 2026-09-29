@@ -1,10 +1,15 @@
 import Link from "next/link";
+import { ReplyLimitsForm } from "@/features/replies/limits-form";
 import { RecentReplies } from "@/features/replies/recent-replies";
 import { TemplatesSection } from "@/features/replies/templates-section";
 import { AddTargetsForm } from "@/features/targets/add-targets-form";
 import { TargetList } from "@/features/targets/target-list";
 import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { requireWorkspace } from "@/server/auth/session";
+import {
+  REPLY_COOLDOWN_HOUR_OPTIONS,
+  REPLY_DAILY_LIMIT_OPTIONS,
+} from "@/server/domain/reply-rules";
 import type { TargetSort } from "@/server/repositories/targets";
 import { listRecentReplies, listTemplates } from "@/server/services/replies";
 import { listTargets, MAX_TARGETS } from "@/server/services/targets";
@@ -43,6 +48,16 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
       <AddTargetsForm />
 
       <TemplatesSection templates={templates} />
+
+      <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
+        <h2 className="text-lg font-medium">Reply limits</h2>
+        <ReplyLimitsForm
+          cooldownHours={workspace.replyCooldownHours}
+          perDay={workspace.replyDailyLimit}
+          cooldownOptions={REPLY_COOLDOWN_HOUR_OPTIONS}
+          dailyOptions={REPLY_DAILY_LIMIT_OPTIONS}
+        />
+      </section>
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

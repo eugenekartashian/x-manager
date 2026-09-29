@@ -140,3 +140,10 @@ X pricing: "All resources are deduplicated within a 24-hour UTC day window". Rea
 - Reply text: user-defined templates first; AI later.
 - Limits: 1 reply per target account per 24 h, 15 replies per day. Replies are posted by the user on x.com via the composer intent (media attached manually — the intent cannot attach media).
 - Target list ≤ 500 accounts; lookups ≤ 100 handles per call; handles already listed are not looked up again.
+
+## D-021 · 2026-09-29 · Accepted — AI reply ideas and configurable reply limits
+
+- AI reply ideas use the Claude API (`@anthropic-ai/sdk`), model from `AI_MODEL` (default `claude-opus-5`, the recommended default; switch to a cheaper model by env if the user decides), `output_config.effort: "low"`, JSON-schema structured output (1–3 ideas ≤ 280 chars, Zod-validated), server-side refusal fallback `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`). No tools: the model cannot act or publish. Post text, bio and notes are passed as delimited untrusted data. Cost recorded per call from token usage (provider AI); budget check + 100 ideas/day cap. Feature off without `ANTHROPIC_API_KEY` (server-only).
+- Reply limits are user settings: cooldown per account 6/12/24 h, 10–50 replies/day (defaults 24 h / 15). X publishes no exact thresholds; account-level limits for non-Premium accounts are reported but unverified.
+- Target posts: fetch 10, keep the 5 latest originals (replies/Reposts are filtered out).
+- Automated replies (with or without AI) stay out of scope: X blocks unsummoned API replies (D-008) and its automation rules prohibit automated unsolicited replies.

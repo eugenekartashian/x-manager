@@ -5,12 +5,15 @@ import { localDateOf, zonedToUtc } from "@/lib/zoned-time";
 import {
   MAX_REPLY_LENGTH,
   MAX_TEMPLATES,
-  REPLY_LIMITS,
+  REPLY_COOLDOWN_HOUR_OPTIONS,
+  REPLY_DAILY_LIMIT_OPTIONS,
   replyBlock,
   replyIntentUrl,
+  TARGET_POSTS_FETCHED,
   TARGET_POSTS_MIN_INTERVAL_MS,
-  TARGET_POSTS_PER_LOAD,
+  TARGET_POSTS_SHOWN,
   type ReplyBlock,
+  type ReplyLimits,
 } from "@/server/domain/reply-rules";
 import { X_PRICE_MICROS } from "@/server/integrations/x/pricing";
 import * as replies from "@/server/repositories/replies";
@@ -19,7 +22,16 @@ import { fetchUserPosts, type XActionError } from "@/server/services/x-api";
 
 // Reply assistant (M3): the app prepares, the user posts on x.com (D-008, D-020).
 
-type WorkspaceRef = { id: string; timezone: string };
+type WorkspaceRef = {
+  id: string;
+  timezone: string;
+  replyCooldownHours: number;
+  replyDailyLimit: number;
+};
+
+function limitsOf(workspace: WorkspaceRef): ReplyLimits {
+  return { cooldownHours: workspace.replyCooldownHours, perDay: workspace.replyDailyLimit };
+}
 
 function startOfLocalDay(now: Date, timeZone: string): Date {
   return zonedToUtc(localDateOf(now, timeZone), "00:00", timeZone);
@@ -62,6 +74,7 @@ export type SessionData = {
   templates: ReplyTemplate[];
   block: ReplyBlock;
   repliesToday: number;
+  limits: ReplyLimits;
 };
 
 export async function getSessionData(
@@ -82,7 +95,8 @@ export async function getSessionData(
     posts,
     templates,
     repliesToday: today,
-    block: replyBlock({ lastRepliedAt, repliesToday: today, now }),
+    limits: limitsOf(workspace),
+    block: replyBlock({ lastRepliedAt, repliesToday: today, limits: limitsOf(workspace), now }),
   };
 }
 
@@ -96,7 +110,7 @@ export async function loadTargetPosts(
 ): Promise<Result<{ loaded: number }, LoadPostsError>> {
   const target = await replies.findTarget(workspaceId, targetId);
   if (!target) return err("not_found");
-  if (!(await canSpend(workspaceId, TARGET_POSTS_PER_LOAD * 2 * X_PRICE_MICROS.postRead, now))) {
+  if (!(await canSpend(workspaceId, TARGET_POSTS_FETCHED * 2 * X_PRICE_MICROS.postRead, now))) {
     return err("budget_exceeded");
   }
   if (
@@ -104,10 +118,12 @@ export async function loadTargetPosts(
   ) {
     return err("too_soon");
   }
-  const posts = await fetchUserPosts(workspaceId, target.xUserId, TARGET_POSTS_PER_LOAD);
+  // Fetch extra: replies and Reposts are filtered out, keep the latest original posts.
+  const posts = await fetchUserPosts(workspaceId, target.xUserId, TARGET_POSTS_FETCHED);
   if (!posts.ok) return posts;
-  await replies.replaceTargetPosts(workspaceId, target.id, posts.data, now);
-  return ok({ loaded: posts.data.length });
+  const latest = posts.data.slice(0, TARGET_POSTS_SHOWN);
+  await replies.replaceTargetPosts(workspaceId, target.id, latest, now);
+  return ok({ loaded: latest.length });
 }
 
 export type OpenReplyError =
@@ -134,6 +150,7 @@ export async function openReply(
   const block = replyBlock({
     lastRepliedAt: await replies.lastOpenedForTarget(workspace.id, target.id),
     repliesToday: await repliesToday(workspace, now),
+    limits: limitsOf(workspace),
     now,
   });
   if (block) return err(block.reason);
@@ -160,4 +177,15 @@ export function listRecentReplies(workspaceId: string) {
   return replies.listRecentReplies(workspaceId, 20);
 }
 
-export { REPLY_LIMITS };
+export async function saveReplyLimits(
+  workspaceId: string,
+  input: { cooldownHours: number; perDay: number },
+): Promise<Result<null, "invalid_limits">> {
+  const cooldownOk = (REPLY_COOLDOWN_HOUR_OPTIONS as readonly number[]).includes(
+    input.cooldownHours,
+  );
+  const dailyOk = (REPLY_DAILY_LIMIT_OPTIONS as readonly number[]).includes(input.perDay);
+  if (!cooldownOk || !dailyOk) return err("invalid_limits");
+  await replies.updateReplyLimits(workspaceId, input.cooldownHours, input.perDay);
+  return ok(null);
+}

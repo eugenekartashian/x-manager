@@ -6,7 +6,8 @@ import { RecentReplies } from "@/features/replies/recent-replies";
 import { ReplyComposer } from "@/features/replies/reply-composer";
 import { formatCount, formatDateTime } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
-import { getSessionData, listRecentReplies, REPLY_LIMITS } from "@/server/services/replies";
+import { isAiEnabled } from "@/server/services/ai-replies";
+import { getSessionData, listRecentReplies } from "@/server/services/replies";
 
 export default async function ReplySessionPage({ params }: PageProps<"/targets/[id]">) {
   const { workspace } = await requireWorkspace();
@@ -18,10 +19,11 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
 
   const blockMessage =
     block?.reason === "daily_limit"
-      ? `Daily limit reached (${REPLY_LIMITS.perDay} replies). Try again tomorrow.`
+      ? `Daily limit reached (${data.limits.perDay} replies). Try again tomorrow.`
       : block?.reason === "account_cooldown"
         ? `You replied to @${target.username} recently — next reply from ${formatDateTime(block.until, tz)}.`
         : null;
+  const aiEnabled = isAiEnabled();
   const replies = (await listRecentReplies(workspace.id)).filter(
     (reply) => reply.targetId === target.id,
   );
@@ -65,10 +67,10 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
       <p className="bg-foreground/5 rounded-md px-3 py-2 text-sm">
         Replies today:{" "}
         <strong className="tabular-nums">
-          {data.repliesToday}/{REPLY_LIMITS.perDay}
+          {data.repliesToday}/{data.limits.perDay}
         </strong>{" "}
-        · max 1 reply per account per 24 h. The reply opens in X — attach your photo/video there and
-        post.
+        · max 1 reply per account per {data.limits.cooldownHours} h. The reply opens in X — attach
+        your photo/video there and post.
       </p>
       {templates.length === 0 && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
@@ -139,6 +141,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
                   xPostId={post.xPostId}
                   templates={templates.map((template) => template.text)}
                   disabledReason={blockMessage}
+                  aiEnabled={aiEnabled}
                 />
               </li>
             ))}

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { openReplyAction } from "./actions";
+import { aiIdeasAction, openReplyAction } from "./actions";
 
 type Props = {
   targetId: string;
   xPostId: string;
   templates: string[];
   disabledReason: string | null;
+  aiEnabled: boolean;
 };
 
 function pick(templates: string[], previous?: string): string {
@@ -16,11 +17,13 @@ function pick(templates: string[], previous?: string): string {
 }
 
 /** Reply text + "Open in X". The app never posts — X's composer opens with the text. */
-export function ReplyComposer({ targetId, xPostId, templates, disabledReason }: Props) {
+export function ReplyComposer({ targetId, xPostId, templates, disabledReason, aiEnabled }: Props) {
   const [text, setText] = useState(() => pick(templates));
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
+  const [ideas, setIdeas] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  const [aiPending, startAiTransition] = useTransition();
   const disabled = pending || opened || disabledReason !== null;
 
   function open() {
@@ -44,6 +47,15 @@ export function ReplyComposer({ targetId, xPostId, templates, disabledReason }: 
     });
   }
 
+  function askAi() {
+    setError(null);
+    startAiTransition(async () => {
+      const result = await aiIdeasAction({ targetId, xPostId });
+      if (result.ok) setIdeas(result.ideas);
+      else setError(result.message);
+    });
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <textarea
@@ -56,6 +68,23 @@ export function ReplyComposer({ targetId, xPostId, templates, disabledReason }: 
         placeholder="Write your reply…"
         className="border-foreground/15 rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
       />
+      {ideas.length > 0 && !opened && (
+        <ul className="flex flex-col gap-1" aria-label="AI reply ideas">
+          {ideas.map((idea) => (
+            <li key={idea}>
+              <button
+                type="button"
+                onClick={() => setText(idea)}
+                className={`hover:bg-foreground/5 w-full rounded-md border px-3 py-1.5 text-left text-sm ${
+                  idea === text ? "border-foreground/40 bg-foreground/5" : "border-foreground/10"
+                }`}
+              >
+                ✨ {idea}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -65,6 +94,21 @@ export function ReplyComposer({ targetId, xPostId, templates, disabledReason }: 
         >
           {pending ? "Opening…" : opened ? "Opened in X ✓" : "Open in X ↗"}
         </button>
+        {!opened && (
+          <button
+            type="button"
+            onClick={askAi}
+            disabled={!aiEnabled || aiPending || disabledReason !== null}
+            title={
+              aiEnabled
+                ? "3 reply ideas for this post (≈ $0.01)"
+                : "Add ANTHROPIC_API_KEY to enable"
+            }
+            className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-2 py-1 text-sm disabled:opacity-50"
+          >
+            {aiPending ? "Thinking…" : ideas.length ? "✨ More ideas" : "✨ AI ideas"}
+          </button>
+        )}
         {templates.length > 1 && !opened && (
           <button
             type="button"

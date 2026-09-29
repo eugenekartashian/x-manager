@@ -45,6 +45,9 @@ const APP_ENV = [
   "X_WRITES_ENABLED",
 ] as const;
 
+// Optional: pushed only when set (AI reply ideas stay off without a key).
+const OPTIONAL_ENV = ["ANTHROPIC_API_KEY", "AI_MODEL"] as const;
+
 const command = process.argv[2];
 
 if (command === "migrate") {
@@ -65,9 +68,15 @@ if (command === "migrate") {
   ]);
 } else if (command === "env") {
   const only = process.argv.slice(3);
-  const unknown = only.filter((name) => !(APP_ENV as readonly string[]).includes(name));
+  const known: readonly string[] = [...APP_ENV, ...OPTIONAL_ENV];
+  const unknown = only.filter((name) => !known.includes(name));
   if (unknown.length) throw new Error(`Unknown variable(s): ${unknown.join(", ")}`);
-  for (const name of only.length ? only : APP_ENV) {
+  for (const name of only.length ? only : [...APP_ENV, ...OPTIONAL_ENV]) {
+    const optional = (OPTIONAL_ENV as readonly string[]).includes(name);
+    if (optional && !prod[name]) {
+      console.log(`– ${name} (empty, skipped)`);
+      continue;
+    }
     const value = required(name);
     // Replace any existing value; stdin keeps the secret out of argv and logs.
     spawnSync("pnpm", ["dlx", "vercel", "env", "rm", name, "production", "--yes"], {

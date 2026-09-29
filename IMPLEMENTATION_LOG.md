@@ -4,6 +4,17 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-09-29 · M3.4 — AI reply ideas + configurable reply limits
+
+- `integrations/ai/claude.ts` (Claude Opus 5 via `@anthropic-ai/sdk` 0.129, low effort, JSON-schema output, `fallbacks: "default"`, no tools, untrusted-data delimiting), `integrations/ai/pricing.ts`, `services/ai-replies.ts` (scoped to loaded posts of own targets, budget + 100/day cap, refusal → no spend, errors → retryable message). "✨ AI ideas" in the reply composer; ideas are one-click fillers for the text box.
+- Reply limits configurable (migration `reply_limits_settings`: `replyCooldownHours`, `replyDailyLimit`), form on /targets. Target posts: fetch 10, keep 5 originals (fixes "Loaded 0" for accounts whose latest items are replies/Reposts).
+- Env: `ANTHROPIC_API_KEY` (optional, empty = off), `AI_MODEL`; `pnpm prod:env` pushes optional vars only when set. Decision D-021.
+- `pnpm check` ✅ — 218 tests (new: 6 AI incl. request shape/headers, no tools, cost, invalid output, refusal, isolation, budget + daily cap, API error; reply limits settings; 10→5 posts). `pnpm build` ✅. Production migrated before deploy.
+
+**Pending (user):** add the Anthropic API key to `.env.local` and `.env.production.local`, then `pnpm prod:env ANTHROPIC_API_KEY AI_MODEL` + redeploy.
+
+---
+
 ## 2026-09-28 · M3.2–3.3 — Reply templates & reply session
 
 - Models `ReplyTemplate`, `TargetPost`, `ReplyLog` (OPENED/UNDONE), `TargetAccount.postsFetchedAt` (RLS on all). Migration `reply_assistant`.

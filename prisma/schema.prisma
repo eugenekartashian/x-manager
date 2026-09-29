@@ -93,6 +93,9 @@ model Workspace {
   postsSyncedAt             DateTime?
   // A post is reposted at most once per interval (D-018); max 8 daily times, no daily cap.
   perPostMinIntervalMinutes Int       @default(120)
+  // Reply assistant limits (D-020, user-configurable).
+  replyCooldownHours        Int       @default(24)
+  replyDailyLimit           Int       @default(15)
 
   xAccount        XAccount?
   usage           ExternalUsage[]

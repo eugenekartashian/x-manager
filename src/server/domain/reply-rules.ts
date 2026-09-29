@@ -1,15 +1,21 @@
 // Reply assistant rules (D-020). Replies are posted by the user on x.com; these limits
 // keep engagement non-spammy (unsolicited replies are a common spam signal on X).
+// X publishes no exact thresholds — the defaults are our conservative recommendation
+// and the user can change them.
 
-export const REPLY_LIMITS = {
-  perTargetMs: 24 * 60 * 60 * 1000, // 1 reply per account per 24 h
-  perDay: 15, // replies per workspace-local day
-} as const;
+export const REPLY_COOLDOWN_HOUR_OPTIONS = [6, 12, 24] as const;
+export const REPLY_DAILY_LIMIT_OPTIONS = [10, 15, 20, 30, 50] as const;
+export const DEFAULT_REPLY_LIMITS = { cooldownHours: 24, perDay: 15 } as const;
+
+export type ReplyLimits = { cooldownHours: number; perDay: number };
 
 /** X counts most characters as 1 and many emoji as 2 — this is a simple upper guard. */
 export const MAX_REPLY_LENGTH = 280;
 export const MAX_TEMPLATES = 50;
-export const TARGET_POSTS_PER_LOAD = 5;
+/** Show this many of the account's latest original posts… */
+export const TARGET_POSTS_SHOWN = 5;
+/** …out of this many fetched (replies and Reposts are filtered out, so fetch extra). */
+export const TARGET_POSTS_FETCHED = 10;
 export const TARGET_POSTS_MIN_INTERVAL_MS = 10 * 60 * 1000;
 
 export type ReplyBlock =
@@ -19,11 +25,12 @@ export type ReplyBlock =
 export function replyBlock(input: {
   lastRepliedAt: Date | null;
   repliesToday: number;
+  limits: ReplyLimits;
   now: Date;
 }): ReplyBlock {
-  if (input.repliesToday >= REPLY_LIMITS.perDay) return { reason: "daily_limit" };
+  if (input.repliesToday >= input.limits.perDay) return { reason: "daily_limit" };
   if (input.lastRepliedAt) {
-    const until = new Date(input.lastRepliedAt.getTime() + REPLY_LIMITS.perTargetMs);
+    const until = new Date(input.lastRepliedAt.getTime() + input.limits.cooldownHours * 3_600_000);
     if (until > input.now) return { reason: "account_cooldown", until };
   }
   return null;

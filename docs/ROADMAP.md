@@ -55,7 +55,7 @@ API replies to other accounts are blocked by X unless summoned, so the app **pre
 - [x] **3.1 Target list** — add by @handle or paste a column from Excel (≤ 100 per add, $0.01 per new account via `GET /2/users/by`), profile snapshot (followers, bio, avatar), notes, sort, remove, CSV export for Excel.
 - [x] **3.2 Reply templates** — the user's own phrases; a random one is suggested and editable. AI suggestions come later.
 - [x] **3.3 Reply session** — target → its latest 3–5 posts (on demand) → template → "Open in X" (composer prefilled with the reply text; media attached manually by the user) → logged. Limits: 1 reply per account per 24 h, 15 replies per day.
-- [ ] **3.4 AI suggestions (later)** — short, relevant drafts (Zod-validated, prompt-injection-safe, cost-accounted); no publish capability.
+- [x] **3.4 AI suggestions** — short, relevant drafts (Zod-validated, prompt-injection-safe, cost-accounted); no publish capability.
 - [ ] **3.5 Discovery (later, paid)** — hashtag search (Recent Search ≈ $0.50/search), bio keyword search (User Search), import from own following.
 
 ## M4 — Measurement
