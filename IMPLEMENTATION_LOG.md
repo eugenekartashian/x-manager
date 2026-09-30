@@ -287,3 +287,11 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Dashboard content plan recorded in `docs/ROADMAP.md`.
 
 - Posts page (mobile): list items now stack — post content full width, footer row with position badge, status and actions (↑/↓ as 40 px icon buttons, disabled at the ends; Remove as a quiet text button). Recent posts use the same footer.
+
+### 2026-09-30 · M6.1 — Roles & access in the DB (D-025)
+
+- Migration `access_invites_and_roles`: `UserRole` enum + `user.role`, `access_invite` table (RLS on), backfill of invites for existing users.
+- `services/access.ts`: `hasAppAccess`, `resolveAccess` (role sync), `inviteUser`, `revokeAccess` (sessions deleted, schedule paused). Auth hooks and `requireWorkspace()` use it; new `requireSuperadmin()`.
+- Env: `ALLOWED_EMAILS` → `SUPERADMIN_EMAILS` (local, production, Vercel, `.env.example`, `prod:env`).
+- Tests: 10 new (invites, revoke isolation, role sync/demotion, hooks). 240 passing.
+- Rollout order: `SUPERADMIN_EMAILS` to Vercel → `prod:migrate` → push.

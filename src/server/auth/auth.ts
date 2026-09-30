@@ -2,10 +2,10 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError } from "better-auth/api";
-import { isEmailAllowed } from "@/lib/allowlist";
 import { env } from "@/lib/env";
 import { prisma } from "@/server/db";
 import { ensureWorkspaceForOwner } from "@/server/repositories/workspaces";
+import { hasAppAccess, resolveAccess } from "@/server/services/access";
 
 // App login only (Google). The X account is connected separately via X OAuth.
 export const auth = betterAuth({
@@ -26,7 +26,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          assertAllowed(user.email);
+          if (!(await hasAppAccess(user.email))) forbidden();
         },
         after: async (user) => {
           await ensureWorkspaceForOwner(user.id, user.name);
@@ -35,21 +35,15 @@ export const auth = betterAuth({
     },
     session: {
       create: {
-        // Re-checked on every sign-in so removing an email from the allowlist takes effect.
+        // Re-checked on every sign-in (revoked invites take effect); also syncs the role.
         before: async (session) => {
-          const user = await prisma.user.findUnique({
-            where: { id: session.userId },
-            select: { email: true },
-          });
-          assertAllowed(user?.email);
+          if (!(await resolveAccess(session.userId))) forbidden();
         },
       },
     },
   },
 });
 
-function assertAllowed(email: string | undefined): void {
-  if (!email || !isEmailAllowed(email, env.ALLOWED_EMAILS)) {
-    throw new APIError("FORBIDDEN", { message: "This email is not allowed to sign in." });
-  }
+function forbidden(): never {
+  throw new APIError("FORBIDDEN", { message: "This email is not allowed to sign in." });
 }

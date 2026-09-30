@@ -41,13 +41,29 @@ function sessionDraft(userId: string) {
   };
 }
 
-describe("sign-up allowlist", () => {
-  it("rejects a Google account that is not on the allowlist", async () => {
+// SUPERADMIN_EMAILS in tests: owner-a@example.com. Everyone else needs an invite (D-025).
+
+describe("sign-up access", () => {
+  it("rejects a Google account without an invite", async () => {
     await expect(beforeUserCreate(userDraft("stranger@gmail.com"))).rejects.toThrow("not allowed");
   });
 
-  it("accepts an allowlisted email regardless of case", async () => {
+  it("accepts the superadmin email regardless of case", async () => {
     await expect(beforeUserCreate(userDraft("Owner-A@Example.com"))).resolves.toBeUndefined();
+  });
+
+  it("accepts an invited email regardless of case", async () => {
+    await prisma.accessInvite.create({ data: { email: "friend@example.com" } });
+
+    await expect(beforeUserCreate(userDraft("Friend@Example.com"))).resolves.toBeUndefined();
+  });
+
+  it("rejects a revoked invite", async () => {
+    await prisma.accessInvite.create({
+      data: { email: "friend@example.com", revokedAt: new Date() },
+    });
+
+    await expect(beforeUserCreate(userDraft("friend@example.com"))).rejects.toThrow("not allowed");
   });
 
   it("creates the user's workspace right after sign-up", async () => {
@@ -60,8 +76,8 @@ describe("sign-up allowlist", () => {
   });
 });
 
-describe("sign-in allowlist", () => {
-  it("blocks a new session for a user whose email was removed from the allowlist", async () => {
+describe("sign-in access", () => {
+  it("blocks a new session for a user without an invite", async () => {
     await createUser("user-x", "removed@example.com");
 
     await expect(beforeSessionCreate(sessionDraft("user-x"))).rejects.toThrow("not allowed");
@@ -71,9 +87,22 @@ describe("sign-in allowlist", () => {
     await expect(beforeSessionCreate(sessionDraft("ghost"))).rejects.toThrow("not allowed");
   });
 
-  it("allows a session for an allowlisted user", async () => {
+  it("allows the superadmin and syncs their role", async () => {
     await createUser("user-a", "owner-a@example.com");
 
     await expect(beforeSessionCreate(sessionDraft("user-a"))).resolves.toBeUndefined();
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: "user-a" } });
+    expect(user.role).toBe("SUPERADMIN");
+  });
+
+  it("allows an invited user as a regular user", async () => {
+    await createUser("user-f", "friend@example.com");
+    await prisma.accessInvite.create({ data: { email: "friend@example.com" } });
+
+    await expect(beforeSessionCreate(sessionDraft("user-f"))).resolves.toBeUndefined();
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: "user-f" } });
+    expect(user.role).toBe("USER");
   });
 });

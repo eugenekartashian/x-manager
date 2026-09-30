@@ -12,18 +12,40 @@ datasource db {
 // ─── App login (Better Auth core schema) ────────────────────────────────────
 
 model User {
-  id            String     @id
+  id            String         @id
   name          String
-  email         String     @unique
-  emailVerified Boolean    @default(false)
+  email         String         @unique
+  emailVerified Boolean        @default(false)
   image         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   sessions      Session[]
   accounts      Account[]
   workspace     Workspace?
+  // App role (D-025). Superadmins also come from SUPERADMIN_EMAILS and are synced on sign-in.
+  role          UserRole       @default(USER)
+  invitesSent   AccessInvite[]
 
   @@map("user")
+}
+
+enum UserRole {
+  USER
+  SUPERADMIN
+}
+
+// Who may sign in (D-025). Email is stored normalized (trimmed, lower-case).
+// Revoked invites are kept for the audit trail; re-inviting clears revokedAt.
+model AccessInvite {
+  id          String    @id @default(uuid(7))
+  email       String    @unique
+  invitedById String?
+  invitedBy   User?     @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@index([invitedById])
+  @@map("access_invite")
 }
 
 model Session {

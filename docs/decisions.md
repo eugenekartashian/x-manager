@@ -160,3 +160,9 @@ User preference: #1 in the repost list is reposted first, then #2, … Because X
 
 - In-app publishing / scheduled original posts (old M5) is **dropped**: X's composer scheduling covers it (D-009, verified). Removed from the roadmap.
 - Friend beta (M6): superadmin (owner) + users; owner pays X costs. User limits: 4 posts in the repost list, 2 daily times, 3 Targets, target post loads and AI ideas capped per day, $10/month safety budget. Users never see prices.
+
+## D-025 · 2026-09-30 · Accepted — Access via DB invites; roles USER / SUPERADMIN
+
+- `ALLOWED_EMAILS` (env) is replaced by `SUPERADMIN_EMAILS` (env, bootstrap: the owner can never be locked out) + the `access_invite` table for everyone else. The migration backfills invites for all existing users.
+- Role on `user`: `USER` (default) or `SUPERADMIN`. SUPERADMIN mirrors `SUPERADMIN_EMAILS` and is synced on sign-in and on each request; a regular `ADMIN` role can be added later as another enum value.
+- Revoking: invite gets `revokedAt` (kept for audit), the user's sessions are deleted and their Repost schedule is paused. Re-inviting re-activates the same row.

@@ -31,7 +31,7 @@ export default defineConfig({
       AUTH_SECRET: "test-secret-test-secret-test-secret-00",
       AUTH_GOOGLE_ID: "test-google-id",
       AUTH_GOOGLE_SECRET: "test-google-secret",
-      ALLOWED_EMAILS: "owner-a@example.com,owner-b@example.com",
+      SUPERADMIN_EMAILS: "owner-a@example.com",
       X_CLIENT_ID: "test-x-client-id",
       X_CLIENT_SECRET: "test-x-client-secret",
       X_REDIRECT_URI: "http://127.0.0.1:3000/api/x/oauth/callback",

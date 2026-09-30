@@ -7,7 +7,7 @@ Scope: foundation + scheduled Reposts of own posts. Later milestones (reply assi
 ```
  Browser (user)                        Vercel (Next.js App Router)                       External
  ─────────────                         ───────────────────────────                       ────────
- Google sign-in  ───────────────────▶  Better Auth (Google, allowlist) ───────────────▶ Google OAuth
+ Google sign-in  ───────────────────▶  Better Auth (Google, invites)  ───────────────▶ Google OAuth
  UI: posts, slots, history  ◀───────▶  Server Components / Route Handlers
                                           │  parse (Zod) → requireWorkspace() → service
  "Connect X"  ──────────────────────▶  /api/x/oauth/start ── state+PKCE ─────────────▶ x.com authorize

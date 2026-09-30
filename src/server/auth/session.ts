@@ -1,16 +1,15 @@
 import "server-only";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { Workspace } from "@/generated/prisma/client";
-import { isEmailAllowed } from "@/lib/allowlist";
-import { env } from "@/lib/env";
+import type { UserRole, Workspace } from "@/generated/prisma/client";
 import { auth } from "@/server/auth/auth";
 import { ensureWorkspaceForOwner, findWorkspaceByOwner } from "@/server/repositories/workspaces";
+import { resolveAccess } from "@/server/services/access";
 
 export type CurrentUser = { id: string; email: string; name: string; image: string | null };
 
-export type WorkspaceContext = { user: CurrentUser; workspace: Workspace };
+export type WorkspaceContext = { user: CurrentUser; role: UserRole; workspace: Workspace };
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -27,10 +26,18 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export const requireWorkspace = cache(async (): Promise<WorkspaceContext> => {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
-  // Existing sessions lose access as soon as the email leaves the allowlist.
-  if (!isEmailAllowed(user.email, env.ALLOWED_EMAILS)) redirect("/sign-in?error=forbidden");
+  // Existing sessions lose access as soon as the invite is revoked.
+  const access = await resolveAccess(user.id);
+  if (!access) redirect("/sign-in?error=forbidden");
 
   const workspace =
     (await findWorkspaceByOwner(user.id)) ?? (await ensureWorkspaceForOwner(user.id, user.name));
-  return { user, workspace };
+  return { user, role: access.role, workspace };
 });
+
+/** For superadmin-only pages and actions; everyone else gets a plain 404. */
+export async function requireSuperadmin(): Promise<WorkspaceContext> {
+  const context = await requireWorkspace();
+  if (context.role !== "SUPERADMIN") notFound();
+  return context;
+}

@@ -7,7 +7,7 @@ const validEnv = {
   AUTH_SECRET: "x".repeat(32),
   AUTH_GOOGLE_ID: "google-id",
   AUTH_GOOGLE_SECRET: "google-secret",
-  ALLOWED_EMAILS: "Me@Gmail.com, friend@example.com",
+  SUPERADMIN_EMAILS: "Me@Gmail.com, friend@example.com",
   X_CLIENT_ID: "x-client-id",
   X_CLIENT_SECRET: "x-client-secret",
   X_REDIRECT_URI: "http://127.0.0.1:3000/api/x/oauth/callback",
@@ -22,7 +22,7 @@ describe("parseServerEnv", () => {
 
     expect(env.NODE_ENV).toBe("development");
     expect(env.X_WRITES_ENABLED).toBe(false);
-    expect(env.ALLOWED_EMAILS).toEqual(["me@gmail.com", "friend@example.com"]);
+    expect(env.SUPERADMIN_EMAILS).toEqual(["me@gmail.com", "friend@example.com"]);
   });
 
   it("rejects a missing DATABASE_URL", () => {
@@ -36,9 +36,11 @@ describe("parseServerEnv", () => {
   });
 
   it("rejects an empty or invalid allowlist", () => {
-    expect(() => parseServerEnv({ ...validEnv, ALLOWED_EMAILS: " , " })).toThrow("ALLOWED_EMAILS");
-    expect(() => parseServerEnv({ ...validEnv, ALLOWED_EMAILS: "not-an-email" })).toThrow(
-      "ALLOWED_EMAILS",
+    expect(() => parseServerEnv({ ...validEnv, SUPERADMIN_EMAILS: " , " })).toThrow(
+      "SUPERADMIN_EMAILS",
+    );
+    expect(() => parseServerEnv({ ...validEnv, SUPERADMIN_EMAILS: "not-an-email" })).toThrow(
+      "SUPERADMIN_EMAILS",
     );
   });
 

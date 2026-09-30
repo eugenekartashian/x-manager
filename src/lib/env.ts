@@ -17,7 +17,8 @@ const serverEnvSchema = z.object({
   AUTH_SECRET: z.string().min(32),
   AUTH_GOOGLE_ID: z.string().min(1),
   AUTH_GOOGLE_SECRET: z.string().min(1),
-  ALLOWED_EMAILS: z
+  // Owner(s): always allowed, role SUPERADMIN. Everyone else needs an invite (D-025).
+  SUPERADMIN_EMAILS: z
     .string()
     .transform(parseAllowlist)
     .pipe(z.array(z.email()).min(1, "at least one email is required")),
