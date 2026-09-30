@@ -26,8 +26,15 @@ export const GRACE_MS = 30 * 60_000;
 export const LEASE_MS = 2 * 60_000;
 /** Safety bound on planned items handled per workspace in one invocation. */
 const MAX_ITEMS_PER_WORKSPACE = 60;
-/** Stop starting new Reposts after this long; the next scheduler call continues. */
+/** Whole invocation: stop starting new Reposts after this long; the next call continues. */
 const DEFAULT_TIME_BUDGET_MS = 45_000;
+/**
+ * Workspaces processed in parallel (M6.4). Work is I/O-bound (X calls, pauses), so a small
+ * pool keeps each batch within its time window without exhausting DB connections.
+ */
+const DEFAULT_CONCURRENCY = 8;
+/** Workspaces considered per invocation; least recently processed first. */
+const DEFAULT_WORKSPACE_BATCH = 200;
 /** Pause between Reposts of one batch, like manual clicks. */
 const DEFAULT_PAUSE_BETWEEN_MS = 1_500;
 
@@ -36,6 +43,7 @@ export type JobOptions = {
   batchSize?: number;
   pauseBetweenMs?: number;
   timeBudgetMs?: number;
+  concurrency?: number;
 };
 export type JobSummary = {
   workspaces: number;
@@ -55,26 +63,34 @@ export async function processDueReposts(now: Date, options: JobOptions): Promise
     unknown: 0,
     recovered: 0,
   };
-  const batchSize = options.batchSize ?? 20;
+  const batchSize = options.batchSize ?? DEFAULT_WORKSPACE_BATCH;
+  // One deadline for the whole invocation (the platform kills the function at 60 s).
+  const deadline = Date.now() + (options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS);
 
   for (const run of await runs.claimStaleRuns(now, LEASE_MS, batchSize)) {
     await recoverRun(run, now, options, summary);
   }
 
-  for (const workspaceId of await runs.listSchedulableWorkspaceIds(batchSize)) {
-    if (!(await runs.claimWorkspace(workspaceId, now, LEASE_MS))) continue;
-    summary.workspaces++;
-    try {
-      await processWorkspace(workspaceId, now, options, summary);
-    } catch (error) {
-      logger.error("jobs.workspace_failed", {
-        workspaceId,
-        error: error instanceof Error ? error.name : "unknown",
-      });
-    } finally {
-      await runs.releaseWorkspace(workspaceId);
-    }
-  }
+  const workspaceIds = await runs.listSchedulableWorkspaceIds(batchSize);
+  await forEachWithConcurrency(
+    workspaceIds,
+    options.concurrency ?? DEFAULT_CONCURRENCY,
+    async (workspaceId) => {
+      if (Date.now() > deadline) return; // left for the next call (grace window: 30 min)
+      if (!(await runs.claimWorkspace(workspaceId, now, LEASE_MS))) return;
+      summary.workspaces++;
+      try {
+        await processWorkspace(workspaceId, now, deadline, options, summary);
+      } catch (error) {
+        logger.error("jobs.workspace_failed", {
+          workspaceId,
+          error: error instanceof Error ? error.name : "unknown",
+        });
+      } finally {
+        await runs.releaseWorkspace(workspaceId);
+      }
+    },
+  );
 
   logger.info("jobs.reposts_done", { ...summary, writesEnabled: options.writesEnabled });
   return summary;
@@ -85,20 +101,19 @@ export async function processDueReposts(now: Date, options: JobOptions): Promise
 async function processWorkspace(
   workspaceId: string,
   now: Date,
+  deadline: number,
   options: JobOptions,
   summary: JobSummary,
 ) {
   const from = new Date(now.getTime() - GRACE_MS);
   const to = new Date(now.getTime() + 1); // include occurrences due exactly now
 
-  const startedAt = Date.now();
-  const timeBudget = options.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS;
   const pause = options.pauseBetweenMs ?? DEFAULT_PAUSE_BETWEEN_MS;
   let previousWroteToX = false;
 
   // Re-plan after each Repost: its outcome changes the state the next one depends on.
   for (let step = 0; step < MAX_ITEMS_PER_WORKSPACE; step++) {
-    if (Date.now() - startedAt > timeBudget) return; // the rest runs on the next call
+    if (Date.now() > deadline) return; // the rest runs on the next call
     const context = await loadContext(workspaceId);
     if (!context) return;
     const item = planReposts({
@@ -304,4 +319,20 @@ async function attempt<T>(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Runs `task` for every item with at most `limit` in flight; errors must be handled inside. */
+async function forEachWithConcurrency<T>(
+  items: readonly T[],
+  limit: number,
+  task: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      if (item !== undefined) await task(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
 }

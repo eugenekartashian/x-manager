@@ -320,3 +320,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Interval form and Reply limits form hidden for users; `saveIntervalAction` / `saveReplyLimitsAction` superadmin-only.
 - Users: fixed 1 h per-post interval in the job, preview and copy; adding a time < 1 h from another is refused ("Times must be at least 1 hour apart."). 257 tests passing.
 - Default user limits → 2 posts × 4 times (migration `user_limits_2_posts_4_times`, moves users still on 4 × 2). Max-usage cost table added to ROADMAP.
+
+### 2026-09-30 · M6.4 (1–2) — Parallel Repost job + load test
+
+- Job: one deadline for the whole invocation (45 s; the platform stops at 60 s — previously the budget was per workspace, so many users could overrun), up to 8 workspaces in parallel, up to 200 per call (least recently processed first). Leases + unique dedupe keys unchanged.
+- Capacity estimate: a user batch (2 posts) ≈ 5–7 s with real X latency and the 1.5 s pause → ≈ 50–70 users per call; the scheduler runs every 5 min within a 30 min grace window → ≈ 300+ users with the same minute, more when times differ.
+- `tests/integration/load.test.ts`: 200 users × 2 posts due at once — two overlapping calls repost each post exactly once (≈ 1.6 s with fake X); short deadlines split work across calls with no duplicates or gaps.
