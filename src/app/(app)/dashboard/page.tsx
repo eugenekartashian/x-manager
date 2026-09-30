@@ -19,6 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 function dayLabel(day: string): string {
   return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
     day: "numeric",
     month: "short",
     timeZone: "UTC",
@@ -167,7 +168,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           <DailyBars
             title="API spend per day (estimate)"
             legend={[{ className: "bg-foreground/70", label: "Spend" }]}
-            format={(micros) => formatUsd(BigInt(Math.round(micros)))}
+            unit="usd"
             days={days.map((day, index) => ({
               ...day,
               segments: [
