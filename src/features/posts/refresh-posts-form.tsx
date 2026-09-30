@@ -7,13 +7,15 @@ import { SubmitButton } from "./submit-button";
 
 const initial: ActionState = { status: "idle", message: "" };
 
-export function RefreshPostsForm({ costLabel }: { costLabel: string }) {
+export function RefreshPostsForm({ costLabel }: { costLabel?: string }) {
   const [state, action] = useActionState(refreshPostsAction, initial);
   return (
     <form action={action} className="flex flex-col items-end gap-2">
       <SubmitButton variant="secondary" pendingLabel="Loading from X…">
-        Refresh from X{" "}
-        <span className="text-foreground/60">(≈ {costLabel} + $0.005 per quote)</span>
+        Refresh from X
+        {costLabel && (
+          <span className="text-foreground/60"> (≈ {costLabel} + $0.005 per quote)</span>
+        )}
       </SubmitButton>
       <ActionMessage state={state} />
     </form>

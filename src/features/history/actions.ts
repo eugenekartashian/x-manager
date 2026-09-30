@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { ActionState } from "@/features/posts/actions";
-import { requireWorkspace } from "@/server/auth/session";
+import { requireSuperadmin } from "@/server/auth/session";
 import { saveMonthlyBudget } from "@/server/services/budget";
 
 const budgetSchema = z.object({ dollars: z.coerce.number() });
@@ -12,7 +12,8 @@ export async function saveBudgetAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { workspace } = await requireWorkspace();
+  // Users' budgets are set by the superadmin in /admin (M6.3).
+  const { workspace } = await requireSuperadmin();
   const input = budgetSchema.safeParse(Object.fromEntries(formData));
   const result = input.success ? await saveMonthlyBudget(workspace.id, input.data.dollars) : null;
   revalidatePath("/", "layout");

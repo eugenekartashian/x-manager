@@ -1,6 +1,7 @@
 import "server-only";
 import { err, ok, type Result } from "@/lib/result";
-import { monthToDateSpendMicros } from "@/server/repositories/usage";
+import { env } from "@/lib/env";
+import { monthToDateSpendAllMicros, monthToDateSpendMicros } from "@/server/repositories/usage";
 import {
   getMonthlyBudgetMicros,
   updateMonthlyBudgetMicros,
@@ -35,7 +36,16 @@ export async function canSpend(
   now: Date,
 ): Promise<boolean> {
   const { spentMicros, budgetMicros } = await getBudgetStatus(workspaceId, now);
-  return spentMicros + BigInt(estimatedMicros) <= budgetMicros;
+  if (spentMicros + BigInt(estimatedMicros) > budgetMicros) return false;
+  const global = globalBudgetMicros();
+  if (global === null) return true;
+  return (await monthToDateSpendAllMicros(now)) + BigInt(estimatedMicros) <= global;
+}
+
+/** App-wide monthly cap across all users, or null when not configured. */
+export function globalBudgetMicros(): bigint | null {
+  const dollars = env.GLOBAL_MONTHLY_BUDGET_USD;
+  return dollars === undefined ? null : BigInt(Math.round(dollars * 100)) * 10_000n;
 }
 
 /** Sets the monthly budget from dollars (e.g. 5 or 12.5). */

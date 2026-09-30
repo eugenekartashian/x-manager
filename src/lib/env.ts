@@ -35,6 +35,11 @@ const serverEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  // Optional app-wide cap on estimated API spend per UTC month, all users together (M6.3).
+  // Unset = only per-user budgets apply. Keep it ≤ the X Developer Console spend cap.
+  GLOBAL_MONTHLY_BUDGET_USD: optionalString
+    .transform((value) => (value === undefined ? undefined : Number(value)))
+    .pipe(z.number().positive().max(10_000).optional()),
   // AI reply ideas (optional — off without the selected provider's key). D-021.
   AI_PROVIDER: z.enum(["anthropic", "openai"]).default("openai"),
   AI_MODEL: optionalString,

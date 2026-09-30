@@ -195,3 +195,32 @@ describe("saveUserLimits", () => {
     });
   });
 });
+
+describe("global monthly cap", () => {
+  it("stops spending for everyone once all users together reach the cap", async () => {
+    const { env } = await import("@/lib/env");
+    const { canSpend } = await import("@/server/services/budget");
+    const a = await createOwner("a");
+    const b = await createOwner("b");
+    await prisma.externalUsage.create({
+      data: {
+        workspaceId: a.workspaceId,
+        provider: "X",
+        operation: "repost",
+        units: 1,
+        costMicros: 2_990_000n,
+        occurredAt: T0,
+      },
+    });
+    const previous = env.GLOBAL_MONTHLY_BUDGET_USD;
+    try {
+      env.GLOBAL_MONTHLY_BUDGET_USD = 3;
+      expect(await canSpend(b.workspaceId, 10_000, T0)).toBe(true); // exactly at the cap
+      expect(await canSpend(b.workspaceId, 10_001, T0)).toBe(false);
+      env.GLOBAL_MONTHLY_BUDGET_USD = undefined;
+      expect(await canSpend(b.workspaceId, 10_001, T0)).toBe(true);
+    } finally {
+      env.GLOBAL_MONTHLY_BUDGET_USD = previous;
+    }
+  });
+});

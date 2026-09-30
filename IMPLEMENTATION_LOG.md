@@ -308,3 +308,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - `domain/user-limits.ts` (bounds, `capToLimits`), `services/limits.ts` (`getLimits`, daily usage, `saveUserLimits`). Enforced in own-posts, schedule, targets, replies, AI and the Repost job/preview.
 - `/admin`: limits summary + "Edit limits" per user (numbers, Targets/AI switches, monthly budget).
 - Tests: 11 new (caps, daily reset in Madrid time, switches, superadmin unlimited, validation); budget tests moved to the $10 default. 253 passing.
+
+### 2026-09-30 · M6.3b — User UI without prices + global cap
+
+- Prices hidden for users on the budget banner (only "limit reached"), Posts, Schedule, History (no spend section / budget form), Targets, reply session (load button, AI tooltip). Counters: list n/cap, daily times n/cap, targets n/cap, "Loads left today", "AI ideas left today for @x". Targets pages show "not enabled" when switched off.
+- Security: `saveBudgetAction` is superadmin-only (users can't raise their own budget).
+- Optional `GLOBAL_MONTHLY_BUDGET_USD` (env) + shown on /admin. Tests: 255 passing.

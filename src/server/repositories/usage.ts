@@ -59,6 +59,15 @@ export async function monthToDateSpendMicros(workspaceId: string, now: Date): Pr
   return result._sum.costMicros ?? 0n;
 }
 
+/** Estimated spend of ALL workspaces this UTC month (global cap only — never shown to users). */
+export async function monthToDateSpendAllMicros(now: Date): Promise<bigint> {
+  const result = await prisma.externalUsage.aggregate({
+    where: { occurredAt: { gte: monthStartUtc(now) } },
+    _sum: { costMicros: true },
+  });
+  return result._sum.costMicros ?? 0n;
+}
+
 export type SpendByOperation = {
   operation: string;
   calls: number;

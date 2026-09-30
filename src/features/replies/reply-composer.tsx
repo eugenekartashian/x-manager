@@ -9,6 +9,7 @@ type Props = {
   templates: string[];
   disabledReason: string | null;
   aiEnabled: boolean;
+  showCosts: boolean;
 };
 
 function pick(templates: string[], previous?: string): string {
@@ -17,7 +18,14 @@ function pick(templates: string[], previous?: string): string {
 }
 
 /** Reply text + "Open in X". The app never posts — X's composer opens with the text. */
-export function ReplyComposer({ targetId, xPostId, templates, disabledReason, aiEnabled }: Props) {
+export function ReplyComposer({
+  targetId,
+  xPostId,
+  templates,
+  disabledReason,
+  aiEnabled,
+  showCosts,
+}: Props) {
   const [text, setText] = useState(() => pick(templates));
   const [error, setError] = useState<string | null>(null);
   const [opened, setOpened] = useState(false);
@@ -101,8 +109,8 @@ export function ReplyComposer({ targetId, xPostId, templates, disabledReason, ai
             disabled={!aiEnabled || aiPending || disabledReason !== null}
             title={
               aiEnabled
-                ? "3 reply ideas for this post (≈ $0.01)"
-                : "Add the AI API key (OPENAI_API_KEY or ANTHROPIC_API_KEY) to enable"
+                ? `3 reply ideas for this post${showCosts ? " (≈ $0.01)" : ""}`
+                : "AI ideas are not available"
             }
             className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-2 py-1 text-sm disabled:opacity-50"
           >

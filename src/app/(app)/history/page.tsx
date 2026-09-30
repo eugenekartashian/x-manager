@@ -22,7 +22,8 @@ const OPERATION_LABELS: Record<string, string> = {
 };
 
 export default async function HistoryPage({ searchParams }: PageProps<"/history">) {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requireWorkspace();
+  const showCosts = role === "SUPERADMIN";
   const { filter: rawFilter } = await searchParams;
   const filter = FILTERS.find((item) => item.value === rawFilter)?.value ?? "all";
   const data = await getHistoryPageData(workspace.id, filter);
@@ -37,9 +38,9 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">History</h1>
         <p className="text-foreground/70 text-sm">
-          Every scheduled Repost and this month’s API spend. Spend is an estimate that mirrors X’s
-          billing (each read resource is billed once per UTC day); the X Developer Console is the
-          source of truth.
+          {showCosts
+            ? "Every scheduled Repost and this month’s API spend. Spend is an estimate that mirrors X’s billing (each read resource is billed once per UTC day); the X Developer Console is the source of truth."
+            : "Every scheduled Repost and its result."}
         </p>
       </div>
 
@@ -57,51 +58,53 @@ export default async function HistoryPage({ searchParams }: PageProps<"/history"
         ))}
       </section>
 
-      <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-medium">API spend this month</h2>
-          <p className="text-sm tabular-nums">
-            {formatUsd(budget.spentMicros)} of {formatUsd(budget.budgetMicros)}
-          </p>
-        </div>
-        <div
-          className="bg-foreground/10 h-2 overflow-hidden rounded-full"
-          role="progressbar"
-          aria-valuenow={Math.round(usedPercent)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
+      {showCosts && (
+        <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-medium">API spend this month</h2>
+            <p className="text-sm tabular-nums">
+              {formatUsd(budget.spentMicros)} of {formatUsd(budget.budgetMicros)}
+            </p>
+          </div>
           <div
-            className={`h-full ${data.level === "exhausted" ? "bg-red-500" : data.level === "warning" ? "bg-amber-500" : "bg-green-600"}`}
-            style={{ width: `${usedPercent}%` }}
-          />
-        </div>
-        {data.spend.length === 0 ? (
-          <p className="text-foreground/60 text-sm">No API calls this month yet.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="text-foreground/60 text-left text-xs">
-              <tr>
-                <th className="py-1 font-normal">Operation</th>
-                <th className="py-1 text-right font-normal">Calls</th>
-                <th className="py-1 text-right font-normal">Billed items</th>
-                <th className="py-1 text-right font-normal">Estimate</th>
-              </tr>
-            </thead>
-            <tbody className="divide-foreground/10 divide-y">
-              {data.spend.map((row) => (
-                <tr key={row.operation}>
-                  <td className="py-1.5">{OPERATION_LABELS[row.operation] ?? row.operation}</td>
-                  <td className="py-1.5 text-right tabular-nums">{row.calls}</td>
-                  <td className="py-1.5 text-right tabular-nums">{row.billedUnits}</td>
-                  <td className="py-1.5 text-right tabular-nums">{formatUsd(row.costMicros)}</td>
+            className="bg-foreground/10 h-2 overflow-hidden rounded-full"
+            role="progressbar"
+            aria-valuenow={Math.round(usedPercent)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className={`h-full ${data.level === "exhausted" ? "bg-red-500" : data.level === "warning" ? "bg-amber-500" : "bg-green-600"}`}
+              style={{ width: `${usedPercent}%` }}
+            />
+          </div>
+          {data.spend.length === 0 ? (
+            <p className="text-foreground/60 text-sm">No API calls this month yet.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-foreground/60 text-left text-xs">
+                <tr>
+                  <th className="py-1 font-normal">Operation</th>
+                  <th className="py-1 text-right font-normal">Calls</th>
+                  <th className="py-1 text-right font-normal">Billed items</th>
+                  <th className="py-1 text-right font-normal">Estimate</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <BudgetForm dollars={Number(budget.budgetMicros) / 1_000_000} />
-      </section>
+              </thead>
+              <tbody className="divide-foreground/10 divide-y">
+                {data.spend.map((row) => (
+                  <tr key={row.operation}>
+                    <td className="py-1.5">{OPERATION_LABELS[row.operation] ?? row.operation}</td>
+                    <td className="py-1.5 text-right tabular-nums">{row.calls}</td>
+                    <td className="py-1.5 text-right tabular-nums">{row.billedUnits}</td>
+                    <td className="py-1.5 text-right tabular-nums">{formatUsd(row.costMicros)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <BudgetForm dollars={Number(budget.budgetMicros) / 1_000_000} />
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

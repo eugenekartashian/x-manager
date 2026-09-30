@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <BudgetBanner level={budgetLevel(budget)} budget={budget} />
+      <BudgetBanner level={budgetLevel(budget)} budget={budget} showCosts={role === "SUPERADMIN"} />
       <header className="border-foreground/10 border-b">
         <AppNav items={role === "SUPERADMIN" ? [...NAV, ADMIN_NAV] : NAV} email={user.email} />
       </header>

@@ -9,17 +9,17 @@ import { SlotList } from "@/features/schedule/slot-list";
 import { formatUsd } from "@/lib/format";
 import { env } from "@/lib/env";
 import { requireWorkspace } from "@/server/auth/session";
-import {
-  MAX_SLOTS,
-  MIN_INTERVAL_HOUR_OPTIONS,
-  SCHEDULE_TIMEZONES,
-} from "@/server/domain/repost-rules";
-import { getSchedulePageData, PREVIEW_HOURS } from "@/server/services/schedule";
+import { MIN_INTERVAL_HOUR_OPTIONS, SCHEDULE_TIMEZONES } from "@/server/domain/repost-rules";
+import { getSchedulePageData, PREVIEW_HOURS, slotCap } from "@/server/services/schedule";
 
 export default async function SchedulePage() {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requireWorkspace();
+  const showCosts = role === "SUPERADMIN";
   const now = new Date();
-  const data = await getSchedulePageData(workspace, now);
+  const [data, maxTimes] = await Promise.all([
+    getSchedulePageData(workspace, now),
+    slotCap(workspace.id),
+  ]);
   const tz = workspace.timezone;
   const overBudget = BigInt(data.estimate.perMonthMicros) > data.budget.budgetMicros;
 
@@ -67,7 +67,7 @@ export default async function SchedulePage() {
           <h2 className="text-lg font-medium">
             Daily times{" "}
             <span className="text-foreground/50">
-              ({data.slots.length}/{MAX_SLOTS})
+              ({data.slots.length}/{maxTimes})
             </span>
           </h2>
           <p className="text-foreground/70 text-sm">
@@ -95,28 +95,35 @@ export default async function SchedulePage() {
         <AddSlotForm
           timezones={SCHEDULE_TIMEZONES}
           defaultTimezone={tz}
-          disabled={data.slots.length >= MAX_SLOTS}
+          disabled={data.slots.length >= maxTimes}
           listSize={data.listSize}
         />
       </section>
 
       <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
-        <h2 className="text-lg font-medium">Interval & cost</h2>
+        <h2 className="text-lg font-medium">{showCosts ? "Interval & cost" : "Interval"}</h2>
         <LimitsForm
           intervalHours={workspace.perPostMinIntervalMinutes / 60}
           intervalOptions={MIN_INTERVAL_HOUR_OPTIONS}
         />
-        <p
-          className={`text-sm ${overBudget ? "text-amber-700 dark:text-amber-400" : "text-foreground/70"}`}
-        >
-          {data.slots.length} times × {data.listSize} posts = {data.estimate.repostsPerDay}{" "}
-          Reposts/day ≈ {formatUsd(BigInt(data.estimate.perDayMicros))}/day ≈{" "}
-          {formatUsd(BigInt(data.estimate.perMonthMicros))}/month (estimate, each = undo + Repost).
-          Monthly budget {formatUsd(data.budget.budgetMicros)}, spent{" "}
-          {formatUsd(data.budget.spentMicros)}.
-          {overBudget &&
-            " Over budget: once the budget is used up, remaining Reposts this month are skipped."}
-        </p>
+        {showCosts ? (
+          <p
+            className={`text-sm ${overBudget ? "text-amber-700 dark:text-amber-400" : "text-foreground/70"}`}
+          >
+            {data.slots.length} times × {data.listSize} posts = {data.estimate.repostsPerDay}{" "}
+            Reposts/day ≈ {formatUsd(BigInt(data.estimate.perDayMicros))}/day ≈{" "}
+            {formatUsd(BigInt(data.estimate.perMonthMicros))}/month (estimate, each = undo +
+            Repost). Monthly budget {formatUsd(data.budget.budgetMicros)}, spent{" "}
+            {formatUsd(data.budget.spentMicros)}.
+            {overBudget &&
+              " Over budget: once the budget is used up, remaining Reposts this month are skipped."}
+          </p>
+        ) : (
+          <p className="text-foreground/70 text-sm">
+            {data.slots.length} times × {data.listSize} posts = {data.estimate.repostsPerDay}{" "}
+            Reposts per day.
+          </p>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">

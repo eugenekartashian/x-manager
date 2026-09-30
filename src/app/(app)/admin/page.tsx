@@ -3,10 +3,12 @@ import { MemberList } from "@/features/admin/member-list";
 import { formatUsd } from "@/lib/format";
 import { requireSuperadmin } from "@/server/auth/session";
 import { listMembers, totalSpendMicros } from "@/server/services/admin";
+import { globalBudgetMicros } from "@/server/services/budget";
 
 export default async function AdminPage() {
   const { workspace } = await requireSuperadmin();
   const members = await listMembers();
+  const globalCap = globalBudgetMicros();
   const people = members.filter((member) => member.status !== "revoked").length;
 
   return (
@@ -15,7 +17,8 @@ export default async function AdminPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
         <p className="text-foreground/70 text-sm">
           {people} {people === 1 ? "person has" : "people have"} access · API spend this month, all
-          users (estimate): <strong>{formatUsd(totalSpendMicros(members))}</strong>. The X Developer
+          users (estimate): <strong>{formatUsd(totalSpendMicros(members))}</strong>
+          {globalCap !== null && <> of {formatUsd(globalCap)} (app-wide cap)</>}. The X Developer
           Console spend cap applies to all users together.
         </p>
       </div>

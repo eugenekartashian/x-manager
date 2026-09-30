@@ -173,3 +173,5 @@ User preference: #1 in the repost list is reposted first, then #2, … Because X
 - Enforced server-side in services (add to list, add daily time, add targets, load target posts, AI ideas) and in the Repost job + schedule preview (only the first N posts / N times run, so lowering a limit takes effect immediately without deleting data).
 - Daily counts (target loads, AI per target) use `feature_usage`, per workspace-local day.
 - The superadmin edits limits and budget per user in `/admin`.
+- Users never see prices (banner only when their limit is reached, no $ on buttons, History without spend); only the superadmin can change a budget (`saveBudgetAction` requires superadmin). Users see allowances: list n/cap, times n/cap, targets n/cap, loads left today, AI ideas left today per target.
+- Optional `GLOBAL_MONTHLY_BUDGET_USD` caps estimated spend of all users together (checked in `canSpend`); unset = per-user budgets only.

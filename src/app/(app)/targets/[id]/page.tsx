@@ -7,11 +7,16 @@ import { ReplyComposer } from "@/features/replies/reply-composer";
 import { formatAge, formatCount, formatDateTime } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
 import { isFreshPost } from "@/server/domain/reply-rules";
+import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { isAiEnabled } from "@/server/services/ai-replies";
+import { getLimitsContext, usedToday } from "@/server/services/limits";
 import { getSessionData, listRecentReplies } from "@/server/services/replies";
 
 export default async function ReplySessionPage({ params }: PageProps<"/targets/[id]">) {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requireWorkspace();
+  const showCosts = role === "SUPERADMIN";
+  const { limits } = await getLimitsContext(workspace.id);
+  if (limits && !limits.targetsEnabled) return <TargetsDisabled />;
   const { id } = await params;
   const data = await getSessionData(workspace, id);
   if (!data) notFound();
@@ -25,7 +30,14 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
       : block?.reason === "account_cooldown"
         ? `You replied to @${target.username} recently — next reply from ${formatDateTime(block.until, tz)}.`
         : null;
-  const aiEnabled = isAiEnabled();
+  const aiEnabled = isAiEnabled() && (limits?.aiEnabled ?? true);
+  // Remaining daily allowances for regular users (the superadmin has none).
+  const [loadsToday, aiToday] = limits
+    ? await Promise.all([
+        usedToday(workspace.id, "TARGET_LOAD", tz, now),
+        usedToday(workspace.id, "AI_IDEAS", tz, now, target.id),
+      ])
+    : [0, 0];
   const replies = (await listRecentReplies(workspace.id)).filter(
     (reply) => reply.targetId === target.id,
   );
@@ -71,8 +83,18 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
         <strong className="tabular-nums">
           {data.repliesToday}/{data.limits.perDay}
         </strong>{" "}
-        · max 1 reply per account per {data.limits.cooldownHours} h. The reply opens in X — attach
-        your photo/video there and post.
+        · max 1 reply per account per {data.limits.cooldownHours} h.
+        {limits && aiEnabled && (
+          <>
+            {" "}
+            AI ideas left today for @{target.username}:{" "}
+            <strong className="tabular-nums">
+              {Math.max(0, limits.aiIdeasPerTargetPerDay - aiToday)}/{limits.aiIdeasPerTargetPerDay}
+            </strong>
+            .
+          </>
+        )}{" "}
+        The reply opens in X — attach your photo/video there and post.
       </p>
       {templates.length === 0 && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
@@ -87,7 +109,16 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="text-lg font-medium">Latest posts</h2>
-          <LoadPostsForm targetId={target.id} hasPosts={posts.length > 0} />
+          <LoadPostsForm
+            targetId={target.id}
+            hasPosts={posts.length > 0}
+            showCosts={showCosts}
+            note={
+              limits
+                ? `Loads left today: ${Math.max(0, limits.targetLoadsPerDay - loadsToday)} of ${limits.targetLoadsPerDay}`
+                : undefined
+            }
+          />
         </div>
         {posts.length === 0 ? (
           <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-6 text-center text-sm">
@@ -160,6 +191,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
                   templates={templates.map((template) => template.text)}
                   disabledReason={blockMessage}
                   aiEnabled={aiEnabled}
+                  showCosts={showCosts}
                 />
               </li>
             ))}

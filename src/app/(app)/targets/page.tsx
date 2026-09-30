@@ -3,6 +3,7 @@ import { ReplyLimitsForm } from "@/features/replies/limits-form";
 import { RecentReplies } from "@/features/replies/recent-replies";
 import { TemplatesSection } from "@/features/replies/templates-section";
 import { AddTargetsForm } from "@/features/targets/add-targets-form";
+import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { TargetList } from "@/features/targets/target-list";
 import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { requireWorkspace } from "@/server/auth/session";
@@ -12,11 +13,14 @@ import {
 } from "@/server/domain/reply-rules";
 import type { TargetSort } from "@/server/repositories/targets";
 import { listRecentReplies, listTemplates } from "@/server/services/replies";
+import { getLimits } from "@/server/services/limits";
 import { listTargets, MAX_TARGETS } from "@/server/services/targets";
 import { connectedXUserId } from "@/server/services/x-api";
 
 export default async function TargetsPage({ searchParams }: PageProps<"/targets">) {
-  const { workspace } = await requireWorkspace();
+  const { workspace, role } = await requireWorkspace();
+  const limits = await getLimits(workspace.id);
+  if (limits && !limits.targetsEnabled) return <TargetsDisabled />;
   const connected = await connectedXUserId(workspace.id);
   if (!connected.ok) {
     return (
@@ -45,7 +49,7 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
         </p>
       </div>
 
-      <AddTargetsForm />
+      <AddTargetsForm showCosts={role === "SUPERADMIN"} />
 
       <TemplatesSection templates={templates} />
 
@@ -64,7 +68,7 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
           <h2 className="text-lg font-medium">
             Target list{" "}
             <span className="text-foreground/50">
-              ({targets.length}/{MAX_TARGETS})
+              ({targets.length}/{Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS)})
             </span>
           </h2>
           <div className="flex flex-wrap items-center gap-2 text-sm">

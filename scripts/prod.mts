@@ -46,7 +46,13 @@ const APP_ENV = [
 ] as const;
 
 // Optional: pushed only when set (AI reply ideas stay off without a key).
-const OPTIONAL_ENV = ["AI_PROVIDER", "AI_MODEL", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"] as const;
+const OPTIONAL_ENV = [
+  "GLOBAL_MONTHLY_BUDGET_USD",
+  "AI_PROVIDER",
+  "AI_MODEL",
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+] as const;
 
 const command = process.argv[2];
 

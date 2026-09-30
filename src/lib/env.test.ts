@@ -56,3 +56,21 @@ describe("parseServerEnv", () => {
     );
   });
 });
+
+describe("GLOBAL_MONTHLY_BUDGET_USD", () => {
+  it("is optional, parsed as dollars and must be positive", () => {
+    expect(parseServerEnv(validEnv).GLOBAL_MONTHLY_BUDGET_USD).toBeUndefined();
+    expect(
+      parseServerEnv({ ...validEnv, GLOBAL_MONTHLY_BUDGET_USD: "" }).GLOBAL_MONTHLY_BUDGET_USD,
+    ).toBeUndefined();
+    expect(
+      parseServerEnv({ ...validEnv, GLOBAL_MONTHLY_BUDGET_USD: "50" }).GLOBAL_MONTHLY_BUDGET_USD,
+    ).toBe(50);
+    expect(() => parseServerEnv({ ...validEnv, GLOBAL_MONTHLY_BUDGET_USD: "abc" })).toThrow(
+      "GLOBAL_MONTHLY_BUDGET_USD",
+    );
+    expect(() => parseServerEnv({ ...validEnv, GLOBAL_MONTHLY_BUDGET_USD: "0" })).toThrow(
+      "GLOBAL_MONTHLY_BUDGET_USD",
+    );
+  });
+});

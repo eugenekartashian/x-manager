@@ -8,7 +8,7 @@ import { addTargetsAction } from "./actions";
 
 const initial: ActionState = { status: "idle", message: "" };
 
-export function AddTargetsForm() {
+export function AddTargetsForm({ showCosts }: { showCosts: boolean }) {
   const [state, action] = useActionState(addTargetsAction, initial);
   return (
     <form action={action} className="flex flex-col gap-2">
@@ -30,7 +30,7 @@ export function AddTargetsForm() {
           Add
         </SubmitButton>
         <span className="text-foreground/60 text-xs">
-          Up to 100 at a time · ≈ $0.01 per new account (profile lookup)
+          Up to 100 at a time{showCosts && " · ≈ $0.01 per new account (profile lookup)"}
         </span>
       </div>
       <ActionMessage state={state} />

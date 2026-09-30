@@ -1,12 +1,11 @@
 import type { OwnPost } from "@/generated/prisma/client";
-import { MAX_LIST_SIZE } from "@/server/domain/repost-rules";
 import { toggleRotationAction } from "./actions";
 import { PostText } from "./post-text";
 import { SubmitButton } from "./submit-button";
 
-type Props = { posts: OwnPost[]; timeZone: string; listFull: boolean };
+type Props = { posts: OwnPost[]; timeZone: string; listCap: number; listFull: boolean };
 
-export function RecentPostsList({ posts, timeZone, listFull }: Props) {
+export function RecentPostsList({ posts, timeZone, listCap, listFull }: Props) {
   if (posts.length === 0) {
     return (
       <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-6 text-center text-sm">
@@ -33,9 +32,7 @@ export function RecentPostsList({ posts, timeZone, listFull }: Props) {
                 </SubmitButton>
               </>
             ) : listFull ? (
-              <span className="text-foreground/60 ml-auto text-xs">
-                List full ({MAX_LIST_SIZE})
-              </span>
+              <span className="text-foreground/60 ml-auto text-xs">List full ({listCap})</span>
             ) : (
               <span className="ml-auto">
                 <SubmitButton variant="secondary" pendingLabel="Adding…">
