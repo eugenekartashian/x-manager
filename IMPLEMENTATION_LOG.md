@@ -301,3 +301,10 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - `/admin` (superadmin only, 404 for others; "Admin" nav item only for the superadmin): total month spend across users, invite by Google email, user list (status superadmin / active / invited / revoked / no access, X account + reconnect state, month spend vs budget, joined, last active), two-step "Revoke access".
 - `repositories/admin.ts` (bounded cross-workspace reads) + `services/admin.ts` (`listMembers`, merge by normalized email). 2 new tests; 242 passing.
 - Old `ALLOWED_EMAILS` removed from Vercel.
+
+### 2026-09-30 · M6.3a — Per-user limits (D-026)
+
+- Migration `user_limits`: limit columns + switches on `workspace`, default budget $10 for new workspaces, `feature_usage` table (RLS on).
+- `domain/user-limits.ts` (bounds, `capToLimits`), `services/limits.ts` (`getLimits`, daily usage, `saveUserLimits`). Enforced in own-posts, schedule, targets, replies, AI and the Repost job/preview.
+- `/admin`: limits summary + "Edit limits" per user (numbers, Targets/AI switches, monthly budget).
+- Tests: 11 new (caps, daily reset in Madrid time, switches, superadmin unlimited, validation); budget tests moved to the $10 default. 253 passing.

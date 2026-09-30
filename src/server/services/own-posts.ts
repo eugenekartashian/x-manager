@@ -7,6 +7,7 @@ import { X_PRICE_MICROS } from "@/server/integrations/x/pricing";
 import * as posts from "@/server/repositories/own-posts";
 import { claimPostsSync } from "@/server/repositories/workspaces";
 import { canSpend, getBudgetStatus, type BudgetStatus } from "@/server/services/budget";
+import { getLimits } from "@/server/services/limits";
 import {
   connectedXUserId,
   fetchOwnPosts,
@@ -102,12 +103,18 @@ export async function addPostToRotationByUrl(
     if (!post) return err("not_found");
   }
 
-  if ((await posts.addToRotation(scope.data, post.id, MAX_LIST_SIZE)) === "full")
+  if ((await posts.addToRotation(scope.data, post.id, await listCap(workspaceId))) === "full")
     return err("list_full");
   return ok({ xPostId: post.xPostId });
 }
 
 // ─── Rotation edits (local only, free) ───────────────────────────────────────
+
+/** App-wide cap, or the user's own limit when it is lower (M6.3). */
+export async function listCap(workspaceId: string): Promise<number> {
+  const limits = await getLimits(workspaceId);
+  return Math.min(MAX_LIST_SIZE, limits?.listPosts ?? MAX_LIST_SIZE);
+}
 
 export type RotationError = XActionError | "not_found" | "list_full";
 
@@ -121,7 +128,7 @@ export async function setInRotation(
   if (!inRotation) {
     return (await posts.removeFromRotation(scope.data, ownPostId)) ? ok(null) : err("not_found");
   }
-  const added = await posts.addToRotation(scope.data, ownPostId, MAX_LIST_SIZE);
+  const added = await posts.addToRotation(scope.data, ownPostId, await listCap(workspaceId));
   return added === "added" ? ok(null) : err(added === "full" ? "list_full" : "not_found");
 }
 

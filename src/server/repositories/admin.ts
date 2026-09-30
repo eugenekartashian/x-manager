@@ -21,6 +21,13 @@ export function listUsersWithWorkspace() {
         select: {
           id: true,
           monthlyBudgetMicros: true,
+          limitListPosts: true,
+          limitDailyTimes: true,
+          limitTargets: true,
+          limitTargetLoadsPerDay: true,
+          limitAiIdeasPerTargetDay: true,
+          targetsEnabled: true,
+          aiEnabled: true,
           xAccount: { select: { username: true, status: true } },
         },
       },

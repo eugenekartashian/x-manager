@@ -45,7 +45,7 @@ describe("listMembers", () => {
       xUsername: "friend_x",
       xStatus: "CONNECTED",
       spentMicros: 40_000n,
-      budgetMicros: 5_000_000n,
+      budgetMicros: 10_000_000n,
     });
     expect(members.find((member) => member.status === "invited")).toMatchObject({
       joinedAt: null,

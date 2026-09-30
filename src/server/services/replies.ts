@@ -18,6 +18,7 @@ import {
 import { X_PRICE_MICROS } from "@/server/integrations/x/pricing";
 import * as replies from "@/server/repositories/replies";
 import { canSpend } from "@/server/services/budget";
+import { getLimitsContext, recordFeatureUsage, usedToday } from "@/server/services/limits";
 import { fetchUserPosts, type XActionError } from "@/server/services/x-api";
 
 // Reply assistant (M3): the app prepares, the user posts on x.com (D-008, D-020).
@@ -100,7 +101,13 @@ export async function getSessionData(
   };
 }
 
-export type LoadPostsError = XActionError | "not_found" | "too_soon" | "budget_exceeded";
+export type LoadPostsError =
+  | XActionError
+  | "not_found"
+  | "too_soon"
+  | "budget_exceeded"
+  | "feature_disabled"
+  | "daily_load_limit";
 
 /** Fetches the target's latest posts (on demand, throttled, budget-checked). */
 export async function loadTargetPosts(
@@ -110,6 +117,14 @@ export async function loadTargetPosts(
 ): Promise<Result<{ loaded: number }, LoadPostsError>> {
   const target = await replies.findTarget(workspaceId, targetId);
   if (!target) return err("not_found");
+  const { limits, timezone } = await getLimitsContext(workspaceId);
+  if (limits && !limits.targetsEnabled) return err("feature_disabled");
+  if (
+    limits &&
+    (await usedToday(workspaceId, "TARGET_LOAD", timezone, now)) >= limits.targetLoadsPerDay
+  ) {
+    return err("daily_load_limit");
+  }
   if (!(await canSpend(workspaceId, TARGET_POSTS_FETCHED * 2 * X_PRICE_MICROS.postRead, now))) {
     return err("budget_exceeded");
   }
@@ -121,6 +136,7 @@ export async function loadTargetPosts(
   // Fetch extra: replies and Reposts are filtered out, keep the latest original posts.
   const posts = await fetchUserPosts(workspaceId, target.xUserId, TARGET_POSTS_FETCHED);
   if (!posts.ok) return posts;
+  await recordFeatureUsage(workspaceId, "TARGET_LOAD", now, target.id);
   const latest = posts.data.slice(0, TARGET_POSTS_SHOWN);
   await replies.replaceTargetPosts(workspaceId, target.id, latest, now);
   return ok({ loaded: latest.length });

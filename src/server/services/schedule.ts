@@ -3,6 +3,7 @@ import type { OwnPost, RepostSchedule } from "@/generated/prisma/client";
 import { err, ok, type Result } from "@/lib/result";
 import { isLocalDate, isLocalTime, localDateOf, zonedToUtc } from "@/lib/zoned-time";
 import { planReposts, type PlannedRepost, type PlanPost } from "@/server/domain/repost-plan";
+import { capToLimits } from "@/server/domain/user-limits";
 import {
   isScheduleTimezone,
   MAX_SLOTS,
@@ -13,6 +14,7 @@ import * as posts from "@/server/repositories/own-posts";
 import * as runs from "@/server/repositories/repost-runs";
 import * as schedules from "@/server/repositories/schedules";
 import { getBudgetStatus, type BudgetStatus } from "@/server/services/budget";
+import { getLimits } from "@/server/services/limits";
 import { connectedXUserId } from "@/server/services/x-api";
 
 export const PREVIEW_HOURS = 48;
@@ -47,17 +49,20 @@ export async function getSchedulePageData(
     workspace.id,
     localDateOf(now, workspace.timezone),
   );
-  const [slots, budget, xUserId] = await Promise.all([
+  const [allSlots, budget, xUserId, limits] = await Promise.all([
     schedules.listSlots(workspace.id),
     getBudgetStatus(workspace.id, now),
     connectedXUserId(workspace.id),
+    getLimits(workspace.id),
   ]);
 
   const scope = xUserId.ok ? { workspaceId: workspace.id, xUserId: xUserId.data } : null;
-  const [list, recentRuns] = await Promise.all([
+  const [fullList, recentRuns] = await Promise.all([
     scope ? posts.listRotation(scope) : Promise.resolve([]),
     runs.listRecentRuns(workspace.id, 10),
   ]);
+  // Same caps as the job: posts/times beyond the user's limits never run (M6.3).
+  const { list, slots } = capToLimits(fullList, allSlots, limits);
   const byId = new Map(list.map((post) => [post.id, post]));
 
   // Same inputs as the job processor, so the preview shows what will actually run.
@@ -140,6 +145,12 @@ export async function saveSchedule(
 
 export type SlotError = "invalid_time" | "invalid_timezone" | "too_many_slots";
 
+/** App-wide cap, or the user's own limit when it is lower (M6.3). */
+export async function slotCap(workspaceId: string): Promise<number> {
+  const limits = await getLimits(workspaceId);
+  return Math.min(MAX_SLOTS, limits?.dailyTimes ?? MAX_SLOTS);
+}
+
 /** Adds a daily time. Every time reposts the next post from the repost list (D-013). */
 export async function addSlot(
   workspace: WorkspaceRef,
@@ -148,7 +159,9 @@ export async function addSlot(
 ): Promise<Result<null, SlotError>> {
   if (!isLocalTime(input.localTime)) return err("invalid_time");
   if (!isScheduleTimezone(input.timezone)) return err("invalid_timezone");
-  if ((await schedules.countSlots(workspace.id)) >= MAX_SLOTS) return err("too_many_slots");
+  if ((await schedules.countSlots(workspace.id)) >= (await slotCap(workspace.id))) {
+    return err("too_many_slots");
+  }
 
   const schedule = await schedules.getOrCreateSchedule(
     workspace.id,

@@ -23,6 +23,8 @@ const MESSAGES: Record<string, string> = {
   account_cooldown: "You already replied to this account in the last 24 hours.",
   daily_limit: "Daily limit reached (15 replies). Try again tomorrow.",
   not_found: "This post is no longer available — reload the posts.",
+  feature_disabled: "Targets are not enabled for your account.",
+  daily_load_limit: "Daily limit for loading posts reached. Try again tomorrow.",
 };
 const message = (code: string) => MESSAGES[code] ?? errorMessage(code);
 
@@ -122,6 +124,8 @@ const aiSchema = z.object({ targetId: z.uuid(), xPostId: z.string().regex(/^\d{1
 
 const AI_MESSAGES: Record<string, string> = {
   ai_not_configured: "AI is not set up yet (no API key).",
+  ai_disabled: "AI ideas are not enabled for your account.",
+  ai_target_limit: "Daily limit of AI ideas for this account reached. Try again tomorrow.",
   not_found: "This post is no longer available — reload the posts.",
   budget_exceeded: "Monthly API budget reached — AI ideas are paused.",
   ai_daily_limit: "Daily AI limit reached (100). Try again tomorrow.",

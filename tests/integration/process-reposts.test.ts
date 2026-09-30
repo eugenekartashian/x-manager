@@ -244,7 +244,7 @@ describe("processDueReposts — safety switches", () => {
         provider: "X",
         operation: "repost",
         units: 1,
-        costMicros: 4_990_000n,
+        costMicros: 9_990_000n,
         occurredAt: AT_10,
       },
     });

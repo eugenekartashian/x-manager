@@ -111,13 +111,21 @@ model Workspace {
   updatedAt DateTime @updatedAt
 
   // Spend guard for paid X/AI calls (micro-dollars, per UTC calendar month). D-001.
-  monthlyBudgetMicros       BigInt    @default(5000000)
+  monthlyBudgetMicros       BigInt    @default(10000000)
   postsSyncedAt             DateTime?
   // A post is reposted at most once per interval (D-018); max 8 daily times, no daily cap.
   perPostMinIntervalMinutes Int       @default(120)
   // Reply assistant limits (D-020, user-configurable).
   replyCooldownHours        Int       @default(24)
   replyDailyLimit           Int       @default(15)
+  // Per-user limits set by the superadmin (M6.3, D-026). Not applied to superadmins.
+  limitListPosts            Int       @default(4)
+  limitDailyTimes           Int       @default(2)
+  limitTargets              Int       @default(3)
+  limitTargetLoadsPerDay    Int       @default(3)
+  limitAiIdeasPerTargetDay  Int       @default(5)
+  targetsEnabled            Boolean   @default(true)
+  aiEnabled                 Boolean   @default(true)
 
   xAccount        XAccount?
   usage           ExternalUsage[]
@@ -129,6 +137,7 @@ model Workspace {
   schedule        RepostSchedule?
   slots           RepostSlot[]
   runs            ScheduledRepost[]
+  featureUsage    FeatureUsage[]
 
   @@map("workspace")
 }
@@ -436,4 +445,22 @@ model ReplyLog {
   @@index([workspaceId, openedAt])
   @@index([targetId, openedAt])
   @@map("reply_log")
+}
+
+enum FeatureKind {
+  TARGET_LOAD
+  AI_IDEAS
+}
+
+// Counts limited actions per workspace-local day (M6.3): target post loads, AI idea requests.
+model FeatureUsage {
+  id          String      @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  kind        FeatureKind
+  targetId    String?
+  occurredAt  DateTime    @default(now())
+
+  @@index([workspaceId, kind, occurredAt])
+  @@map("feature_usage")
 }

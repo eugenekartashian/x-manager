@@ -166,3 +166,10 @@ User preference: #1 in the repost list is reposted first, then #2, … Because X
 - `ALLOWED_EMAILS` (env) is replaced by `SUPERADMIN_EMAILS` (env, bootstrap: the owner can never be locked out) + the `access_invite` table for everyone else. The migration backfills invites for all existing users.
 - Role on `user`: `USER` (default) or `SUPERADMIN`. SUPERADMIN mirrors `SUPERADMIN_EMAILS` and is synced on sign-in and on each request; a regular `ADMIN` role can be added later as another enum value.
 - Revoking: invite gets `revokedAt` (kept for audit), the user's sessions are deleted and their Repost schedule is paused. Re-inviting re-activates the same row.
+
+## D-026 · 2026-09-30 · Accepted — Per-user limits (friend beta)
+
+- Limits live on `workspace` (`limitListPosts` 4, `limitDailyTimes` 2, `limitTargets` 3, `limitTargetLoadsPerDay` 3, `limitAiIdeasPerTargetDay` 5, `targetsEnabled`, `aiEnabled`); new workspaces get a $10 monthly budget. The superadmin (role or `SUPERADMIN_EMAILS`) is unlimited.
+- Enforced server-side in services (add to list, add daily time, add targets, load target posts, AI ideas) and in the Repost job + schedule preview (only the first N posts / N times run, so lowering a limit takes effect immediately without deleting data).
+- Daily counts (target loads, AI per target) use `feature_usage`, per workspace-local day.
+- The superadmin edits limits and budget per user in `/admin`.

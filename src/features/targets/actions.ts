@@ -10,7 +10,8 @@ import { addTargets, removeTarget, saveTargetNote } from "@/server/services/targ
 const MESSAGES: Record<string, string> = {
   nothing_to_add: "Paste at least one @handle.",
   too_many: "Add at most 100 accounts at a time.",
-  list_full: "The target list is full (500 accounts).",
+  list_full: "The target list is full — remove an account first.",
+  feature_disabled: "Targets are not enabled for your account.",
 };
 
 const addSchema = z.object({ handles: z.string().max(10_000) });

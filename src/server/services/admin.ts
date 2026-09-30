@@ -1,6 +1,7 @@
 import "server-only";
 import type { UserRole, XAccountStatus } from "@/generated/prisma/client";
 import { normalizeEmail } from "@/lib/allowlist";
+import type { UserLimits } from "@/server/domain/user-limits";
 import * as admin from "@/server/repositories/admin";
 import { isSuperadminEmail } from "@/server/services/access";
 
@@ -25,6 +26,8 @@ export type Member = {
   lastSeenAt: Date | null;
   spentMicros: bigint;
   budgetMicros: bigint | null;
+  /** Editable limits; null for the superadmin and for invites not used yet. */
+  limits: UserLimits | null;
 };
 
 const STATUS_ORDER: MemberStatus[] = ["superadmin", "active", "invited", "no_access", "revoked"];
@@ -60,6 +63,18 @@ export async function listMembers(now: Date = new Date()): Promise<Member[]> {
       lastSeenAt: user.sessions[0]?.updatedAt ?? null,
       spentMicros: (user.workspace && spend.get(user.workspace.id)) ?? 0n,
       budgetMicros: user.workspace?.monthlyBudgetMicros ?? null,
+      limits:
+        user.workspace && !isSuperadminEmail(email)
+          ? {
+              listPosts: user.workspace.limitListPosts,
+              dailyTimes: user.workspace.limitDailyTimes,
+              targets: user.workspace.limitTargets,
+              targetLoadsPerDay: user.workspace.limitTargetLoadsPerDay,
+              aiIdeasPerTargetPerDay: user.workspace.limitAiIdeasPerTargetDay,
+              targetsEnabled: user.workspace.targetsEnabled,
+              aiEnabled: user.workspace.aiEnabled,
+            }
+          : null,
     });
   }
 
@@ -76,6 +91,7 @@ export async function listMembers(now: Date = new Date()): Promise<Member[]> {
       lastSeenAt: null,
       spentMicros: 0n,
       budgetMicros: null,
+      limits: null,
     });
   }
 

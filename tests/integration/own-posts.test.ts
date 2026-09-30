@@ -236,7 +236,7 @@ describe("refreshOwnPosts", () => {
         provider: "X",
         operation: "repost",
         units: 1,
-        costMicros: 4_990_000n,
+        costMicros: 9_990_000n,
         occurredAt: T0,
       },
     });
@@ -257,7 +257,7 @@ describe("refreshOwnPosts", () => {
         provider: "X",
         operation: "repost",
         units: 1,
-        costMicros: 5_000_000n,
+        costMicros: 10_000_000n,
         occurredAt: new Date("2026-08-31T23:59:00Z"),
       },
     });

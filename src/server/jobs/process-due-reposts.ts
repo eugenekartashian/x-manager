@@ -5,9 +5,11 @@ import type { Result } from "@/lib/result";
 import { prisma } from "@/server/db";
 import { planReposts, type PlannedRepost, type PlanPost } from "@/server/domain/repost-plan";
 import { REPOST_PAIR_COST_MICROS } from "@/server/domain/repost-rules";
+import { capToLimits } from "@/server/domain/user-limits";
 import * as ownPosts from "@/server/repositories/own-posts";
 import * as runs from "@/server/repositories/repost-runs";
 import { canSpend } from "@/server/services/budget";
+import { getLimits } from "@/server/services/limits";
 import {
   connectedXUserId,
   repostPost,
@@ -133,7 +135,12 @@ async function loadContext(workspaceId: string): Promise<Context | null> {
 
   const xUserId = await connectedXUserId(workspaceId);
   const scope = xUserId.ok ? { workspaceId, xUserId: xUserId.data } : null;
-  const list = scope ? await ownPosts.listRotation(scope) : [];
+  // Posts/times beyond the owner's limits never run, even if added before a limit was lowered.
+  const { list, slots } = capToLimits(
+    scope ? await ownPosts.listRotation(scope) : [],
+    schedule.slots,
+    await getLimits(workspaceId),
+  );
   const postsById = new Map(list.map((post) => [post.id, post]));
   const toPlanPost = (post: OwnPost): PlanPost => ({
     id: post.id,
@@ -147,7 +154,7 @@ async function loadContext(workspaceId: string): Promise<Context | null> {
     planInput: {
       schedule,
       // Every time reposts the whole list (D-017); no daily cap beyond 8 times (D-018).
-      slots: schedule.slots.map((slot) => ({
+      slots: slots.map((slot) => ({
         id: slot.id,
         localTime: slot.localTime,
         timezone: slot.timezone,

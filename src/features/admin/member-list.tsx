@@ -1,5 +1,6 @@
 import { formatDateTime, formatUsd } from "@/lib/format";
 import type { Member, MemberStatus } from "@/server/services/admin";
+import { LimitsForm } from "./limits-form";
 import { RevokeButton } from "./revoke-button";
 
 const STATUS: Record<MemberStatus, { label: string; tone: string }> = {
@@ -58,6 +59,13 @@ export function MemberList({ members, timeZone }: Props) {
                 {member.lastSeenAt ? formatDateTime(member.lastSeenAt, timeZone) : "—"}
               </Row>
             </dl>
+            {member.limits && member.budgetMicros !== null && member.status !== "revoked" && (
+              <LimitsForm
+                email={member.email}
+                limits={member.limits}
+                budgetDollars={Number(member.budgetMicros) / 1_000_000}
+              />
+            )}
             {canRevoke && (
               <div className="flex justify-end">
                 <RevokeButton email={member.email} />

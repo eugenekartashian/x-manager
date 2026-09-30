@@ -6,6 +6,7 @@ import { err, ok, type Result } from "@/lib/result";
 import { X_PRICE_MICROS } from "@/server/integrations/x/pricing";
 import * as targets from "@/server/repositories/targets";
 import { canSpend } from "@/server/services/budget";
+import { getLimits } from "@/server/services/limits";
 import { connectedXUserId, lookupUsers, type XActionError } from "@/server/services/x-api";
 
 // Target list for the reply assistant (M3). Replies are posted by the user on x.com —
@@ -25,13 +26,20 @@ export type AddTargetsResult = {
 };
 
 export type AddTargetsError =
-  XActionError | "nothing_to_add" | "too_many" | "list_full" | "budget_exceeded";
+  | XActionError
+  | "nothing_to_add"
+  | "too_many"
+  | "list_full"
+  | "budget_exceeded"
+  | "feature_disabled";
 
 export async function addTargets(
   workspaceId: string,
   input: string,
   now: Date = new Date(),
 ): Promise<Result<AddTargetsResult, AddTargetsError>> {
+  const limits = await getLimits(workspaceId);
+  if (limits && !limits.targetsEnabled) return err("feature_disabled");
   const { handles, invalid } = parseHandles(input);
   if (handles.length === 0) return err("nothing_to_add");
   if (handles.length > MAX_HANDLES_PER_ADD) return err("too_many");
@@ -47,7 +55,8 @@ export async function addTargets(
     return ok({ added: [], alreadyInList, notFound: [], invalid, skippedSelf: false });
   }
 
-  if ((await targets.countTargets(workspaceId)) + toLookUp.length > MAX_TARGETS)
+  const maxTargets = Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS);
+  if ((await targets.countTargets(workspaceId)) + toLookUp.length > maxTargets)
     return err("list_full");
   if (!(await canSpend(workspaceId, toLookUp.length * X_PRICE_MICROS.userRead, now)))
     return err("budget_exceeded");

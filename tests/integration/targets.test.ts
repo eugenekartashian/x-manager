@@ -117,7 +117,7 @@ describe("addTargets", () => {
         provider: "X",
         operation: "repost",
         units: 1,
-        costMicros: 5_000_000n,
+        costMicros: 10_000_000n,
         occurredAt: T0,
       },
     });

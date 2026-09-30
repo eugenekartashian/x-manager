@@ -5,6 +5,7 @@ import { aiConfigured, suggestReplyIdeas } from "@/server/integrations/ai";
 import * as replies from "@/server/repositories/replies";
 import { countUsageSince, recordUsage } from "@/server/repositories/usage";
 import { canSpend } from "@/server/services/budget";
+import { getLimitsContext, recordFeatureUsage, usedToday } from "@/server/services/limits";
 
 // AI reply ideas (M3.4): drafts only — the user edits and posts on x.com.
 
@@ -16,6 +17,8 @@ const AI_ESTIMATE_MICROS = 20_000;
 
 export type AiIdeasError =
   | "ai_not_configured"
+  | "ai_disabled"
+  | "ai_target_limit"
   | "not_found"
   | "budget_exceeded"
   | "ai_daily_limit"
@@ -36,6 +39,15 @@ export async function suggestIdeasForPost(
   if (!target) return err("not_found");
   const post = await replies.findTargetPost(workspaceId, target.id, input.xPostId);
   if (!post) return err("not_found");
+  const { limits, timezone } = await getLimitsContext(workspaceId);
+  if (limits && !limits.aiEnabled) return err("ai_disabled");
+  if (
+    limits &&
+    (await usedToday(workspaceId, "AI_IDEAS", timezone, now, target.id)) >=
+      limits.aiIdeasPerTargetPerDay
+  ) {
+    return err("ai_target_limit");
+  }
 
   if (!(await canSpend(workspaceId, AI_ESTIMATE_MICROS, now))) return err("budget_exceeded");
   const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -66,5 +78,6 @@ export async function suggestIdeasForPost(
     unitPriceMicros: aiCostMicros(result.model, result.inputTokens, result.outputTokens),
     now,
   });
+  await recordFeatureUsage(workspaceId, "AI_IDEAS", now, target.id);
   return result.kind === "ok" ? ok(result.ideas) : err("ai_unavailable");
 }
