@@ -350,3 +350,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Consent to automated Reposts (migration `repost_consent`, form checkbox, job filter, tests); "not affiliated with X Corp." disclaimer; daily-safe purge of target posts older than 3 days in `/api/jobs/run` (test).
 - Header: account menu (initial → email, Admin for superadmin, Sign out); Admin removed from the main nav.
 - 273 tests passing.
+
+### 2026-09-30 · Dashboard v1 + admin targets export
+
+- Dashboard: needs-attention (X connection, failed/unknown Reposts in 24 h, usage limit, schedule on without list/times), next batch + last batch result, today (replies n/limit, target loads, AI requests; spend for superadmin), 14-day bar charts (Reposts by outcome, replies; spend for superadmin) in plain CSS with an sr-only table, recent 5 runs → History, X card, delete account. Only stored data, no X/AI calls.
+- `repositories/dashboard.ts` (per-day aggregates in the workspace timezone, scoped by workspace), `services/dashboard.ts`; 3 tests (local-day bucketing, money hidden for users, isolation).
+- `/admin`: aggregated targets CSV (D-031). 279 tests passing.

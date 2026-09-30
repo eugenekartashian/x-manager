@@ -91,7 +91,7 @@ Order is a proposal; each step starts only after the user approves its short pla
 6. **Metrics (M4)** — own post trends and descriptive comparisons, once there is enough data.
 7. **Backlog** — custom list name, multiple lists with their own schedules, target tags (e.g. category), paid discovery (3.5).
 
-## Dashboard — what to show (plan recorded 2026-09-29, not started)
+## Dashboard — what to show (plan recorded 2026-09-29; v1 done 2026-09-30, post metrics wait for M4)
 
 Today the dashboard only shows the workspace and the X connection. Goal: one screen answering "is everything running, and what needs me?". Only data we already store — no extra X reads just to fill the dashboard.
 
