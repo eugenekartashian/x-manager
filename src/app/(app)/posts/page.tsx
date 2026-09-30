@@ -7,11 +7,15 @@ import { RefreshPostsForm } from "@/features/posts/refresh-posts-form";
 import { RotationList } from "@/features/posts/rotation-list";
 import { formatDateTime, formatUsd } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
+import { USER_REPOST_INTERVAL_MINUTES } from "@/server/domain/user-limits";
 import { getPostsPageData, listCap, REFRESH_ESTIMATE_MICROS } from "@/server/services/own-posts";
 
 export default async function PostsPage() {
   const { workspace, role } = await requireWorkspace();
   const showCosts = role === "SUPERADMIN";
+  const intervalMinutes = showCosts
+    ? workspace.perPostMinIntervalMinutes
+    : USER_REPOST_INTERVAL_MINUTES;
   const now = new Date();
   const [data, cap] = await Promise.all([
     getPostsPageData(workspace.id, now),
@@ -46,7 +50,7 @@ export default async function PostsPage() {
           <p className="text-foreground/70 text-sm">
             At every daily time, all posts in this list are reposted. They go out in list order: #1
             first, the last one ends up on top of your timeline. Each post is reposted at most once
-            every {workspace.perPostMinIntervalMinutes / 60} h — set times and limits on the{" "}
+            every {intervalMinutes / 60} h — set times{showCosts && " and limits"} on the{" "}
             <Link href="/schedule" className="underline underline-offset-2">
               Schedule
             </Link>{" "}
@@ -57,7 +61,7 @@ export default async function PostsPage() {
           posts={data.rotation}
           timeZone={timeZone}
           now={now}
-          minIntervalMs={workspace.perPostMinIntervalMinutes * 60_000}
+          minIntervalMs={intervalMinutes * 60_000}
         />
         <AddPostForm />
       </section>

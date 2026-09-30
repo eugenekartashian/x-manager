@@ -3,7 +3,11 @@ import type { OwnPost, RepostSchedule } from "@/generated/prisma/client";
 import { err, ok, type Result } from "@/lib/result";
 import { isLocalDate, isLocalTime, localDateOf, zonedToUtc } from "@/lib/zoned-time";
 import { planReposts, type PlannedRepost, type PlanPost } from "@/server/domain/repost-plan";
-import { capToLimits } from "@/server/domain/user-limits";
+import {
+  capToLimits,
+  effectiveIntervalMinutes,
+  USER_REPOST_INTERVAL_MINUTES,
+} from "@/server/domain/user-limits";
 import {
   isScheduleTimezone,
   MAX_SLOTS,
@@ -74,7 +78,9 @@ export async function getSchedulePageData(
       timezone: slot.timezone,
     })),
     list: list.map(toPlanPost),
-    limits: { minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000 },
+    limits: {
+      minIntervalMs: effectiveIntervalMinutes(workspace.perPostMinIntervalMinutes, limits) * 60_000,
+    },
     skipKeys: await runs.recordedKeys(workspace.id, now),
     from: now,
     to: new Date(now.getTime() + PREVIEW_HOURS * 3_600_000),
@@ -143,7 +149,7 @@ export async function saveSchedule(
   return ok(await schedules.updateSchedule(workspace.id, input));
 }
 
-export type SlotError = "invalid_time" | "invalid_timezone" | "too_many_slots";
+export type SlotError = "invalid_time" | "invalid_timezone" | "too_many_slots" | "too_close";
 
 /** App-wide cap, or the user's own limit when it is lower (M6.3). */
 export async function slotCap(workspaceId: string): Promise<number> {
@@ -161,6 +167,12 @@ export async function addSlot(
   if (!isScheduleTimezone(input.timezone)) return err("invalid_timezone");
   if ((await schedules.countSlots(workspace.id)) >= (await slotCap(workspace.id))) {
     return err("too_many_slots");
+  }
+  // Users' times must be ≥ 1 h apart, otherwise the later batch would always be skipped.
+  if (await getLimits(workspace.id)) {
+    const existing = await schedules.listSlots(workspace.id);
+    const gap = minGapBetweenTimes([...existing, input], now);
+    if (gap !== null && gap < USER_REPOST_INTERVAL_MINUTES) return err("too_close");
   }
 
   const schedule = await schedules.getOrCreateSchedule(

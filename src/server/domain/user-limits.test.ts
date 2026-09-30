@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { capToLimits, isValidLimits, type UserLimits } from "./user-limits";
+import {
+  capToLimits,
+  effectiveIntervalMinutes,
+  isValidLimits,
+  type UserLimits,
+} from "./user-limits";
 
 const limits: UserLimits = {
   listPosts: 2,
@@ -33,5 +38,12 @@ describe("isValidLimits", () => {
     expect(isValidLimits({ ...limits, dailyTimes: 9 })).toBe(false);
     expect(isValidLimits({ ...limits, listPosts: 0 })).toBe(false);
     expect(isValidLimits({ ...limits, targets: 1.5 })).toBe(false);
+  });
+});
+
+describe("effectiveIntervalMinutes", () => {
+  it("fixes users at 60 min and keeps the superadmin's stored value", () => {
+    expect(effectiveIntervalMinutes(120, limits)).toBe(60);
+    expect(effectiveIntervalMinutes(120, null)).toBe(120);
   });
 });

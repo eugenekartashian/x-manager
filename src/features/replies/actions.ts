@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { ActionState } from "@/features/posts/actions";
 import { errorMessage } from "@/features/posts/messages";
-import { requireWorkspace } from "@/server/auth/session";
+import { requireSuperadmin, requireWorkspace } from "@/server/auth/session";
 import { suggestIdeasForPost } from "@/server/services/ai-replies";
 import {
   addTemplate,
@@ -111,7 +111,8 @@ export async function saveReplyLimitsAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { workspace } = await requireWorkspace();
+  // Users get the default reply limits (D-027); only the superadmin can change them.
+  const { workspace } = await requireSuperadmin();
   const input = limitsSchema.safeParse(Object.fromEntries(formData));
   const result = input.success ? await saveReplyLimits(workspace.id, input.data) : null;
   revalidatePath("/targets", "layout");

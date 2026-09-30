@@ -10,6 +10,7 @@ import { formatUsd } from "@/lib/format";
 import { env } from "@/lib/env";
 import { requireWorkspace } from "@/server/auth/session";
 import { MIN_INTERVAL_HOUR_OPTIONS, SCHEDULE_TIMEZONES } from "@/server/domain/repost-rules";
+import { USER_REPOST_INTERVAL_MINUTES } from "@/server/domain/user-limits";
 import { getSchedulePageData, PREVIEW_HOURS, slotCap } from "@/server/services/schedule";
 
 export default async function SchedulePage() {
@@ -20,6 +21,10 @@ export default async function SchedulePage() {
     getSchedulePageData(workspace, now),
     slotCap(workspace.id),
   ]);
+  // Users have a fixed 1 h interval (D-027).
+  const intervalMinutes = showCosts
+    ? workspace.perPostMinIntervalMinutes
+    : USER_REPOST_INTERVAL_MINUTES;
   const tz = workspace.timezone;
   const overBudget = BigInt(data.estimate.perMonthMicros) > data.budget.budgetMicros;
 
@@ -80,18 +85,17 @@ export default async function SchedulePage() {
           </p>
         </div>
         <SlotList slots={data.slots} workspaceTimezone={tz} now={now} listSize={data.listSize} />
-        {data.minGapMinutes !== null &&
-          data.minGapMinutes < workspace.perPostMinIntervalMinutes && (
-            <p
-              role="alert"
-              className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300"
-            >
-              Two of your times are only {Math.floor(data.minGapMinutes / 60)} h{" "}
-              {data.minGapMinutes % 60} min apart, but a post can be reposted at most every{" "}
-              {workspace.perPostMinIntervalMinutes / 60} h — the later batch will be skipped. Space
-              the times further apart or lower the interval below.
-            </p>
-          )}
+        {data.minGapMinutes !== null && data.minGapMinutes < intervalMinutes && (
+          <p
+            role="alert"
+            className="rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300"
+          >
+            Two of your times are only {Math.floor(data.minGapMinutes / 60)} h{" "}
+            {data.minGapMinutes % 60} min apart, but a post can be reposted at most every{" "}
+            {intervalMinutes / 60} h — the later batch will be skipped. Space the times further
+            apart{showCosts && " or lower the interval below"}.
+          </p>
+        )}
         <AddSlotForm
           timezones={SCHEDULE_TIMEZONES}
           defaultTimezone={tz}
@@ -100,13 +104,13 @@ export default async function SchedulePage() {
         />
       </section>
 
-      <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
-        <h2 className="text-lg font-medium">{showCosts ? "Interval & cost" : "Interval"}</h2>
-        <LimitsForm
-          intervalHours={workspace.perPostMinIntervalMinutes / 60}
-          intervalOptions={MIN_INTERVAL_HOUR_OPTIONS}
-        />
-        {showCosts ? (
+      {showCosts ? (
+        <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
+          <h2 className="text-lg font-medium">Interval & cost</h2>
+          <LimitsForm
+            intervalHours={workspace.perPostMinIntervalMinutes / 60}
+            intervalOptions={MIN_INTERVAL_HOUR_OPTIONS}
+          />
           <p
             className={`text-sm ${overBudget ? "text-amber-700 dark:text-amber-400" : "text-foreground/70"}`}
           >
@@ -118,13 +122,14 @@ export default async function SchedulePage() {
             {overBudget &&
               " Over budget: once the budget is used up, remaining Reposts this month are skipped."}
           </p>
-        ) : (
-          <p className="text-foreground/70 text-sm">
-            {data.slots.length} times × {data.listSize} posts = {data.estimate.repostsPerDay}{" "}
-            Reposts per day.
-          </p>
-        )}
-      </section>
+        </section>
+      ) : (
+        <p className="text-foreground/70 text-sm">
+          {data.slots.length} times × {data.listSize} posts = {data.estimate.repostsPerDay} Reposts
+          per day. Each post is reposted at most once per hour, so keep your times at least 1 hour
+          apart.
+        </p>
+      )}
 
       <section className="flex flex-col gap-3">
         <div>

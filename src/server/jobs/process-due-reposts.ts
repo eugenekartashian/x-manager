@@ -5,7 +5,7 @@ import type { Result } from "@/lib/result";
 import { prisma } from "@/server/db";
 import { planReposts, type PlannedRepost, type PlanPost } from "@/server/domain/repost-plan";
 import { REPOST_PAIR_COST_MICROS } from "@/server/domain/repost-rules";
-import { capToLimits } from "@/server/domain/user-limits";
+import { capToLimits, effectiveIntervalMinutes } from "@/server/domain/user-limits";
 import * as ownPosts from "@/server/repositories/own-posts";
 import * as runs from "@/server/repositories/repost-runs";
 import { canSpend } from "@/server/services/budget";
@@ -136,10 +136,11 @@ async function loadContext(workspaceId: string): Promise<Context | null> {
   const xUserId = await connectedXUserId(workspaceId);
   const scope = xUserId.ok ? { workspaceId, xUserId: xUserId.data } : null;
   // Posts/times beyond the owner's limits never run, even if added before a limit was lowered.
+  const limits = await getLimits(workspaceId);
   const { list, slots } = capToLimits(
     scope ? await ownPosts.listRotation(scope) : [],
     schedule.slots,
-    await getLimits(workspaceId),
+    limits,
   );
   const postsById = new Map(list.map((post) => [post.id, post]));
   const toPlanPost = (post: OwnPost): PlanPost => ({
@@ -160,7 +161,10 @@ async function loadContext(workspaceId: string): Promise<Context | null> {
         timezone: slot.timezone,
       })),
       list: list.map(toPlanPost),
-      limits: { minIntervalMs: workspace.perPostMinIntervalMinutes * 60_000 },
+      limits: {
+        minIntervalMs:
+          effectiveIntervalMinutes(workspace.perPostMinIntervalMinutes, limits) * 60_000,
+      },
     },
   };
 }

@@ -39,3 +39,13 @@ export function capToLimits<P, S>(
   if (!limits) return { list, slots };
   return { list: list.slice(0, limits.listPosts), slots: slots.slice(0, limits.dailyTimes) };
 }
+
+/**
+ * Users don't choose the per-post interval (D-027): a post is reposted at most once per hour,
+ * and their daily times must be at least this far apart. The superadmin keeps their setting.
+ */
+export const USER_REPOST_INTERVAL_MINUTES = 60;
+
+export function effectiveIntervalMinutes(storedMinutes: number, limits: UserLimits | null): number {
+  return limits ? USER_REPOST_INTERVAL_MINUTES : storedMinutes;
+}

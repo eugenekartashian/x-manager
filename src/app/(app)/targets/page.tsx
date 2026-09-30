@@ -53,15 +53,17 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
 
       <TemplatesSection templates={templates} />
 
-      <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
-        <h2 className="text-lg font-medium">Reply limits</h2>
-        <ReplyLimitsForm
-          cooldownHours={workspace.replyCooldownHours}
-          perDay={workspace.replyDailyLimit}
-          cooldownOptions={REPLY_COOLDOWN_HOUR_OPTIONS}
-          dailyOptions={REPLY_DAILY_LIMIT_OPTIONS}
-        />
-      </section>
+      {role === "SUPERADMIN" && (
+        <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
+          <h2 className="text-lg font-medium">Reply limits</h2>
+          <ReplyLimitsForm
+            cooldownHours={workspace.replyCooldownHours}
+            perDay={workspace.replyDailyLimit}
+            cooldownOptions={REPLY_COOLDOWN_HOUR_OPTIONS}
+            dailyOptions={REPLY_DAILY_LIMIT_OPTIONS}
+          />
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -81,6 +81,27 @@ describe("repost limits", () => {
   });
 });
 
+describe("user repost interval (1 h)", () => {
+  it("rejects a user's time less than 1 hour from another, the superadmin is not limited", async () => {
+    const user = await createOwner("b");
+    const admin = await createOwner("a");
+    const add = (workspaceId: string, localTime: string, timezone = "Europe/Madrid") =>
+      addSlot(
+        { id: workspaceId, timezone: "Europe/Madrid", perPostMinIntervalMinutes: 120 },
+        { localTime, timezone },
+        T0,
+      );
+
+    expect((await add(user.workspaceId, "09:00")).ok).toBe(true);
+    expect(await add(user.workspaceId, "09:30")).toEqual({ ok: false, error: "too_close" });
+    // 09:30 London = 10:30 Madrid → 1 h 30 min apart.
+    expect((await add(user.workspaceId, "09:30", "Europe/London")).ok).toBe(true);
+
+    expect((await add(admin.workspaceId, "09:00")).ok).toBe(true);
+    expect((await add(admin.workspaceId, "09:30")).ok).toBe(true);
+  });
+});
+
 describe("target limits", () => {
   it("caps the number of targets and can switch Targets off", async () => {
     const user = await connected("b");

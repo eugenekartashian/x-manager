@@ -175,3 +175,9 @@ User preference: #1 in the repost list is reposted first, then #2, … Because X
 - The superadmin edits limits and budget per user in `/admin`.
 - Users never see prices (banner only when their limit is reached, no $ on buttons, History without spend); only the superadmin can change a budget (`saveBudgetAction` requires superadmin). Users see allowances: list n/cap, times n/cap, targets n/cap, loads left today, AI ideas left today per target.
 - Optional `GLOBAL_MONTHLY_BUDGET_USD` caps estimated spend of all users together (checked in `canSpend`); unset = per-user budgets only.
+
+## D-027 · 2026-09-30 · Accepted — Users don't tune intervals or reply limits
+
+- Regular users no longer see or change the per-post Repost interval or the reply limits; those forms and their actions are superadmin-only.
+- Users have a fixed rule: a post is reposted at most once per hour (`USER_REPOST_INTERVAL_MINUTES`), and new daily times must be ≥ 1 h from their other times (`too_close`). Reply limits stay at the workspace defaults (1 reply per account per 24 h, 15/day).
+- The superadmin keeps their own configurable values.

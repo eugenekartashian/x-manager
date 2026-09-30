@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireWorkspace } from "@/server/auth/session";
+import { requireSuperadmin, requireWorkspace } from "@/server/auth/session";
 import { addSlot, removeSlot, saveRepostInterval, saveSchedule } from "@/server/services/schedule";
 import type { ActionState } from "@/features/posts/actions";
 
@@ -12,6 +12,7 @@ const MESSAGES: Record<string, string> = {
   invalid_time: "Pick a valid time.",
   invalid_timezone: "Pick a timezone from the list.",
   too_many_slots: "You already have the maximum number of daily times.",
+  too_close: "Times must be at least 1 hour apart.",
   invalid_interval: "Pick an interval from the list.",
   invalid_input: "Please check the form and try again.",
 };
@@ -92,7 +93,8 @@ export async function saveIntervalAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { workspace } = await requireWorkspace();
+  // Users have a fixed 1 h interval (D-027); only the superadmin can change it.
+  const { workspace } = await requireSuperadmin();
   const input = intervalSchema.safeParse(Object.fromEntries(formData));
   if (!input.success) return failed("invalid_input");
   const result = await saveRepostInterval(workspace.id, input.data);

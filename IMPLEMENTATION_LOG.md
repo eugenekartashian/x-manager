@@ -314,3 +314,8 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Prices hidden for users on the budget banner (only "limit reached"), Posts, Schedule, History (no spend section / budget form), Targets, reply session (load button, AI tooltip). Counters: list n/cap, daily times n/cap, targets n/cap, "Loads left today", "AI ideas left today for @x". Targets pages show "not enabled" when switched off.
 - Security: `saveBudgetAction` is superadmin-only (users can't raise their own budget).
 - Optional `GLOBAL_MONTHLY_BUDGET_USD` (env) + shown on /admin. Tests: 255 passing.
+
+### 2026-09-30 · M6.3c — Simpler settings for users (D-027)
+
+- Interval form and Reply limits form hidden for users; `saveIntervalAction` / `saveReplyLimitsAction` superadmin-only.
+- Users: fixed 1 h per-post interval in the job, preview and copy; adding a time < 1 h from another is refused ("Times must be at least 1 hour apart."). 257 tests passing.
