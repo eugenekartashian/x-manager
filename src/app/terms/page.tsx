@@ -9,8 +9,9 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of Use" updated="30 September 2026">
       <p>
-        X Manager is a private beta, available by invitation and free of charge. By using it you
-        agree to these terms. Contact: {contact}.
+        X Manager is an independent tool, not affiliated with or endorsed by X Corp. It is a private
+        beta, available by invitation and free of charge. By using it you agree to these terms.
+        Contact: {contact}.
       </p>
 
       <section>

@@ -9,6 +9,7 @@ import type { ActionState } from "@/features/posts/actions";
 const MESSAGES: Record<string, string> = {
   invalid_date: "Pick a valid start date.",
   invalid_duration: "Duration must be between 1 and 366 days.",
+  consent_required: "Tick the box to allow X Manager to repost on your behalf.",
   invalid_time: "Pick a valid time.",
   invalid_timezone: "Pick a timezone from the list.",
   too_many_slots: "You already have the maximum number of daily times.",
@@ -53,6 +54,7 @@ export async function saveScheduleAction(
     active: input.data.active === "on",
     startDate: input.data.startDate,
     durationDays: input.data.noEnd ? null : (input.data.durationDays ?? null),
+    consent: formData.get("consent") === "on",
   });
   refresh();
   if (!result.ok) return failed(result.error);

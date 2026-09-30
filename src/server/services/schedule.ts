@@ -130,11 +130,12 @@ function toPlanPost(post: OwnPost): PlanPost {
 
 // ─── Edits ───────────────────────────────────────────────────────────────────
 
-export type ScheduleError = "invalid_date" | "invalid_duration";
+export type ScheduleError = "invalid_date" | "invalid_duration" | "consent_required";
 
 export async function saveSchedule(
   workspace: WorkspaceRef,
-  input: { active: boolean; startDate: string; durationDays: number | null },
+  input: { active: boolean; startDate: string; durationDays: number | null; consent: boolean },
+  now: Date = new Date(),
 ): Promise<Result<RepostSchedule, ScheduleError>> {
   if (!isLocalDate(input.startDate)) return err("invalid_date");
   if (
@@ -145,8 +146,18 @@ export async function saveSchedule(
   ) {
     return err("invalid_duration");
   }
-  await schedules.getOrCreateSchedule(workspace.id, input.startDate);
-  return ok(await schedules.updateSchedule(workspace.id, input));
+  const current = await schedules.getOrCreateSchedule(workspace.id, input.startDate);
+  // X requires express consent before acting on someone's behalf (D-030).
+  const consentedAt = current.consentedAt ?? (input.consent ? now : null);
+  if (input.active && !consentedAt) return err("consent_required");
+  return ok(
+    await schedules.updateSchedule(workspace.id, {
+      active: input.active,
+      startDate: input.startDate,
+      durationDays: input.durationDays,
+      consentedAt,
+    }),
+  );
 }
 
 export type SlotError = "invalid_time" | "invalid_timezone" | "too_many_slots" | "too_close";

@@ -248,6 +248,9 @@ model RepostSchedule {
   active           Boolean      @default(false)
   startDate        String // YYYY-MM-DD
   durationDays     Int?
+  // Express consent to automated Reposts on the user's behalf (X Developer Policy, D-030).
+  // Required to switch the schedule on; the job ignores schedules without it.
+  consentedAt      DateTime?
   // Last post taken from the repost list; the next "next from list" slot continues after it.
   listCursorPostId String?
   // Per-workspace processing lease: one worker handles a workspace at a time.

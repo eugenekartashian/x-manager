@@ -59,19 +59,37 @@ describe("schedule settings", () => {
     const { workspace } = await setup();
 
     expect(
-      await saveSchedule(workspace, { active: true, startDate: "2026-02-30", durationDays: 5 }),
+      await saveSchedule(workspace, {
+        active: true,
+        consent: true,
+        startDate: "2026-02-30",
+        durationDays: 5,
+      }),
     ).toEqual({
       ok: false,
       error: "invalid_date",
     });
     for (const durationDays of [0, 400, 1.5]) {
       expect(
-        (await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays })).ok,
+        (
+          await saveSchedule(workspace, {
+            active: true,
+            consent: true,
+            startDate: "2026-10-01",
+            durationDays,
+          })
+        ).ok,
       ).toBe(false);
     }
     expect(
-      (await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays: null }))
-        .ok,
+      (
+        await saveSchedule(workspace, {
+          active: true,
+          consent: true,
+          startDate: "2026-10-01",
+          durationDays: null,
+        })
+      ).ok,
     ).toBe(true);
   });
 
@@ -148,7 +166,12 @@ describe("preview and estimate", () => {
     const { workspace, workspaceId } = await setup();
     for (const id of ["1", "3", "2"])
       await setInRotation(workspaceId, await postId(workspaceId, id), true);
-    await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays: 1 });
+    await saveSchedule(workspace, {
+      active: true,
+      consent: true,
+      startDate: "2026-10-01",
+      durationDays: 1,
+    });
     await addSlot(workspace, { localTime: "10:00", timezone: "Europe/Madrid" }, NOW);
     await addSlot(workspace, { localTime: "13:00", timezone: "Europe/Madrid" }, NOW);
     await addSlot(workspace, { localTime: "10:00", timezone: "America/New_York" }, NOW);
@@ -180,12 +203,42 @@ describe("preview and estimate", () => {
   it("skips a time when every listed post was reposted too recently", async () => {
     const { workspace, workspaceId } = await setup();
     await setInRotation(workspaceId, await postId(workspaceId, "1"), true);
-    await saveSchedule(workspace, { active: true, startDate: "2026-10-01", durationDays: 1 });
+    await saveSchedule(workspace, {
+      active: true,
+      consent: true,
+      startDate: "2026-10-01",
+      durationDays: 1,
+    });
     await addSlot(workspace, { localTime: "10:00", timezone: "Europe/Madrid" }, NOW);
     await addSlot(workspace, { localTime: "11:00", timezone: "Europe/Madrid" }, NOW); // 1 h later, interval 2 h
 
     const data = await getSchedulePageData(workspace, NOW);
 
     expect(data.preview.map((item) => item.skipReason)).toEqual([null, "interval"]);
+  });
+});
+
+describe("consent to automated Reposts (D-030)", () => {
+  it("refuses to switch the schedule on without consent and records it once given", async () => {
+    const owner = await createOwner("a");
+    const workspace = {
+      id: owner.workspaceId,
+      timezone: "Europe/Madrid",
+      perPostMinIntervalMinutes: 120,
+    };
+    const at = new Date("2026-10-01T09:00:00Z");
+    const on = { active: true, startDate: "2026-10-01", durationDays: null };
+
+    expect(await saveSchedule(workspace, { ...on, consent: false }, at)).toEqual({
+      ok: false,
+      error: "consent_required",
+    });
+    const saved = await saveSchedule(workspace, { ...on, consent: true }, at);
+    expect(saved.ok && saved.data.consentedAt).toEqual(at);
+
+    // Later saves keep the original consent without asking again; switching off keeps it too.
+    const off = await saveSchedule(workspace, { ...on, active: false, consent: false }, new Date());
+    expect(off.ok && off.data.consentedAt).toEqual(at);
+    expect((await saveSchedule(workspace, { ...on, consent: false })).ok).toBe(true);
   });
 });

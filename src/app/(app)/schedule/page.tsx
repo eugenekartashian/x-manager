@@ -6,7 +6,7 @@ import { PreviewList } from "@/features/schedule/preview-list";
 import { RecentRuns } from "@/features/schedule/recent-runs";
 import { ScheduleForm } from "@/features/schedule/schedule-form";
 import { SlotList } from "@/features/schedule/slot-list";
-import { formatUsd } from "@/lib/format";
+import { formatDateTime, formatUsd } from "@/lib/format";
 import { env } from "@/lib/env";
 import { requireWorkspace } from "@/server/auth/session";
 import { MIN_INTERVAL_HOUR_OPTIONS, SCHEDULE_TIMEZONES } from "@/server/domain/repost-rules";
@@ -64,6 +64,9 @@ export default async function SchedulePage() {
           startDate={data.schedule.startDate}
           durationDays={data.schedule.durationDays}
           timeZone={tz}
+          consentedOn={
+            data.schedule.consentedAt ? formatDateTime(data.schedule.consentedAt, tz) : null
+          }
         />
       </section>
 

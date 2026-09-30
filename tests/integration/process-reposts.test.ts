@@ -55,6 +55,7 @@ async function setup(
       workspaceId: owner.workspaceId,
       active: options.active ?? true,
       startDate: "2026-10-01",
+      consentedAt: new Date("2026-09-30T00:00:00Z"),
     },
   });
   for (const localTime of options.times ?? ["10:00"]) {
@@ -176,6 +177,15 @@ describe("processDueReposts — whole list at every time", () => {
 
     expect(x.calls).toHaveLength(0);
     expect(await prisma.scheduledRepost.count()).toBe(0);
+  });
+
+  it("never runs a schedule without the user's recorded consent", async () => {
+    const { workspaceId } = await setup();
+    await prisma.repostSchedule.update({ where: { workspaceId }, data: { consentedAt: null } });
+    const x = withFakeX(okX());
+
+    expect((await processDueReposts(minutes(AT_10, 1), LIVE)).workspaces).toBe(0);
+    expect(x.calls).toHaveLength(0);
   });
 
   it("does nothing while the schedule is off", async () => {

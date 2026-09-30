@@ -6,7 +6,8 @@ import { prisma } from "@/server/db";
 
 export async function listSchedulableWorkspaceIds(limit: number): Promise<string[]> {
   const rows = await prisma.repostSchedule.findMany({
-    where: { active: true, slots: { some: {} } },
+    // Only schedules with the user's recorded consent (D-030).
+    where: { active: true, consentedAt: { not: null }, slots: { some: {} } },
     select: { workspaceId: true },
     orderBy: { updatedAt: "asc" },
     take: limit,

@@ -54,6 +54,9 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
           Terms of Use
         </Link>
       </p>
+      <p className="text-foreground/50 text-xs">
+        X Manager is an independent tool, not affiliated with or endorsed by X Corp.
+      </p>
     </main>
   );
 }

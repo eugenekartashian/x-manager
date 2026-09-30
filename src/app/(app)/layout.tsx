@@ -33,6 +33,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <Link href="/terms" className="underline underline-offset-2">
           Terms of Use
         </Link>
+        <span className="text-foreground/50 block pt-1">
+          X Manager is an independent tool, not affiliated with or endorsed by X Corp.
+        </span>
       </footer>
     </div>
   );

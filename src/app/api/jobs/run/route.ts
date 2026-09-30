@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { processDueReposts } from "@/server/jobs/process-due-reposts";
+import { purgeStaleTargetPosts } from "@/server/jobs/purge-stale-content";
 
 // Called by the scheduler (Supabase pg_cron → pg_net) every few minutes.
 export const maxDuration = 60;
@@ -13,8 +14,13 @@ export async function POST(request: Request) {
       { status: 401, headers: { "Cache-Control": "no-store" } },
     );
   }
-  const summary = await processDueReposts(new Date(), { writesEnabled: env.X_WRITES_ENABLED });
-  return NextResponse.json(summary, { headers: { "Cache-Control": "no-store" } });
+  const now = new Date();
+  const summary = await processDueReposts(now, { writesEnabled: env.X_WRITES_ENABLED });
+  const purgedTargetPosts = await purgeStaleTargetPosts(now);
+  return NextResponse.json(
+    { ...summary, purgedTargetPosts },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 function isAuthorized(header: string | null): boolean {

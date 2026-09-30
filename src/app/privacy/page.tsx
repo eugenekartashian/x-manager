@@ -35,7 +35,10 @@ export default function PrivacyPage() {
         <h2>What we do with it</h2>
         <ul>
           <li>Repost your own posts at the times you choose, through the official X API.</li>
-          <li>Show recent public posts of accounts you added, on request.</li>
+          <li>
+            Show recent public posts of accounts you added, on request. These copies are deleted
+            automatically after 3 days.
+          </li>
           <li>
             AI reply ideas (only when you click the button): the text of that public post, the
             account&apos;s public name and bio, your note and your templates are sent to OpenAI to

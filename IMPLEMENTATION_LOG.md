@@ -344,3 +344,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 - `/privacy`, `/terms` (public), links on sign-in + app footer; `LEGAL_CONTACT_EMAIL` (optional env).
 - `services/account.ts` `deleteMyAccount`: X revoke + delete user/invite, cascade verified for all 12 workspace tables (`tests/integration/account.test.ts`); superadmin refused. Dashboard "Delete account" section (type DELETE). 270 tests passing.
+
+### 2026-09-30 · M6.6 prep — X multi-user rules (D-030) + header
+
+- Consent to automated Reposts (migration `repost_consent`, form checkbox, job filter, tests); "not affiliated with X Corp." disclaimer; daily-safe purge of target posts older than 3 days in `/api/jobs/run` (test).
+- Header: account menu (initial → email, Admin for superadmin, Sign out); Admin removed from the main nav.
+- 273 tests passing.

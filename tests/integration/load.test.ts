@@ -36,7 +36,12 @@ async function seedUsers(): Promise<void> {
       })),
     });
     const schedule = await prisma.repostSchedule.create({
-      data: { workspaceId: workspace.id, active: true, startDate: "2026-10-01" },
+      data: {
+        workspaceId: workspace.id,
+        active: true,
+        startDate: "2026-10-01",
+        consentedAt: new Date("2026-09-30T00:00:00Z"),
+      },
     });
     await prisma.repostSlot.create({
       data: {

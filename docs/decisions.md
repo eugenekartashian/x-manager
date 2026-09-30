@@ -195,3 +195,16 @@ User preference: #1 in the repost list is reposted first, then #2, … Because X
 - Public `/privacy` and `/terms` (plain language, describe only what the app really does, incl. OpenAI for on-demand AI ideas and Sentry for scrubbed errors). Linked from sign-in and the app footer; to be entered in the X Developer Console app settings. Not legal advice — review before a paid launch.
 - "Delete my account" (users, not the superadmin): revokes the X token at X, deletes the user; everything they own cascades from the workspace; the invite is removed. Confirmation by typing DELETE.
 - Optional `LEGAL_CONTACT_EMAIL` shown on the legal pages.
+
+## D-030 · 2026-09-30 · Accepted — X rules for a multi-user app (review + fixes)
+
+Sources read 2026-09-30: [X Developer Policy](https://docs.x.com/developer-terms/policy), [X Developer Agreement](https://docs.x.com/developer-terms/agreement) (last updated 2026-04-27), [Automation rules](https://help.x.com/en/rules-and-policies/x-automation) (help.x.com blocks automated fetches; content taken from X's official summary via search).
+
+Already compliant: privacy policy; show exactly what is published; no automated replies/DMs/follows (users post replies themselves); automated Reposts allowed if not bulk/aggressive/spammy (limits: ≤ 2 posts, ≤ 4 times/day, ≥ 1 h apart); only own posts (no identical content across accounts); content fetched with one user's token never shown to another; no model training on X content.
+
+Fixed now:
+- **Express consent** ("authenticating into your service does not by itself constitute consent"): `repost_schedule.consentedAt`; switching the schedule on requires ticking an explicit consent box; the job ignores schedules without consent.
+- **Service authenticity** (no names implying affiliation with X): "not affiliated with or endorsed by X Corp." on sign-in, app footer and Terms. A name without "X" is needed before a public/paid launch.
+- **Content compliance** (keep stored X content current, delete what is deleted on X): target posts are purged 3 days after loading by the cron job (`purgeStaleTargetPosts`).
+
+Open before a paid launch: Developer Policy "Pay to engage" forbids receiving compensation "for any X actions … reposts, likes, comments, and replies" — likely aimed at paid engagement, but the wording is broad and the paid product would be automated Reposts → get legal advice or written confirmation from X. Monetised use also requires the app to be designated commercial in the X Console.

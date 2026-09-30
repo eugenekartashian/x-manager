@@ -12,7 +12,14 @@ const initial: ActionState = { status: "idle", message: "" };
 const input =
   "rounded-md border border-foreground/15 bg-transparent px-3 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50";
 
-type Props = { active: boolean; startDate: string; durationDays: number | null; timeZone: string };
+type Props = {
+  active: boolean;
+  startDate: string;
+  durationDays: number | null;
+  timeZone: string;
+  /** Formatted date of the recorded consent, or null if the user never agreed. */
+  consentedOn: string | null;
+};
 
 export function ScheduleForm(saved: Props) {
   const [state, action, pending] = useActionState(saveScheduleAction, initial);
@@ -61,6 +68,21 @@ export function ScheduleForm(saved: Props) {
         <span className="font-medium">Schedule is {active ? "ON" : "OFF"}</span>
         <span className="text-foreground/60 text-sm">(when off, nothing is reposted)</span>
       </label>
+
+      {active && !saved.consentedOn && (
+        <label className="flex items-start gap-3 rounded-md bg-amber-500/10 px-3 py-2 text-sm">
+          <input type="checkbox" name="consent" required className="mt-1 size-4 accent-green-600" />
+          <span>
+            I allow X Manager to undo and redo Reposts of the posts in my repost list on my X
+            account, at the daily times I set, until I switch the schedule off or disconnect X.
+          </span>
+        </label>
+      )}
+      {saved.consentedOn && (
+        <p className="text-foreground/60 text-xs">
+          You allowed automated Reposts on {saved.consentedOn}.
+        </p>
+      )}
 
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm">

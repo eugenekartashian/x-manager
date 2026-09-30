@@ -15,7 +15,12 @@ export function getOrCreateSchedule(
 
 export function updateSchedule(
   workspaceId: string,
-  data: { active: boolean; startDate: string; durationDays: number | null },
+  data: {
+    active: boolean;
+    startDate: string;
+    durationDays: number | null;
+    consentedAt: Date | null;
+  },
 ): Promise<RepostSchedule> {
   return prisma.repostSchedule.update({ where: { workspaceId }, data });
 }
