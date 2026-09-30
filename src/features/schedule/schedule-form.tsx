@@ -44,7 +44,7 @@ export function ScheduleForm(saved: Props) {
     summary = noEnd
       ? `From ${day(startDate)}, with no end date.`
       : validDays
-        ? `From ${day(startDate)} to ${day(addDays(startDate, days - 1))} inclusive (${days} day${days === 1 ? "" : "s"}).`
+        ? `From ${day(startDate)} to ${day(addDays(startDate, days))} (${days} day${days === 1 ? "" : "s"}).`
         : "Duration must be 1–366 days.";
   }
 
