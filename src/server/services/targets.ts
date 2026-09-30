@@ -144,3 +144,8 @@ export function csvCell(value: string): string {
     /^[=+\-@\t\r]/.test(value) && !/^@[A-Za-z0-9_]{1,15}$/.test(value) ? `'${value}` : value;
   return `"${safe.replace(/"/g, '""')}"`;
 }
+
+/** Target id for a username in this workspace (quick add from a shared link). */
+export async function findTargetId(workspaceId: string, username: string): Promise<string | null> {
+  return (await targets.findTargetIdByUsername(workspaceId, username))?.id ?? null;
+}

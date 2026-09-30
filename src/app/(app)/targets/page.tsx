@@ -3,9 +3,11 @@ import { ReplyLimitsForm } from "@/features/replies/limits-form";
 import { RecentReplies } from "@/features/replies/recent-replies";
 import { TemplatesSection } from "@/features/replies/templates-section";
 import { AddTargetsForm } from "@/features/targets/add-targets-form";
+import { QuickAddHelp } from "@/features/targets/quick-add-help";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { TargetList } from "@/features/targets/target-list";
 import { ConnectXFirst } from "@/features/x-account/connect-x-first";
+import { env } from "@/lib/env";
 import { requireWorkspace } from "@/server/auth/session";
 import {
   REPLY_COOLDOWN_HOUR_OPTIONS,
@@ -50,6 +52,7 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
       </div>
 
       <AddTargetsForm showCosts={role === "SUPERADMIN"} />
+      <QuickAddHelp appUrl={env.APP_URL} />
 
       <TemplatesSection templates={templates} />
 

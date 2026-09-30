@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseHandles } from "./handles";
+import { handleFromShared, parseHandles } from "./handles";
 
 describe("parseHandles", () => {
   it("accepts handles with or without @, links, and Excel columns", () => {
@@ -23,5 +23,32 @@ describe("parseHandles", () => {
 
   it("ignores empty input", () => {
     expect(parseHandles("  \n ,, ")).toEqual({ handles: [], invalid: [] });
+  });
+});
+
+describe("handleFromShared", () => {
+  it.each([
+    ["https://x.com/alex__ink", "alex__ink"],
+    ["https://x.com/alex__ink?s=21&t=abc", "alex__ink"],
+    ["https://x.com/alex__ink/status/1834567890123456789?s=46", "alex__ink"],
+    ["Look at this https://twitter.com/Gio_33/status/1 🔥", "Gio_33"],
+    ["https://mobile.x.com/someone/", "someone"],
+    ["Alex Ink (@alex__ink) on X", "alex__ink"],
+  ])("%s → %s", (input, expected) => {
+    expect(handleFromShared(input)).toBe(expected);
+  });
+
+  it.each([
+    "https://x.com/i/status/1834567890123456789",
+    "https://x.com/search?q=gym",
+    "https://example.com/alex",
+    "nothing here",
+    "",
+  ])("finds no username in %s", (input) => {
+    expect(handleFromShared(input)).toBeNull();
+  });
+
+  it("combines the url, text and title fields of a share", () => {
+    expect(handleFromShared(null, "Great post", "https://x.com/gio/status/5")).toBe("gio");
   });
 });

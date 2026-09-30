@@ -358,3 +358,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - `/admin`: aggregated targets CSV (D-031). 277 tests passing.
 
 - Schedule default: new schedules start as a 1-day run ("No end date" unticked); unused, off schedules without an end date migrated to 1 day (`schedule_default_one_day`).
+
+### 2026-09-30 · M3.5 (part 1) — Quick add from X (share)
+
+- `/targets/add?url|text|title=…`: `handleFromShared` (profile / post links, @mentions; ignores x.com/i/…, search, etc.) → "Add @handle to targets" → opens the reply session; already-listed accounts open directly. GET only shows a button; the add is a server action.
+- Android: installable PWA (`app/manifest.ts` with `share_target` → /targets/add, generated icons `/pwa-icon/192|512`, `apple-icon`). iPhone: Shortcut instructions (URL Encode → Text → Open URLs). Desktop: bookmarklet (sends only location.href).
+- Targets page: "Quick add from X" help. 289 tests passing. Not yet verified on real devices.

@@ -77,3 +77,13 @@ export async function updateTargetNote(
   });
   return count > 0;
 }
+
+export function findTargetIdByUsername(
+  workspaceId: string,
+  username: string,
+): Promise<{ id: string } | null> {
+  return prisma.targetAccount.findFirst({
+    where: { workspaceId, username: { equals: username, mode: "insensitive" } },
+    select: { id: true },
+  });
+}

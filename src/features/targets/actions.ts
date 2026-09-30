@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { ActionState } from "@/features/posts/actions";
 import { errorMessage } from "@/features/posts/messages";
 import { requireWorkspace } from "@/server/auth/session";
-import { addTargets, removeTarget, saveTargetNote } from "@/server/services/targets";
+import { addTargets, findTargetId, removeTarget, saveTargetNote } from "@/server/services/targets";
 
 const MESSAGES: Record<string, string> = {
   nothing_to_add: "Paste at least one @handle.",
@@ -60,4 +61,30 @@ export async function saveNoteAction(formData: FormData): Promise<void> {
   if (!input.success) return;
   await saveTargetNote(workspace.id, input.data.targetId, input.data.note);
   revalidatePath("/targets");
+}
+
+const sharedSchema = z.object({ handle: z.string().regex(/^[A-Za-z0-9_]{1,15}$/) });
+
+/** Quick add from a shared link (M3.5): adds one account, then opens its reply session. */
+export async function addSharedTargetAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { workspace } = await requireWorkspace();
+  const input = sharedSchema.safeParse({ handle: formData.get("handle") ?? "" });
+  if (!input.success) return { status: "error", message: "No valid @username to add." };
+
+  const result = await addTargets(workspace.id, input.data.handle);
+  if (!result.ok) {
+    return { status: "error", message: MESSAGES[result.error] ?? errorMessage(result.error) };
+  }
+  if (result.data.notFound.length) {
+    return { status: "error", message: `@${input.data.handle} was not found on X.` };
+  }
+  if (result.data.skippedSelf) {
+    return { status: "error", message: "That's your own account." };
+  }
+  revalidatePath("/targets");
+  const id = await findTargetId(workspace.id, input.data.handle);
+  redirect(id ? `/targets/${id}` : "/targets");
 }
