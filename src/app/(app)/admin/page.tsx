@@ -19,7 +19,15 @@ export default async function AdminPage() {
           {people} {people === 1 ? "person has" : "people have"} access · API spend this month, all
           users (estimate): <strong>{formatUsd(totalSpendMicros(members))}</strong>
           {globalCap !== null && <> of {formatUsd(globalCap)} (app-wide cap)</>}. The X Developer
-          Console spend cap applies to all users together.
+          Console spend cap applies to all users together.{" "}
+          <a
+            href="/api/admin/sentry-test"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2"
+          >
+            Send a test error to Sentry
+          </a>
         </p>
       </div>
 

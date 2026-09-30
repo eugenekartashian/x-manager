@@ -92,7 +92,10 @@ if (command === "migrate") {
     spawnSync("pnpm", ["dlx", "vercel", "env", "rm", name, "production", "--yes"], {
       stdio: "ignore",
     });
-    run("pnpm", ["dlx", "vercel", "env", "add", name, "production", "--sensitive"], {
+    // NEXT_PUBLIC_* values are shipped to the browser by design, so Vercel refuses to store
+    // them as secrets; everything else is Sensitive.
+    const type = name.startsWith("NEXT_PUBLIC_") ? ["--type", "config"] : ["--sensitive"];
+    run("pnpm", ["dlx", "vercel", "env", "add", name, "production", ...type], {
       input: value,
     });
     console.log(`✓ ${name}`);
