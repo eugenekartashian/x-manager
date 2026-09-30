@@ -120,7 +120,7 @@ Roles: **superadmin** (the owner, bootstrap email in env) and **user**; the role
 Users never see prices: no $ on buttons, no spend banner, history without amounts. They see only "used n of limit". The superadmin sees everything as today plus per-user spend.
 
 - [x] **6.1 Roles & access in the DB** (D-025) — `role` on user (`USER` / `SUPERADMIN`); invites table replaces the `ALLOWED_EMAILS` env list (migrated from it); superadmin bootstrap via env so the owner can never be locked out; revoking access signs the user out and pauses their schedule.
-- [ ] **6.2 Admin page `/admin`** — users (email, X handle, joined, last active, month spend vs budget, status); invite, revoke, edit limits, enable/disable Targets & AI per user.
+- [x] **6.2 Admin page `/admin`** (list, invite, revoke; limits and feature switches move to 6.3) — users (email, X handle, joined, last active, month spend vs budget, status); invite, revoke, edit limits, enable/disable Targets & AI per user.
 - [ ] **6.3 Per-user limits & user UI** — limits stored per workspace, enforced in services; prices hidden for users; limit counters in the UI; global spend cap across all workspaces.
 - [ ] **6.4 Scale & safety** — per-workspace fan-out of the Repost job + load test (200 fake workspaces); error monitoring + uptime alert; isolation audit across all resources (IDOR tests for every resource type).
 - [ ] **6.5 Data & legal minimum** — Privacy Policy + Terms pages (we store other people's X tokens), data retention, "delete my account and data" (revokes X token, deletes rows).

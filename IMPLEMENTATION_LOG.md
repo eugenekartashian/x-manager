@@ -295,3 +295,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Env: `ALLOWED_EMAILS` → `SUPERADMIN_EMAILS` (local, production, Vercel, `.env.example`, `prod:env`).
 - Tests: 10 new (invites, revoke isolation, role sync/demotion, hooks). 240 passing.
 - Rollout order: `SUPERADMIN_EMAILS` to Vercel → `prod:migrate` → push.
+
+### 2026-09-30 · M6.2 — Admin page
+
+- `/admin` (superadmin only, 404 for others; "Admin" nav item only for the superadmin): total month spend across users, invite by Google email, user list (status superadmin / active / invited / revoked / no access, X account + reconnect state, month spend vs budget, joined, last active), two-step "Revoke access".
+- `repositories/admin.ts` (bounded cross-workspace reads) + `services/admin.ts` (`listMembers`, merge by normalized email). 2 new tests; 242 passing.
+- Old `ALLOWED_EMAILS` removed from Vercel.

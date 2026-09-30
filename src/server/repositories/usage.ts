@@ -46,7 +46,7 @@ export async function recordUsage(input: {
   });
 }
 
-function monthStartUtc(now: Date): Date {
+export function monthStartUtc(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
 

@@ -30,7 +30,7 @@ What protects the user's X account and credentials, and what must stay true as t
 
 ## 4. App login (`src/server/auth/`)
 
-- Google via Better Auth; email/password disabled. Access (D-025): superadmin emails from env, everyone else by an active DB invite — checked on user creation, on every session creation and on every request (`requireWorkspace()`). Revoking an invite deletes the user's sessions and pauses their schedule. Superadmin-only pages use `requireSuperadmin()` and return 404 to others. The superadmin role mirrors `SUPERADMIN_EMAILS` (granted and removed on sign-in/request).
+- Google via Better Auth; email/password disabled. Access (D-025): superadmin emails from env, everyone else by an active DB invite — checked on user creation, on every session creation and on every request (`requireWorkspace()`). Revoking an invite deletes the user's sessions and pauses their schedule. Superadmin-only pages use `requireSuperadmin()` and return 404 to others. The only cross-workspace reads are in `repositories/admin.ts` (bounded, called only from `/admin` after `requireSuperadmin()`). The superadmin role mirrors `SUPERADMIN_EMAILS` (granted and removed on sign-in/request).
 - Session cookie `httpOnly`, `SameSite=Lax`, `Secure` on HTTPS; origin check rejects foreign origins; Google OAuth tokens encrypted at rest.
 - Server Actions: Next.js enforces same-origin POST.
 
