@@ -123,7 +123,7 @@ Users never see prices: no $ on buttons, no spend banner, history without amount
 - [x] **6.2 Admin page `/admin`** (list, invite, revoke; limits and feature switches move to 6.3) — users (email, X handle, joined, last active, month spend vs budget, status); invite, revoke, edit limits, enable/disable Targets & AI per user.
 - [x] **6.3 Per-user limits & user UI** (D-026) — limits stored per workspace, enforced in services; prices hidden for users; limit counters in the UI; global spend cap across all workspaces.
 - [x] **6.4 Scale & safety** (parallel job + load test, security audit, Sentry live 2026-09-30; uptime monitor = user-side UptimeRobot) — per-workspace fan-out of the Repost job + load test (200 fake workspaces); error monitoring + uptime alert; isolation audit across all resources (IDOR tests for every resource type).
-- [ ] **6.5 Data & legal minimum** — Privacy Policy + Terms pages (we store other people's X tokens), data retention, "delete my account and data" (revokes X token, deletes rows).
+- [x] **6.5 Data & legal minimum** (/privacy, /terms, "Delete my account") — Privacy Policy + Terms pages (we store other people's X tokens), data retention, "delete my account and data" (revokes X token, deletes rows).
 - [ ] **6.6 Launch beta** — raise the X Developer Console spend cap (currently $5 for the whole app — all users share it); re-check X Developer Agreement/Policy for a multi-user app (links in decisions.md); invite 3–5 friends.
 
 ---

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GoogleSignInButton } from "@/features/auth/google-sign-in-button";
 import { getCurrentUser } from "@/server/auth/session";
@@ -16,7 +17,7 @@ function errorMessage(code: string | undefined): string | null {
 
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
   const user = await getCurrentUser();
-  const { error } = await searchParams;
+  const { error, deleted } = await searchParams;
   const message = errorMessage(typeof error === "string" ? error : undefined);
 
   if (user && !message) redirect("/dashboard");
@@ -35,7 +36,24 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
           {message}
         </p>
       )}
+      {deleted === "1" && (
+        <p
+          role="status"
+          className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400"
+        >
+          Your account and all its data were deleted, and X access was revoked.
+        </p>
+      )}
       <GoogleSignInButton />
+      <p className="text-foreground/60 text-xs">
+        <Link href="/privacy" className="underline underline-offset-2">
+          Privacy Policy
+        </Link>{" "}
+        ·{" "}
+        <Link href="/terms" className="underline underline-offset-2">
+          Terms of Use
+        </Link>
+      </p>
     </main>
   );
 }

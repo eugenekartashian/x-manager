@@ -35,6 +35,8 @@ const serverEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  // Public contact shown on /privacy and /terms (optional; falls back to "the person who invited you").
+  LEGAL_CONTACT_EMAIL: optionalString.pipe(z.email().optional()),
   // Optional app-wide cap on estimated API spend per UTC month, all users together (M6.3).
   // Unset = only per-user budgets apply. Keep it ≤ the X Developer Console spend cap.
   GLOBAL_MONTHLY_BUDGET_USD: optionalString

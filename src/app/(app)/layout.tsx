@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BudgetBanner } from "@/features/history/budget-banner";
 import { AppNav } from "@/features/nav/app-nav";
 import { requireWorkspace } from "@/server/auth/session";
@@ -26,6 +27,15 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
         {children}
       </main>
+      <footer className="text-foreground/60 mx-auto w-full max-w-3xl px-4 pb-8 text-xs">
+        <Link href="/privacy" className="underline underline-offset-2">
+          Privacy Policy
+        </Link>{" "}
+        ·{" "}
+        <Link href="/terms" className="underline underline-offset-2">
+          Terms of Use
+        </Link>
+      </footer>
     </div>
   );
 }

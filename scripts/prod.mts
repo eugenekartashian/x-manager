@@ -48,6 +48,7 @@ const APP_ENV = [
 // Optional: pushed only when set (AI reply ideas stay off without a key).
 const OPTIONAL_ENV = [
   "GLOBAL_MONTHLY_BUDGET_USD",
+  "LEGAL_CONTACT_EMAIL",
   "NEXT_PUBLIC_SENTRY_DSN",
   "SENTRY_ORG",
   "SENTRY_PROJECT",
