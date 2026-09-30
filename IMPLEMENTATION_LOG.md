@@ -319,3 +319,4 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 - Interval form and Reply limits form hidden for users; `saveIntervalAction` / `saveReplyLimitsAction` superadmin-only.
 - Users: fixed 1 h per-post interval in the job, preview and copy; adding a time < 1 h from another is refused ("Times must be at least 1 hour apart."). 257 tests passing.
+- Default user limits → 2 posts × 4 times (migration `user_limits_2_posts_4_times`, moves users still on 4 × 2). Max-usage cost table added to ROADMAP.

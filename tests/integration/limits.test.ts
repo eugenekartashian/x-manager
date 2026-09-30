@@ -29,8 +29,8 @@ const T0 = new Date("2026-10-01T10:00:00Z"); // 12:00 Madrid
 const hours = (h: number) => new Date(T0.getTime() + h * 3_600_000);
 
 const BETA = {
-  listPosts: 4,
-  dailyTimes: 2,
+  listPosts: 2,
+  dailyTimes: 4,
   targets: 3,
   targetLoadsPerDay: 3,
   aiIdeasPerTargetPerDay: 5,
@@ -64,20 +64,21 @@ describe("repost limits", () => {
     const admin = await createOwner("a");
     const user = await createOwner("b");
 
-    expect(await listCap(user.workspaceId)).toBe(4);
-    expect(await slotCap(user.workspaceId)).toBe(2);
+    expect(await listCap(user.workspaceId)).toBe(2);
+    expect(await slotCap(user.workspaceId)).toBe(4);
     expect(await listCap(admin.workspaceId)).toBe(25);
     expect(await slotCap(admin.workspaceId)).toBe(8);
   });
 
-  it("refuses a third daily time for a user", async () => {
+  it("refuses a fifth daily time for a user", async () => {
     const user = await createOwner("b");
     const ref = { id: user.workspaceId, timezone: "Europe/Madrid", perPostMinIntervalMinutes: 120 };
     const add = (localTime: string) => addSlot(ref, { localTime, timezone: "Europe/Madrid" }, T0);
 
-    expect((await add("09:00")).ok).toBe(true);
-    expect((await add("15:00")).ok).toBe(true);
-    expect(await add("21:00")).toEqual({ ok: false, error: "too_many_slots" });
+    for (const time of ["09:00", "13:00", "17:00", "21:00"]) {
+      expect((await add(time)).ok).toBe(true);
+    }
+    expect(await add("23:00")).toEqual({ ok: false, error: "too_many_slots" });
   });
 });
 

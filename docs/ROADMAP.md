@@ -110,8 +110,8 @@ Roles: **superadmin** (the owner, bootstrap email in env) and **user**; the role
 
 | Feature | Limit | Worst-case X cost / month |
 |---|---|---|
-| Repost list | max **4** posts | — |
-| Daily times | max **2** | 4 × 2 × 30 × ≈ $0.025 ≈ **$6** (real ≈ $0.02/post → ≈ $4.80) |
+| Repost list | max **2** posts (changed 2026-09-30, was 4) | — |
+| Daily times | max **4** (was 2), ≥ 1 h apart | 2 × 4 × 30 = 240 Reposts × ≈ $0.025 ≈ **$6** (real ≈ $0.02 → ≈ $4.80) |
 | Targets | max **3** accounts at a time | adding ≈ $0.01 each |
 | Target post loads | max **3 per day** total (proposal; 10 posts per load ≈ $0.05) | ≈ **$4.50** |
 | AI ideas | **5 per target per day** (proposal; ≈ $0.001 each) | ≈ $0.50 |
@@ -160,6 +160,21 @@ Options:
 3. **Credits only** (pay-as-you-go) — fair, but unpredictable revenue and unusual for customers.
 
 Market check (from memory, unverified): similar X tools (Hypefury, Typefully, Tweet Hunter) ≈ $12–49/mo, usually without per-action X API costs.
+
+### Cost per user at max usage (beta limits, calculated 2026-09-30)
+
+Limits: 2 posts × 4 times/day, 3 targets, 3 loads/day, 5 AI ideas per target per day. Prices from `integrations/x/pricing.ts`; averages measured in production (AI ≈ $0.00056/request, a target load ≈ 4.3 billed posts ≈ $0.021).
+
+| Action (30 days) | Worst case | Typical |
+|---|---|---|
+| Reposts: 240 × (undo $0.010 + Repost $0.015) | $6.00 | $4.80 (X billed ≈ $0.02 each) |
+| Target loads: 90 × up to 10 posts × $0.005 | $4.50 | $1.90 |
+| AI ideas: 450 × $0.00056 | $0.25 | $0.10 |
+| Own posts refresh (same-day re-reads free) | $1.05 | $0.30 |
+| Adding targets ($0.01 each) | $0.10 | $0.03 |
+| **Total X + AI** | **≈ $11.90** | **≈ $7.10** |
+
+Shared hosting (Vercel Pro + Supabase Pro) ≈ $45/month. After VAT (21 %) and payment fees (~5 %) about 78 % of the price remains: €24–29/month for this package keeps a margin even at worst case; a Reposts-only tier (worst ≈ $7) fits €12–15.
 
 ### Scaling & hosting for many users (assessment 2026-09-29)
 

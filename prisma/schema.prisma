@@ -119,8 +119,8 @@ model Workspace {
   replyCooldownHours        Int       @default(24)
   replyDailyLimit           Int       @default(15)
   // Per-user limits set by the superadmin (M6.3, D-026). Not applied to superadmins.
-  limitListPosts            Int       @default(4)
-  limitDailyTimes           Int       @default(2)
+  limitListPosts            Int       @default(2)
+  limitDailyTimes           Int       @default(4)
   limitTargets              Int       @default(3)
   limitTargetLoadsPerDay    Int       @default(3)
   limitAiIdeasPerTargetDay  Int       @default(5)

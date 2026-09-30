@@ -181,3 +181,4 @@ User preference: #1 in the repost list is reposted first, then #2, … Because X
 - Regular users no longer see or change the per-post Repost interval or the reply limits; those forms and their actions are superadmin-only.
 - Users have a fixed rule: a post is reposted at most once per hour (`USER_REPOST_INTERVAL_MINUTES`), and new daily times must be ≥ 1 h from their other times (`too_close`). Reply limits stay at the workspace defaults (1 reply per account per 24 h, 15/day).
 - The superadmin keeps their own configurable values.
+- 2026-09-30 update (D-026): default user limits changed to **2 posts × 4 daily times** (was 4 × 2) — same 240 Reposts/month at max; existing users still on the old defaults were migrated.
