@@ -2,12 +2,12 @@ import { InviteForm } from "@/features/admin/invite-form";
 import { MemberList } from "@/features/admin/member-list";
 import { formatUsd } from "@/lib/format";
 import { requireSuperadmin } from "@/server/auth/session";
-import { listMembers, totalSpendMicros } from "@/server/services/admin";
+import { countDistinctTargets, listMembers, totalSpendMicros } from "@/server/services/admin";
 import { globalBudgetMicros } from "@/server/services/budget";
 
 export default async function AdminPage() {
   const { workspace } = await requireSuperadmin();
-  const members = await listMembers();
+  const [members, targetCount] = await Promise.all([listMembers(), countDistinctTargets()]);
   const globalCap = globalBudgetMicros();
   const people = members.filter((member) => member.status !== "revoked").length;
 
@@ -38,6 +38,22 @@ export default async function AdminPage() {
           their own X account.
         </p>
         <InviteForm />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-medium">Targets across users</h2>
+        <p className="text-foreground/70 text-sm">
+          {targetCount} public accounts added as targets. The export shows how many users added each
+          one — not who.
+        </p>
+        {targetCount > 0 && (
+          <a
+            href="/api/admin/targets/export"
+            className="border-foreground/15 hover:bg-foreground/5 self-start rounded-md border px-3 py-1.5 text-sm"
+          >
+            Export CSV
+          </a>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">

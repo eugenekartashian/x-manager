@@ -59,3 +59,34 @@ describe("listMembers", () => {
     expect(await listMembers(NOW)).toEqual([]);
   });
 });
+
+describe("target popularity export (D-031)", () => {
+  it("aggregates targets across users by X account without revealing who added them", async () => {
+    const { exportTargetPopularityCsv } = await import("@/server/services/admin");
+    const a = await createOwner("a");
+    const b = await createOwner("b");
+    const add = (workspaceId: string, xUserId: string, username: string, followers: number) =>
+      prisma.targetAccount.create({
+        data: {
+          workspaceId,
+          xUserId,
+          username,
+          name: username,
+          followersCount: followers,
+          lookedUpAt: NOW,
+          note: "private note",
+        },
+      });
+    await add(a.workspaceId, "1", "alex", 100);
+    await add(b.workspaceId, "1", "alex", 120);
+    await add(b.workspaceId, "2", "gio", 900);
+
+    const [header, first, second] = (await exportTargetPopularityCsv()).split("\r\n");
+
+    expect(header).toBe("username,name,followers,added_by_users,profile_url");
+    expect(first).toBe('"@alex","alex","120","2","https://x.com/alex"');
+    expect(second).toBe('"@gio","gio","900","1","https://x.com/gio"');
+    const csv = [header, first, second].join("\n");
+    expect(csv).not.toMatch(/owner-|example\.com|private note/);
+  });
+});

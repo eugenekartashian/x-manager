@@ -45,6 +45,10 @@ export default function PrivacyPage() {
             get suggestions. Nothing is posted automatically — you always publish replies yourself.
           </li>
         </ul>
+        <p>
+          We may use aggregated, anonymous statistics — for example how many users added the same
+          public X account as a target — to improve the service. These never show who added what.
+        </p>
         <p>We don&apos;t sell your data, show ads or use analytics or tracking cookies.</p>
       </section>
 

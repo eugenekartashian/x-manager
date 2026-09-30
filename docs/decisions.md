@@ -208,3 +208,7 @@ Fixed now:
 - **Content compliance** (keep stored X content current, delete what is deleted on X): target posts are purged 3 days after loading by the cron job (`purgeStaleTargetPosts`).
 
 Open before a paid launch: Developer Policy "Pay to engage" forbids receiving compensation "for any X actions … reposts, likes, comments, and replies" — likely aimed at paid engagement, but the wording is broad and the paid product would be automated Reposts → get legal advice or written confirmation from X. Monetised use also requires the app to be designated commercial in the X Console.
+
+## D-031 · 2026-09-30 · Accepted — Superadmin export of targets across users (aggregated)
+
+`/admin` → "Targets across users" → CSV: username, name, followers, number of users who added the account, profile URL — never who added it, no notes. Disclosed in the Privacy Policy as aggregated, anonymous statistics. Useful for spotting popular accounts (future discovery, 3.5).

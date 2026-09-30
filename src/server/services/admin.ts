@@ -4,6 +4,7 @@ import { normalizeEmail } from "@/lib/allowlist";
 import type { UserLimits } from "@/server/domain/user-limits";
 import * as admin from "@/server/repositories/admin";
 import { isSuperadminEmail } from "@/server/services/access";
+import { csvCell } from "@/server/services/targets";
 
 // Admin overview (M6.2): everyone with access or an invite, merged by email.
 
@@ -104,4 +105,28 @@ export async function listMembers(now: Date = new Date()): Promise<Member[]> {
 
 export function totalSpendMicros(members: Member[]): bigint {
   return members.reduce((sum, member) => sum + member.spentMicros, 0n);
+}
+
+/** CSV of popular targets across all users (superadmin only; no user identities). */
+export async function exportTargetPopularityCsv(): Promise<string> {
+  const rows = await admin.targetPopularity();
+  const lines = [
+    "username,name,followers,added_by_users,profile_url",
+    ...rows.map((row) =>
+      [
+        `@${row.username}`,
+        row.name,
+        row.followers === null ? "" : String(row.followers),
+        String(row.users),
+        `https://x.com/${row.username}`,
+      ]
+        .map(csvCell)
+        .join(","),
+    ),
+  ];
+  return lines.join("\r\n");
+}
+
+export function countDistinctTargets(): Promise<number> {
+  return admin.targetPopularity().then((rows) => rows.length);
 }
