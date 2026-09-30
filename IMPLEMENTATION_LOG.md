@@ -338,3 +338,4 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 - `src/lib/sentry-options.ts` (shared privacy settings + scrubbers), `src/instrumentation.ts`, `src/instrumentation-client.ts`, `src/sentry.{server,edge}.config.ts`, `src/app/global-error.tsx`, `withSentryConfig` in `next.config.ts`. Env: `NEXT_PUBLIC_SENTRY_DSN` (+ optional `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`), added to `prod:env`.
 - Off until the DSN is set. 268 tests passing.
+- Sentry live in production (DSN via `pnpm prod:env`, public `NEXT_PUBLIC_*` values pushed as `--type config`); test error from `/api/admin/sentry-test` (superadmin only) received in Sentry.
