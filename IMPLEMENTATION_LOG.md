@@ -333,3 +333,8 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - `tests/integration/isolation.test.ts`: cross-workspace audit for targets, notes, export, reply session, loads, replies, undo, templates, AI, history, token use.
 - Script check: every server action authorizes first. Dependency advisories (Prisma CLI transitive: lodash, mysql2, deepmerge-ts) fixed via pnpm overrides; `pnpm audit --prod` clean.
 - Findings and residual risks in `docs/security.md` → "Audit 2026-09-30". 265 tests passing.
+
+### 2026-09-30 · M6.4 (4) — Sentry (D-028)
+
+- `src/lib/sentry-options.ts` (shared privacy settings + scrubbers), `src/instrumentation.ts`, `src/instrumentation-client.ts`, `src/sentry.{server,edge}.config.ts`, `src/app/global-error.tsx`, `withSentryConfig` in `next.config.ts`. Env: `NEXT_PUBLIC_SENTRY_DSN` (+ optional `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`), added to `prod:env`.
+- Off until the DSN is set. 268 tests passing.

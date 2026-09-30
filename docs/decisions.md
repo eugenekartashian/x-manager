@@ -182,3 +182,10 @@ User preference: #1 in the repost list is reposted first, then #2, … Because X
 - Users have a fixed rule: a post is reposted at most once per hour (`USER_REPOST_INTERVAL_MINUTES`), and new daily times must be ≥ 1 h from their other times (`too_close`). Reply limits stay at the workspace defaults (1 reply per account per 24 h, 15/day).
 - The superadmin keeps their own configurable values.
 - 2026-09-30 update (D-026): default user limits changed to **2 posts × 4 daily times** (was 4 × 2) — same 240 Reposts/month at max; existing users still on the old defaults were migrated.
+
+## D-028 · 2026-09-30 · Accepted — Error monitoring: Sentry (errors only, no personal data)
+
+- `@sentry/nextjs` 11 (supports Next 16). Enabled only in production builds when `NEXT_PUBLIC_SENTRY_DSN` is set; dev and tests never send.
+- Privacy: `tracesSampleRate: 0`, no Session Replay / feedback widget; `dataCollection` disables user info, cookies, headers, bodies, query params, DB/queue/AI data and **stack-frame local variables** (decrypted X tokens live in server memory). `beforeSend`/`beforeBreadcrumb` strip query strings (the X OAuth callback carries `code`/`state`), request data and `user`.
+- Source maps upload only if `SENTRY_AUTH_TOKEN` is set at build time (optional).
+- Plan: free Developer tier (limits per Sentry's pricing page — verify there).

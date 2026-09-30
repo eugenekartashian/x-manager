@@ -73,3 +73,5 @@ Focus: nobody can take over or misuse a user's X account; users can't see each o
 | Dependencies | `pnpm audit --prod` clean (overrides for lodash, mysql2, deepmerge-ts pulled in by the Prisma CLI). |
 
 Residual risks / user-side advice: a stolen Google session gives access to the app (not to X passwords — we never see them); users should use 2FA on Google and X. Users can always cut our access in X → Settings → Security → Connected apps.
+
+**Error monitoring (D-028):** Sentry receives errors only, with request data, cookies, headers, query strings, user info and stack-frame variables removed (`src/lib/sentry-options.ts`, tested).
