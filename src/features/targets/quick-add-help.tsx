@@ -12,28 +12,27 @@ export function QuickAddHelp({ appUrl }: { appUrl: string }) {
           <h3 className="font-medium">iPhone (Shortcut, one-time setup ~2 min)</h3>
           <ol className="text-foreground/80 mt-1 ml-5 list-decimal space-y-1">
             <li>
-              Open the <strong>Shortcuts</strong> app → <strong>+</strong> → name it{" "}
-              <strong>Add to X Manager</strong>.
+              Open <strong>Shortcuts</strong> → <strong>+</strong> → <strong>Shortcut</strong> → tap
+              the name → <strong>Rename</strong> to <strong>Add to X Manager</strong>.
             </li>
             <li>
-              Tap the <strong>ⓘ</strong> (details) → turn on <strong>Show in Share Sheet</strong> →
-              accept <strong>URLs</strong> and <strong>Text</strong>.
+              Tap the name again → <strong>Details</strong> → turn on{" "}
+              <strong>Show in Share Sheet</strong>.
             </li>
             <li>
-              Add action <strong>URL Encode</strong> (input: <em>Shortcut Input</em>).
+              In <strong>Search Actions</strong> add <strong>URL</strong> and type{" "}
+              <code className="bg-foreground/5 rounded px-1 break-all">{addUrl}</code>, then tap{" "}
+              <strong>Select Variable</strong> → <strong>Shortcut Input</strong> so it ends the link
+              (nothing before <em>https</em>).
             </li>
             <li>
-              Add action <strong>Text</strong> and type{" "}
-              <code className="bg-foreground/5 rounded px-1 break-all">{addUrl}</code>, then insert
-              the <em>URL Encoded Text</em> variable right after it.
+              Add <strong>Open URLs</strong> (search “open url”). Tap <strong>←</strong> to save.
             </li>
-            <li>
-              Add action <strong>Open URLs</strong>. Done.
-            </li>
+            <li>Sign in to X Manager once in Safari on the phone.</li>
           </ol>
           <p className="text-foreground/60 mt-1">
             Use it: in X open a profile or post → <strong>Share</strong> →{" "}
-            <strong>Share via…</strong> → <strong>Add to X Manager</strong>.
+            <strong>Share via apps</strong> → <strong>Add to X Manager</strong>.
           </p>
         </section>
 
