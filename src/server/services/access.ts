@@ -5,6 +5,7 @@ import { isEmailAllowed, normalizeEmail } from "@/lib/allowlist";
 import { env } from "@/lib/env";
 import { err, ok, type Result } from "@/lib/result";
 import * as access from "@/server/repositories/access";
+import { disconnectX } from "@/server/services/x-connection";
 
 // Who may use the app (D-025): superadmins from SUPERADMIN_EMAILS (bootstrap — the owner
 // can never lock themselves out) plus everyone with an active invite in the database.
@@ -51,7 +52,10 @@ export async function inviteUser(
 
 export type RevokeError = "not_found" | "cannot_revoke_superadmin";
 
-/** Revokes the invite, signs the user out and pauses their schedule. */
+/**
+ * Revokes the invite, signs the user out, pauses their schedule and removes their X connection
+ * (tokens deleted here and revoked at X), so no credentials of a removed user stay with us.
+ */
 export async function revokeAccess(
   rawEmail: string,
   now: Date = new Date(),
@@ -59,6 +63,7 @@ export async function revokeAccess(
   const email = normalizeEmail(rawEmail);
   if (isSuperadminEmail(email)) return err("cannot_revoke_superadmin");
   if (!(await access.revokeInvite(email, now))) return err("not_found");
-  await access.cutOffUserByEmail(email);
+  const workspaceId = await access.cutOffUserByEmail(email);
+  if (workspaceId) await disconnectX(workspaceId);
   return ok(null);
 }

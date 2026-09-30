@@ -1,7 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/server/db";
 import { hasAppAccess, inviteUser, resolveAccess, revokeAccess } from "@/server/services/access";
-import { createOwner, createUser, resetDatabase } from "../helpers/db";
+import { connectXDirectly, createOwner, createUser, resetDatabase } from "../helpers/db";
+import { fakeX } from "../helpers/fake-x";
 
 beforeEach(resetDatabase);
 afterAll(() => prisma.$disconnect());
@@ -79,6 +80,30 @@ describe("revokeAccess", () => {
       (await prisma.accessInvite.findUniqueOrThrow({ where: { email: "owner-b@example.com" } }))
         .revokedAt,
     ).toEqual(NOW);
+  });
+
+  it("deletes the user's X tokens and revokes them at X, keeping other connections", async () => {
+    const owner = await createOwner("a");
+    const friend = await createOwner("b");
+    await inviteUser(owner.userId, "owner-b@example.com");
+    await connectXDirectly(owner.workspaceId, { xUserId: "x-owner", accessToken: "owner-token" });
+    await connectXDirectly(friend.workspaceId, {
+      xUserId: "x-friend",
+      accessToken: "friend-token",
+    });
+    const x = fakeX({ revoke: () => ({ status: 200, body: { revoked: true } }) });
+
+    try {
+      expect((await revokeAccess("owner-b@example.com", NOW)).ok).toBe(true);
+    } finally {
+      x.restore();
+    }
+
+    expect(await prisma.xAccount.count({ where: { workspaceId: friend.workspaceId } })).toBe(0);
+    expect(await prisma.xAccount.count({ where: { workspaceId: owner.workspaceId } })).toBe(1);
+    const revoked = x.calls.filter((call) => call.url.pathname === "/2/oauth2/revoke");
+    expect(revoked).toHaveLength(1);
+    expect(String(revoked[0]?.body)).toContain("refresh-friend-token");
   });
 
   it("never revokes a superadmin and reports unknown emails", async () => {

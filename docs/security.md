@@ -56,3 +56,20 @@ What protects the user's X account and credentials, and what must stay true as t
 
 - The X client secret and encryption key sit in plaintext env on the server — standard for this hosting model; protected by account 2FA and Vercel access control.
 - If a token refresh times out after X consumed the refresh token, the account needs a reconnect (shown in the UI).
+
+## Audit 2026-09-30 (M6.4, before the friend beta)
+
+Focus: nobody can take over or misuse a user's X account; users can't see each other's data.
+
+| Area | Status |
+|---|---|
+| X OAuth | OAuth 2.0 + PKCE (S256) + random `state` sealed (AES-256-GCM) in an httpOnly, SameSite=Lax cookie scoped to `/api/x/oauth`, 10 min TTL, one-time; callback requires the same signed-in user + workspace; an X account can be linked to one workspace only (unique `xUserId`). Minimal scopes. |
+| Tokens at rest | AES-256-GCM with key versioning, AAD bound to `workspaceId` + token kind (a copied ciphertext can't be used for another workspace). Decrypted only server-side at call time; refresh under a row lock (no refresh-token races with the parallel job). |
+| Token lifecycle | Disconnect deletes tokens and revokes at X. **New:** revoking a user's access also deletes and revokes their X tokens. Needs-reconnect state on 401/invalid_grant. |
+| App auth | Google only, invite list in DB, superadmin via env; checked on sign-up, every session and every request. All 7 server-action files and all route handlers authorize first (checked by script); superadmin-only actions: budget, interval, reply limits, invites, user limits. |
+| Isolation | Every repository query is scoped by `workspaceId` (or `{workspaceId, xUserId}`); the only cross-workspace reads are admin-only. **New** `tests/integration/isolation.test.ts`: user B passing A's ids to targets, notes, export, session, load, reply, undo, templates, AI, history → not found, nothing changed, X never called with A's token. |
+| Browser | HSTS, `frame-ancestors 'none'` + X-Frame-Options DENY, `form-action 'self'`, nosniff, strict referrer, Permissions-Policy (verified on production). Server Actions check Origin (Next.js). |
+| Secrets & logs | Secrets only in env/Vercel (Sensitive); logs are structured without tokens or bodies; RLS on every table, Supabase Data API off. |
+| Dependencies | `pnpm audit --prod` clean (overrides for lodash, mysql2, deepmerge-ts pulled in by the Prisma CLI). |
+
+Residual risks / user-side advice: a stolen Google session gives access to the app (not to X passwords — we never see them); users should use 2FA on Google and X. Users can always cut our access in X → Settings → Security → Connected apps.

@@ -41,13 +41,16 @@ export async function setUserRole(userId: string, role: UserRole): Promise<void>
   await prisma.user.update({ where: { id: userId }, data: { role } });
 }
 
-/** Signs the user out everywhere and pauses their Reposts (the job skips paused schedules). */
-export async function cutOffUserByEmail(email: string): Promise<void> {
+/**
+ * Signs the user out everywhere and pauses their Reposts (the job skips paused schedules).
+ * Returns their workspace id (if any) so the caller can also drop the X connection.
+ */
+export async function cutOffUserByEmail(email: string): Promise<string | null> {
   const user = await prisma.user.findFirst({
     where: { email: { equals: email, mode: "insensitive" } },
-    select: { id: true },
+    select: { id: true, workspace: { select: { id: true } } },
   });
-  if (!user) return;
+  if (!user) return null;
   await prisma.$transaction([
     prisma.session.deleteMany({ where: { userId: user.id } }),
     prisma.repostSchedule.updateMany({
@@ -55,4 +58,5 @@ export async function cutOffUserByEmail(email: string): Promise<void> {
       data: { active: false },
     }),
   ]);
+  return user.workspace?.id ?? null;
 }

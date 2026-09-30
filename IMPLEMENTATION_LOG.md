@@ -326,3 +326,10 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Job: one deadline for the whole invocation (45 s; the platform stops at 60 s — previously the budget was per workspace, so many users could overrun), up to 8 workspaces in parallel, up to 200 per call (least recently processed first). Leases + unique dedupe keys unchanged.
 - Capacity estimate: a user batch (2 posts) ≈ 5–7 s with real X latency and the 1.5 s pause → ≈ 50–70 users per call; the scheduler runs every 5 min within a 30 min grace window → ≈ 300+ users with the same minute, more when times differ.
 - `tests/integration/load.test.ts`: 200 users × 2 posts due at once — two overlapping calls repost each post exactly once (≈ 1.6 s with fake X); short deadlines split work across calls with no duplicates or gaps.
+
+### 2026-09-30 · M6.4 (3) — Security audit
+
+- Revoking a user's access now also deletes their X tokens and revokes them at X (test added).
+- `tests/integration/isolation.test.ts`: cross-workspace audit for targets, notes, export, reply session, loads, replies, undo, templates, AI, history, token use.
+- Script check: every server action authorizes first. Dependency advisories (Prisma CLI transitive: lodash, mysql2, deepmerge-ts) fixed via pnpm overrides; `pnpm audit --prod` clean.
+- Findings and residual risks in `docs/security.md` → "Audit 2026-09-30". 265 tests passing.
