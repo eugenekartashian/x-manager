@@ -6,6 +6,7 @@ import type { ActionState } from "@/features/posts/actions";
 import { SubmitButton } from "@/features/posts/submit-button";
 import { addDays, isLocalDate, zonedToUtc } from "@/lib/zoned-time";
 import { saveScheduleAction } from "./actions";
+import { DEFAULT_DURATION_DAYS } from "@/server/domain/repost-rules";
 import { formatDay } from "./labels";
 
 const initial: ActionState = { status: "idle", message: "" };
@@ -26,7 +27,7 @@ export function ScheduleForm(saved: Props) {
   const [active, setActive] = useState(saved.active);
   const [startDate, setStartDate] = useState(saved.startDate);
   const [noEnd, setNoEnd] = useState(saved.durationDays === null);
-  const [duration, setDuration] = useState(String(saved.durationDays ?? 30));
+  const [duration, setDuration] = useState(String(saved.durationDays ?? DEFAULT_DURATION_DAYS));
 
   const days = Number(duration);
   const validDays = Number.isInteger(days) && days >= 1 && days <= 366;

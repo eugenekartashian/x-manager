@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma, RepostSchedule, SlotTarget } from "@/generated/prisma/client";
 import { prisma } from "@/server/db";
+import { DEFAULT_DURATION_DAYS } from "@/server/domain/repost-rules";
 
 export function getOrCreateSchedule(
   workspaceId: string,
@@ -8,7 +9,7 @@ export function getOrCreateSchedule(
 ): Promise<RepostSchedule> {
   return prisma.repostSchedule.upsert({
     where: { workspaceId },
-    create: { workspaceId, startDate: defaultStartDate },
+    create: { workspaceId, startDate: defaultStartDate, durationDays: DEFAULT_DURATION_DAYS },
     update: {},
   });
 }

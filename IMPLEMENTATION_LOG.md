@@ -356,3 +356,5 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Dashboard: needs-attention (X connection, failed/unknown Reposts in 24 h, usage limit, schedule on without list/times), next batch + last batch result, today (replies n/limit, target loads, AI requests; spend for superadmin), 14-day bar charts (Reposts by outcome, replies; spend for superadmin) in plain CSS with an sr-only table, recent 5 runs → History, X card, delete account. Only stored data, no X/AI calls.
 - `repositories/dashboard.ts` (per-day aggregates in the workspace timezone, scoped by workspace), `services/dashboard.ts`; 3 tests (local-day bucketing, money hidden for users, isolation).
 - `/admin`: aggregated targets CSV (D-031). 277 tests passing.
+
+- Schedule default: new schedules start as a 1-day run ("No end date" unticked); unused, off schedules without an end date migrated to 1 day (`schedule_default_one_day`).

@@ -39,3 +39,6 @@ export function nextRepostAllowedAt(
   const next = new Date(lastRepostedAt.getTime() + minIntervalMs);
   return next > now ? next : null;
 }
+
+/** A new schedule starts as a one-day run; the user extends it or ticks "No end date". */
+export const DEFAULT_DURATION_DAYS = 1;

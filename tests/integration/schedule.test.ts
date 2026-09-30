@@ -50,7 +50,7 @@ describe("schedule settings", () => {
     expect(data.schedule).toMatchObject({
       active: false,
       startDate: "2026-10-01",
-      durationDays: null,
+      durationDays: 1, // DEFAULT_DURATION_DAYS
     });
     expect(data.preview).toEqual([]);
   });
