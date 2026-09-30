@@ -155,3 +155,8 @@ User preference (existing OpenAI credit). The AI seam supports both providers vi
 ## D-023 · 2026-09-29 · Accepted — Repost batch runs in list order (supersedes the order part of D-017)
 
 User preference: #1 in the repost list is reposted first, then #2, … Because X timelines show the newest item first, the LAST post of the list ends up on top of the profile. UI copy on Posts and Schedule says so. Dedupe keys (`slotId:localDate:postId`) do not depend on order, so switching mid-window cannot duplicate a Repost.
+
+## D-024 · 2026-09-30 · Accepted — In-app publishing dropped; beta limits
+
+- In-app publishing / scheduled original posts (old M5) is **dropped**: X's composer scheduling covers it (D-009, verified). Removed from the roadmap.
+- Friend beta (M6): superadmin (owner) + users; owner pays X costs. User limits: 4 posts in the repost list, 2 daily times, 3 Targets, target post loads and AI ideas capped per day, $10/month safety budget. Users never see prices.

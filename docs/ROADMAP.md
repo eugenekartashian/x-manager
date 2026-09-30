@@ -56,12 +56,28 @@ API replies to other accounts are blocked by X unless summoned, so the app **pre
 - [x] **3.2 Reply templates** — the user's own phrases; a random one is suggested and editable. AI suggestions come later.
 - [x] **3.3 Reply session** — target → its latest 3–5 posts (on demand) → template → "Open in X" (composer prefilled with the reply text; media attached manually by the user) → logged. Limits: 1 reply per account per 24 h, 15 replies per day.
 - [x] **3.4 AI suggestions** — short, relevant drafts (Zod-validated, prompt-injection-safe, cost-accounted); no publish capability.
-- [ ] **3.5 Discovery (later, paid)** — hashtag search (Recent Search ≈ $0.50/search), bio keyword search (User Search), import from own following.
+- [ ] **3.5 Discovery (later)** — finding new big accounts to reply under. Ideas, cheapest first (all official API or plain links; no scraping):
+  1. **Free: "Share to X Manager".** Make the app installable (PWA) with a share target: on the phone, open any profile in X → Share → X Manager → it lands in Targets (only the profile URL is shared, then one ≈ $0.01 lookup). Plus pasting several profile links at once (works today with @handles).
+  2. **Cheap: import from your own following** — `GET /2/users/:id/following`, billed per returned user (≈ $0.01 each) → cap at e.g. 100 newest (≈ $1), then filter by followers count and let the user pick.
+  3. **Paid, on demand: hashtag / keyword search** — Recent Search for e.g. `#muscleboy -is:retweet`, group results by author, rank by followers and post engagement, show "≈ $X for this search" before running; a hard monthly cap.
+  4. **Paid: "accounts like this target"** — authors of the top replies under a target's fresh posts (conversation search), same preview-cost-first rule.
+  Verify every price in the X Developer Console before building (UNVERIFIED).
 
-## M4 — Measurement
+## M4 — Measurement (future; plan recorded 2026-09-30)
 
-- [ ] **4.1** Own post metrics + follower count snapshots (source-labeled, "unavailable" ≠ 0).
-- [ ] **4.2** Descriptive comparison (e.g. repost slot times, EU vs US windows) with sample size, no causal claims.
+Principle: as close to free as possible — reuse data we already fetch, one small daily snapshot, never poll. Everything descriptive: sample size shown, "unavailable" ≠ 0, no causal claims ("followers gained per repost" is not measurable).
+
+**Data and cost (X pay-per-use, estimates):**
+- Follower count: one `GET /2/users/me` per day (User read ≈ $0.010) → ≈ $0.30/month per account.
+- Own post metrics (likes, reposts, replies, impressions): owned reads ≈ $0.001 per post; one daily snapshot of the repost list + ~20 latest own posts ≈ $0.02/day ≈ $0.60/month. Same-UTC-day dedup makes extra refreshes that day free.
+- Reuse for free: every "Refresh from X" and every Repost batch already returns/implies data — store a snapshot whenever we have it.
+- AI: not needed.
+
+**What to show:**
+- [ ] **4.1** Followers over time (daily line, delta per week).
+- [ ] **4.2** Per post: impressions/likes over time with markers where our Reposts happened; "views gained in the 24 h after a Repost" (descriptive, n shown).
+- [ ] **4.3** Time windows: EU vs US slots — median views gained after Reposts per slot, with sample size; flagged "not enough data" under ~10 samples.
+- [ ] **4.4** Replies (Targets): how many replies opened per week and per account (we cannot reliably read results of replies without extra reads — keep it to counts).
 
 ## Next steps after the real-use test (plan recorded 2026-09-29)
 
@@ -86,16 +102,29 @@ Today the dashboard only shows the workspace and the X connection. Goal: one scr
 5. **Later with M4:** simple trends of own reposted posts (views/likes over time, sample size shown, no causal claims).
 6. **Later with the commercial version:** admin view — users, their plan, spend and limits.
 
-## M5 — Publishing from the app (later, only if needed — D-009)
+## M6 — Friend beta (current focus, 2026-09-30)
 
-- [ ] **5.1** Compose & publish now, strict no-blind-retry UNKNOWN flow.
-- [ ] **5.2** Scheduled posts with media.
+Roles: **superadmin** (the owner, bootstrap email in env) and **user**; the role lives in the DB so a regular `admin` can be added later without rework. The owner pays all X API costs during the beta.
 
-## M6 — Friend beta
+**Beta limits for users** (set per user by the superadmin, enforced server-side; the superadmin has none):
 
-- [ ] **6.1** Add friend to allowlist, own workspace + X account.
-- [ ] **6.2** Isolation audit across all resources; per-user costs and caps.
-- [ ] **6.3** Data retention and deletion policy.
+| Feature | Limit | Worst-case X cost / month |
+|---|---|---|
+| Repost list | max **4** posts | — |
+| Daily times | max **2** | 4 × 2 × 30 × ≈ $0.025 ≈ **$6** (real ≈ $0.02/post → ≈ $4.80) |
+| Targets | max **3** accounts at a time | adding ≈ $0.01 each |
+| Target post loads | max **3 per day** total (proposal; 10 posts per load ≈ $0.05) | ≈ **$4.50** |
+| AI ideas | **5 per target per day** (proposal; ≈ $0.001 each) | ≈ $0.50 |
+| Monthly budget (safety net) | **$10** | hard stop for reads/AI; the user sees "limit reached", never prices |
+
+Users never see prices: no $ on buttons, no spend banner, history without amounts. They see only "used n of limit". The superadmin sees everything as today plus per-user spend.
+
+- [ ] **6.1 Roles & access in the DB** — `role` on user (`USER` / `SUPERADMIN`); invites table replaces the `ALLOWED_EMAILS` env list (migrated from it); superadmin bootstrap via env so the owner can never be locked out; revoking access signs the user out and pauses their schedule.
+- [ ] **6.2 Admin page `/admin`** — users (email, X handle, joined, last active, month spend vs budget, status); invite, revoke, edit limits, enable/disable Targets & AI per user.
+- [ ] **6.3 Per-user limits & user UI** — limits stored per workspace, enforced in services; prices hidden for users; limit counters in the UI; global spend cap across all workspaces.
+- [ ] **6.4 Scale & safety** — per-workspace fan-out of the Repost job + load test (200 fake workspaces); error monitoring + uptime alert; isolation audit across all resources (IDOR tests for every resource type).
+- [ ] **6.5 Data & legal minimum** — Privacy Policy + Terms pages (we store other people's X tokens), data retention, "delete my account and data" (revokes X token, deletes rows).
+- [ ] **6.6 Launch beta** — raise the X Developer Console spend cap (currently $5 for the whole app — all users share it); re-check X Developer Agreement/Policy for a multi-user app (links in decisions.md); invite 3–5 friends.
 
 ---
 
