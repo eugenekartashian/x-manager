@@ -1,13 +1,19 @@
+import { AccessRequests } from "@/features/admin/access-requests";
 import { InviteForm } from "@/features/admin/invite-form";
 import { MemberList } from "@/features/admin/member-list";
 import { formatUsd } from "@/lib/format";
 import { requireSuperadmin } from "@/server/auth/session";
 import { countDistinctTargets, listMembers, totalSpendMicros } from "@/server/services/admin";
+import { listAccessRequests } from "@/server/services/access-requests";
 import { globalBudgetMicros } from "@/server/services/budget";
 
 export default async function AdminPage() {
   const { workspace } = await requireSuperadmin();
-  const [members, targetCount] = await Promise.all([listMembers(), countDistinctTargets()]);
+  const [members, targetCount, requests] = await Promise.all([
+    listMembers(),
+    countDistinctTargets(),
+    listAccessRequests(),
+  ]);
   const globalCap = globalBudgetMicros();
   const people = members.filter((member) => member.status !== "revoked").length;
 
@@ -30,6 +36,16 @@ export default async function AdminPage() {
           </a>
         </p>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">
+          Access requests <span className="text-foreground/50">({requests.length})</span>
+        </h2>
+        <p className="text-foreground/70 text-sm">
+          From the “Want to try” form on the landing page. Invite lets that Google email sign in.
+        </p>
+        <AccessRequests requests={requests} timeZone={workspace.timezone} />
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">Invite</h2>

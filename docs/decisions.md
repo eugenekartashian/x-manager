@@ -212,3 +212,8 @@ Open before a paid launch: Developer Policy "Pay to engage" forbids receiving co
 ## D-031 · 2026-09-30 · Accepted — Superadmin export of targets across users (aggregated)
 
 `/admin` → "Targets across users" → CSV: username, name, followers, number of users who added the account, profile URL — never who added it, no notes. Disclosed in the Privacy Policy as aggregated, anonymous statistics. Useful for spotting popular accounts (future discovery, 3.5).
+
+## D-032 · 2026-10-01 · Accepted — Public landing page with "Want to try" requests
+
+- `/` is now a public landing page (was a redirect to /dashboard): 6 sections — hero, why (subscription creators who promote on X), how it works, features, safety, request form — plus header (Privacy, Terms, Sign in / Open app, Want to try) and footer with the not-affiliated notice. Dark, minimal, green accent; no X logo or marks; copy states what the app does, no follower/growth promises. Animations: reveal-on-scroll (content stays visible without JS) and light parallax; both off with prefers-reduced-motion. UI mock-ups are pure CSS (no screenshots, no explicit content).
+- "Want to try" → `access_request` (email, optional X username, message; RLS on; honeypot field; max 1,000 pending; people who already have access get the same answer and nothing is stored). `/admin` → Access requests → Invite (creates the invite, deletes the request) or Dismiss (deletes it). Disclosed in the Privacy Policy.

@@ -364,3 +364,8 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - `/targets/add?url|text|title=…`: `handleFromShared` (profile / post links, @mentions; ignores x.com/i/…, search, etc.) → "Add @handle to targets" → opens the reply session; already-listed accounts open directly. GET only shows a button; the add is a server action.
 - Android: installable PWA (`app/manifest.ts` with `share_target` → /targets/add, generated icons `/pwa-icon/192|512`, `apple-icon`). iPhone: Shortcut instructions (URL Encode → Text → Open URLs). Desktop: bookmarklet (sends only location.href).
 - Targets page: "Quick add from X" help. 289 tests passing. Not yet verified on real devices.
+
+### 2026-10-01 · Landing page + access requests (D-032)
+
+- `src/app/page.tsx` + `src/features/landing/*` (Reveal, Parallax, RequestForm, CSS mock-ups); migration `access_requests`; `services/access-requests.ts` (3 tests); admin section with Invite / Dismiss.
+- Checked with Playwright screenshots (desktop 1280, mobile 390) against a local production build. 292 tests passing.

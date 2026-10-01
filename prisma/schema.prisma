@@ -467,3 +467,16 @@ model FeatureUsage {
   @@index([workspaceId, kind, occurredAt])
   @@map("feature_usage")
 }
+
+// "Want to try" requests from the public landing page (D-032). Deleted when the superadmin
+// invites or dismisses them, so only pending requests are stored.
+model AccessRequest {
+  id        String   @id @default(uuid(7))
+  email     String   @unique
+  xHandle   String?
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("access_request")
+}

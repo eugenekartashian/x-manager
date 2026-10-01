@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { ActionState } from "@/features/posts/actions";
 import { requireSuperadmin } from "@/server/auth/session";
 import { inviteUser, revokeAccess } from "@/server/services/access";
+import { approveRequest, dismissRequest } from "@/server/services/access-requests";
 import { saveUserLimits } from "@/server/services/limits";
 
 const MESSAGES: Record<string, string> = {
@@ -75,4 +76,20 @@ export async function saveLimitsAction(
         ? "Some values are out of range (see the hints) or the budget is not $1–$500."
         : "This user has no workspace yet — they need to sign in once.",
   };
+}
+
+const requestIdSchema = z.object({ requestId: z.uuid() });
+
+export async function approveRequestAction(formData: FormData): Promise<void> {
+  const { user } = await requireSuperadmin();
+  const input = requestIdSchema.safeParse(Object.fromEntries(formData));
+  if (input.success) await approveRequest(input.data.requestId, user.id);
+  revalidatePath("/admin");
+}
+
+export async function dismissRequestAction(formData: FormData): Promise<void> {
+  await requireSuperadmin();
+  const input = requestIdSchema.safeParse(Object.fromEntries(formData));
+  if (input.success) await dismissRequest(input.data.requestId);
+  revalidatePath("/admin");
 }

@@ -28,6 +28,10 @@ export default function PrivacyPage() {
             log of replies you opened.
           </li>
           <li>Usage counters and estimated API costs, to enforce limits.</li>
+          <li>
+            If you request access on our website: the email, X username and message you send — only
+            to decide on and send your invite. The request is deleted once it is answered.
+          </li>
         </ul>
       </section>
 
