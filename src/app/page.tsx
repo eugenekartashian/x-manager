@@ -92,10 +92,7 @@ export default async function LandingPage() {
     <div className="flex flex-1 flex-col overflow-x-clip bg-[#0a0a0a] text-white">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link href="/" className="flex items-center gap-2 font-semibold whitespace-nowrap">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-white text-sm text-black">
-              ↻
-            </span>
+          <Link href="/" className="font-semibold whitespace-nowrap">
             X Manager
           </Link>
           <nav className="flex items-center gap-1 text-sm sm:gap-3">
