@@ -36,6 +36,30 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   ]);
   const tz = workspace.timezone;
   const days = data.chart.days.map((day) => ({ day, label: dayLabel(day) }));
+  const xAccount = (
+    <div id="x-account">
+      <XAccountCard
+        connection={connection}
+        status={typeof query.x === "string" ? query.x : undefined}
+        error={typeof query.x_error === "string" ? query.x_error : undefined}
+      />
+    </div>
+  );
+
+  // Nothing runs without X: show only the connect step (stats and charts would be stale).
+  if (!connection) {
+    return (
+      <>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-foreground/70 text-sm">
+            Connect your X account to see your schedule, replies, messages and charts.
+          </p>
+        </div>
+        {xAccount}
+      </>
+    );
+  }
 
   return (
     <>
@@ -218,13 +242,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         <RecentRuns runs={data.recentRuns} timeZone={tz} />
       </section>
 
-      <div id="x-account">
-        <XAccountCard
-          connection={connection}
-          status={typeof query.x === "string" ? query.x : undefined}
-          error={typeof query.x_error === "string" ? query.x_error : undefined}
-        />
-      </div>
+      {xAccount}
 
       {!isAdmin && (
         <section className="flex flex-col gap-3 rounded-lg border border-red-500/30 p-4">
