@@ -45,14 +45,27 @@ export function CreatorsFilters({ counts, total, tags, owedCount }: Props) {
     go({ q: search.trim() || null });
   }
 
-  const tabs: { value: CreatorStatus | null; label: string; count: number; owed?: true }[] = [
+  const tabs: {
+    value: CreatorStatus | null;
+    label: string;
+    count: number;
+    hint?: string;
+    owed?: true;
+  }[] = [
     { value: null, label: "All", count: total },
     ...STATUS_ORDER.map((value) => ({
       value,
       label: STATUS_META[value].label,
       count: counts[value] ?? 0,
+      hint: STATUS_META[value].hint,
     })),
-    { value: null, label: "Waiting for my repost", count: owedCount, owed: true },
+    {
+      value: null,
+      label: "Waiting for my repost",
+      count: owedCount,
+      hint: "They reposted you — repost one of theirs and mark it on their page.",
+      owed: true,
+    },
   ];
 
   return (
@@ -74,6 +87,7 @@ export function CreatorsFilters({ counts, total, tags, owedCount }: Props) {
                 tab.owed ? { status: null, owed: "1" } : { status: tab.value, owed: null },
               )}
               scroll={false}
+              title={tab.hint}
               aria-current={active ? "page" : undefined}
               className={`shrink-0 rounded-full px-3 py-1.5 text-sm whitespace-nowrap ${
                 active

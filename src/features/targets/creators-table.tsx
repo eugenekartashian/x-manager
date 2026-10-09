@@ -38,7 +38,6 @@ export function CreatorsTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [state, action, pending] = useActionState(bulkCreatorsAction, initial);
   const [label, setLabel] = useState("");
-  const [confirmRemove, setConfirmRemove] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   if (rows.length === 0) {
@@ -71,7 +70,6 @@ export function CreatorsTable({
     for (const [key, value] of Object.entries(extra)) formData.set(key, value);
     for (const id of ids) formData.append("id", id);
     action(formData);
-    setConfirmRemove(false);
     if (op === "tag-add") setLabel("");
     if (op === "remove") setSelected(new Set());
   }
@@ -216,7 +214,7 @@ export function CreatorsTable({
             onChange={(event) =>
               event.target.value && submit("status", { status: event.target.value })
             }
-            className={control}
+            className="w-32"
           >
             <option value="" disabled>
               Move to…
@@ -279,24 +277,19 @@ export function CreatorsTable({
           >
             Refresh from X
           </button>
-          {confirmRemove ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => submit("remove")}
-              className="rounded-md bg-red-600 px-2.5 py-1.5 text-sm font-medium text-white"
-            >
-              Delete {ids.length} {ids.length === 1 ? "creator" : "creators"}?
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmRemove(true)}
-              className={`${control} text-red-700 dark:text-red-400`}
-            >
-              Delete from list
-            </button>
-          )}
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              const who = ids.length === 1 ? "this creator" : `${ids.length} creators`;
+              if (window.confirm(`Delete ${who} from your list? Their history is deleted too.`)) {
+                submit("remove");
+              }
+            }}
+            className="text-foreground/50 px-1 text-xs underline-offset-2 hover:text-red-700 hover:underline dark:hover:text-red-400"
+          >
+            Delete…
+          </button>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
@@ -315,6 +308,7 @@ function StatusPill({ status }: { status: CreatorStatus }) {
   const meta = STATUS_META[status];
   return (
     <span
+      title={meta.hint}
       className={`justify-self-start rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${meta.tone}`}
     >
       {meta.label}
