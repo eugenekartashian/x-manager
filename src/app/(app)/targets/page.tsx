@@ -11,6 +11,8 @@ import { RepostOverview } from "@/features/targets/repost-overview";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { env } from "@/lib/env";
+import { canSendDirectMessages } from "@/server/integrations/x/oauth";
+import { findConnection } from "@/server/repositories/x-accounts";
 import { requireWorkspace } from "@/server/auth/session";
 import {
   REPLY_COOLDOWN_HOUR_OPTIONS,
@@ -42,11 +44,12 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
 
   const params = await searchParams;
   const filters = parseCreatorFilters(params);
-  const [page, templates, replies, reposts] = await Promise.all([
+  const [page, templates, replies, reposts, connection] = await Promise.all([
     listCreators(workspace.id, filters),
     listTemplates(workspace.id),
     listRecentReplies(workspace.id),
     getRepostOverview(workspace.id),
+    findConnection(workspace.id),
   ]);
   const all = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
   const cap = Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS);
@@ -122,7 +125,12 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
           tags={page.tags}
           owedCount={reposts.waitingForMe}
         />
-        <CreatorsTable rows={page.rows} timeZone={workspace.timezone} filtered={filtered} />
+        <CreatorsTable
+          rows={page.rows}
+          timeZone={workspace.timezone}
+          filtered={filtered}
+          bulkMessage={role === "SUPERADMIN" && canSendDirectMessages(connection?.scopes ?? "")}
+        />
         {page.pages > 1 && (
           <nav aria-label="Pages" className="flex items-center justify-between text-sm">
             {filters.page > 1 ? (

@@ -5,7 +5,9 @@ import {
   creatorHistory,
   draftMessages,
   messagesToday,
+  bulkCandidates,
   recordSentMessage,
+  sendBulkViaApi,
   sendMessageViaApi,
   undoOpenedMessage,
 } from "@/server/services/outreach";
@@ -286,6 +288,129 @@ describe("sendMessageViaApi", () => {
       ok: false,
       error: "not_found",
     });
+    expect(calls).toBe(0);
+  });
+});
+
+describe("bulk messages via the X API (D-035)", () => {
+  async function bulkSetup() {
+    const owner = await createOwner("b");
+    await connectXDirectly(owner.workspaceId, { xUserId: "me-b", accessToken: "t-b" });
+    const workspace = await prisma.workspace.findUniqueOrThrow({
+      where: { id: owner.workspaceId },
+    });
+    const make = (n: number, data: { status?: "NEW" | "DECLINED"; lastContactAt?: Date } = {}) =>
+      prisma.targetAccount.create({
+        data: {
+          workspaceId: owner.workspaceId,
+          xUserId: `x-${n}`,
+          username: `creator_${n}`,
+          name: `Creator ${n}`,
+          lookedUpAt: NOW,
+          ...data,
+        },
+      });
+    const c1 = await make(1);
+    const c2 = await make(2);
+    const fresh = [c1, c2, await make(3)];
+    const declined = await make(4, { status: "DECLINED" });
+    const recent = await make(5, { lastContactAt: new Date(NOW.getTime() - 2 * 86_400_000) });
+    const old = await make(6, { lastContactAt: new Date(NOW.getTime() - 8 * 86_400_000) });
+    return { workspace, c1, c2, fresh, declined, recent, old };
+  }
+
+  it("splits selected creators into ready and skipped", async () => {
+    const { workspace, fresh, declined, recent, old } = await bulkSetup();
+    const ids = [...fresh, declined, recent, old].map((creator) => creator.id);
+    const result = await bulkCandidates(workspace.id, ids, NOW);
+    expect(result.ready.map((creator) => creator.username).sort()).toEqual([
+      "creator_1",
+      "creator_2",
+      "creator_3",
+      "creator_6",
+    ]);
+    expect(result.skipped.map((item) => [item.creator.username, item.reason]).sort()).toEqual([
+      ["creator_4", "declined"],
+      ["creator_5", "recently_messaged"],
+    ]);
+  });
+
+  it("sends each text with the post link, skips ineligible creators and records each", async () => {
+    const { workspace, c1, c2, declined } = await bulkSetup();
+    const sent: { to: string; text: string }[] = [];
+    const x = fakeX({ dm: (to, text) => (sent.push({ to, text }), dmReply()) });
+    restoreFetch = x.restore;
+
+    const result = await sendBulkViaApi(
+      workspace,
+      {
+        items: [
+          { targetId: c1.id, text: "Hi one" },
+          { targetId: declined.id, text: "Hi declined" },
+          { targetId: c2.id, text: "Hi two https://x.com/me/status/77" },
+          { targetId: c2.id, text: "duplicate" },
+        ],
+        postUrl: "https://x.com/me/status/77",
+      },
+      NOW,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      data: [
+        { targetId: c1.id, ok: true },
+        { targetId: declined.id, ok: false, error: "declined" },
+        { targetId: c2.id, ok: true },
+      ],
+    });
+    expect(sent).toEqual([
+      { to: "x-1", text: "Hi one\nhttps://x.com/me/status/77" },
+      { to: "x-2", text: "Hi two https://x.com/me/status/77" },
+    ]);
+    expect((await messagesToday(workspace, NOW)).used).toBe(2);
+  });
+
+  it("stops at a rate limit: nothing after it is sent or retried", async () => {
+    const { workspace, fresh } = await bulkSetup();
+    let calls = 0;
+    const x = fakeX({
+      dm: () => (++calls === 2 ? { status: 429, body: { title: "Too Many Requests" } } : dmReply()),
+    });
+    restoreFetch = x.restore;
+
+    const result = await sendBulkViaApi(
+      workspace,
+      { items: fresh.map((creator) => ({ targetId: creator.id, text: "hi" })) },
+      NOW,
+    );
+
+    expect(result.ok && result.data.map((item) => (item.ok ? "ok" : item.error))).toEqual([
+      "ok",
+      "rate_limited",
+      "not_sent",
+    ]);
+    expect(calls).toBe(2);
+  });
+
+  it("refuses more than 10 and never messages another workspace's creators", async () => {
+    const { workspace } = await bulkSetup();
+    const other = await setup("a");
+    let calls = 0;
+    const x = fakeX({ dm: () => (calls++, dmReply()) });
+    restoreFetch = x.restore;
+
+    const many = Array.from({ length: 11 }, (_, n) => ({
+      targetId: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+      text: "hi",
+    }));
+    expect(await sendBulkViaApi(workspace, { items: many }, NOW)).toEqual({
+      ok: false,
+      error: "too_many",
+    });
+    expect(
+      await sendBulkViaApi(workspace, { items: [{ targetId: other.target.id, text: "hi" }] }, NOW),
+    ).toEqual({ ok: true, data: [{ targetId: other.target.id, ok: false, error: "not_found" }] });
+    expect((await bulkCandidates(workspace.id, [other.target.id], NOW)).ready).toEqual([]);
     expect(calls).toBe(0);
   });
 });

@@ -10,6 +10,15 @@ export function countMessagesOpenedSince(workspaceId: string, since: Date): Prom
   });
 }
 
+/** The workspace's creators among `ids` (at most `limit`). */
+export function findCreatorsByIds(workspaceId: string, ids: string[], limit: number) {
+  return prisma.targetAccount.findMany({
+    where: { workspaceId, id: { in: ids.slice(0, limit) } },
+    orderBy: { followersCount: { sort: "desc", nulls: "last" } },
+    take: limit,
+  });
+}
+
 /** Records the opened message and moves the creator on, atomically. */
 export async function recordMessageOpened(input: {
   workspaceId: string;

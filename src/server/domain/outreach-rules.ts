@@ -1,6 +1,10 @@
 // Collab outreach rules (M7.2, D-033). Messages are drafted here and sent by the user in X.
 
 export const MAX_MESSAGE_LENGTH = 1_000;
+/** One bulk send (superadmin, D-035) messages at most this many creators. */
+export const MAX_BULK_MESSAGES = 10;
+/** Bulk sends skip creators messaged more recently than this. */
+export const RECONTACT_WAIT_MS = 7 * 24 * 3_600_000;
 /** "Didn't send it?" can be undone this long after opening X. */
 export const MESSAGE_UNDO_WINDOW_MS = 24 * 3_600_000;
 
@@ -30,4 +34,29 @@ export function statusAfterMessage<S extends string>(current: S): S | "CONTACTED
  */
 export function appChatUrl(theirXUserId: string, text: string): string {
   return `twitter://messages/compose?recipient_id=${theirXUserId}&text=${encodeURIComponent(text)}`;
+}
+
+export type BulkSkipReason = "declined" | "recently_messaged";
+
+/** Why a creator is left out of a bulk send, or null when they can be messaged. */
+export function bulkSkipReason(
+  creator: { status: string; lastContactAt: Date | null },
+  now: Date,
+): BulkSkipReason | null {
+  if (creator.status === "DECLINED") return "declined";
+  if (
+    creator.lastContactAt &&
+    now.getTime() - creator.lastContactAt.getTime() < RECONTACT_WAIT_MS
+  ) {
+    return "recently_messaged";
+  }
+  return null;
+}
+
+/** The message as sent: the post link is added at the end when the text doesn't have it. */
+export function withPostLink(text: string, postUrl: string | null): string {
+  const trimmed = text.trim();
+  if (!postUrl) return trimmed;
+  const postId = /status\/(\d+)/.exec(postUrl)?.[1] ?? postUrl;
+  return trimmed.includes(postId) ? trimmed : `${trimmed}\n${postUrl}`;
 }

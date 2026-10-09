@@ -12,6 +12,7 @@ import {
   changeCreatorStatus,
   draftMessages,
   recordSentMessage,
+  sendBulkViaApi,
   sendMessageViaApi,
   undoOpenedMessage,
 } from "@/server/services/outreach";
@@ -28,6 +29,10 @@ const MESSAGES: Record<string, string> = {
   budget_exceeded: "This month's usage limit is reached.",
   ai_declined: "The AI declined — write your own message.",
   ai_unavailable: "AI did not respond. Please try again.",
+  declined: "Skipped — marked Declined.",
+  recently_messaged: "Skipped — messaged in the last 7 days.",
+  not_sent: "Not sent — the batch stopped earlier.",
+  too_many: "At most 10 creators at once.",
   forbidden:
     "X refused the message — this person may not accept messages from you, or X needs to be reconnected with message permission.",
   needs_reconnect: "Reconnect your X account on the dashboard.",
@@ -170,4 +175,65 @@ export async function repostedBackAction(formData: FormData): Promise<void> {
   await markRepostedBack(workspace.id, parsed.data.targetId, parsed.data.done === "1");
   revalidatePath(`/targets/${parsed.data.targetId}`);
   revalidatePath("/targets");
+}
+
+const bulkDraftSchema = z.object({
+  targetIds: z.array(z.uuid()).min(1).max(10),
+  postUrl: z.string().max(300).optional(),
+});
+
+export type BulkDraft = { targetId: string; text: string | null; error: string | null };
+
+/** One AI message per selected creator, drafted in parallel (superadmin, D-035). */
+export async function draftBulkAction(
+  input: z.input<typeof bulkDraftSchema>,
+): Promise<BulkDraft[]> {
+  const { workspace, role } = await requireWorkspace();
+  const parsed = bulkDraftSchema.safeParse(input);
+  if (role !== "SUPERADMIN" || !parsed.success) return [];
+  const { targetIds, postUrl } = parsed.data;
+  const drafts = await Promise.all(
+    targetIds.map(async (targetId): Promise<BulkDraft> => {
+      const result = await draftMessages(workspace, { targetId, ...(postUrl ? { postUrl } : {}) });
+      return result.ok
+        ? { targetId, text: result.data[0] ?? "", error: null }
+        : { targetId, text: null, error: message(result.error) };
+    }),
+  );
+  revalidatePath("/", "layout"); // spend
+  return drafts;
+}
+
+const bulkSendSchema = z.object({
+  items: z
+    .array(z.object({ targetId: z.uuid(), text: z.string().max(2_000) }))
+    .min(1)
+    .max(10),
+  postUrl: z.string().max(300).optional(),
+});
+
+export type BulkSendResult =
+  | { ok: true; results: { targetId: string; ok: boolean; message: string | null }[] }
+  | { ok: false; message: string };
+
+/** "Send all": the reviewed messages go out one after another via the X API (D-035). */
+export async function sendBulkAction(
+  input: z.input<typeof bulkSendSchema>,
+): Promise<BulkSendResult> {
+  const { workspace, role } = await requireWorkspace();
+  if (role !== "SUPERADMIN") return { ok: false, message: message("not_found") };
+  const parsed = bulkSendSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: message("too_many") };
+  const result = await sendBulkViaApi(workspace, parsed.data);
+  revalidatePath("/targets");
+  revalidatePath("/", "layout");
+  if (!result.ok) return { ok: false, message: message(result.error) };
+  return {
+    ok: true,
+    results: result.data.map((item) => ({
+      targetId: item.targetId,
+      ok: item.ok,
+      message: item.ok ? null : message(item.error),
+    })),
+  };
 }

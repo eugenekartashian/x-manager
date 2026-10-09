@@ -16,8 +16,12 @@ import { isAiEnabled } from "@/server/services/ai-replies";
 import { getLimitsContext, usedToday } from "@/server/services/limits";
 import { canSendDirectMessages } from "@/server/integrations/x/oauth";
 import { findConnection } from "@/server/repositories/x-accounts";
-import { getPostsPageData } from "@/server/services/own-posts";
-import { chatLinkFor, creatorHistory, messagesToday } from "@/server/services/outreach";
+import {
+  chatLinkFor,
+  creatorHistory,
+  messagePostOptions,
+  messagesToday,
+} from "@/server/services/outreach";
 import { latestPromotedPostUrl } from "@/server/services/repost-checks";
 import { MAX_CHECK_COST_MICROS } from "@/server/domain/repost-check-rules";
 import { getSessionData, listRecentReplies } from "@/server/services/replies";
@@ -48,9 +52,8 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
         usedToday(workspace.id, "AI_IDEAS", tz, now, target.id),
       ])
     : [0, 0];
-  const [allReplies, ownPosts, history, messages, connection] = await Promise.all([
+  const [allReplies, history, messages, connection] = await Promise.all([
     listRecentReplies(workspace.id),
-    getPostsPageData(workspace.id, now),
     creatorHistory(workspace.id, target.id),
     messagesToday(workspace, now),
     findConnection(workspace.id),
@@ -67,15 +70,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
   const promotedPostUrl = await latestPromotedPostUrl(workspace.id, target.id, now);
   const replies = allReplies.filter((reply) => reply.targetId === target.id);
   // Own posts the message can link to: repost list first, then recent ones (no X calls).
-  const postOptions = ownPosts.connected
-    ? [...ownPosts.rotation, ...ownPosts.recent]
-        .filter((post, index, all) => all.findIndex((other) => other.id === post.id) === index)
-        .slice(0, 12)
-        .map((post) => ({
-          url: `https://x.com/${me}/status/${post.xPostId}`,
-          label: `${post.inRotation ? "★ " : ""}${(post.text || "(media)").replace(/\s+/g, " ").slice(0, 60)}`,
-        }))
-    : [];
+  const postOptions = await messagePostOptions(workspace.id, me, now);
 
   return (
     <>

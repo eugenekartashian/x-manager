@@ -11,14 +11,22 @@ import { formatCount, formatDateTime } from "@/lib/format";
 import { bulkCreatorsAction } from "./actions";
 import { ROLE_LABELS, ROLE_ORDER, STATUS_META, STATUS_ORDER } from "./creator-status";
 
-type Props = { rows: TargetAccount[]; timeZone: string; filtered: boolean };
+type Props = {
+  rows: TargetAccount[];
+  timeZone: string;
+  filtered: boolean;
+  /** Superadmin with message permission: "Message" opens the bulk send page (D-035). */
+  bulkMessage?: boolean;
+};
+
+const MAX_BULK = 10;
 
 const initial: ActionState = { status: "idle", message: "" };
 const control =
   "border-foreground/15 rounded-md border bg-transparent px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-40";
 
 /** Creators table (desktop) / cards (mobile) with selection and a floating action bar (M7.1). */
-export function CreatorsTable({ rows, timeZone, filtered }: Props) {
+export function CreatorsTable({ rows, timeZone, filtered, bulkMessage = false }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [state, action, pending] = useActionState(bulkCreatorsAction, initial);
   const [label, setLabel] = useState("");
@@ -167,6 +175,17 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
           aria-label="Actions for selected creators"
         >
           <span className="px-1 text-sm font-medium">{ids.length} selected</span>
+          {bulkMessage &&
+            (ids.length <= MAX_BULK ? (
+              <Link
+                href={`/targets/message?ids=${ids.join(",")}`}
+                className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
+              >
+                ✉ Message
+              </Link>
+            ) : (
+              <span className="text-foreground/50 text-xs">Message: up to {MAX_BULK}</span>
+            ))}
           <Select
             aria-label="Move to status"
             value=""
