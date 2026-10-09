@@ -22,7 +22,8 @@ const MESSAGES: Record<string, string> = {
   needs_reconnect: "Reconnect your X account on the dashboard.",
   rate_limited: "X rate limit reached — try again later.",
   no_credits: "X API credits are used up — top up in the X Developer Console.",
-  forbidden: "X doesn't show who this account follows (it may be protected).",
+  forbidden:
+    "X refused — reconnect X on the dashboard (needs permission to read follows), or the account is protected.",
   x_unavailable: "X is not responding. Try again in a minute.",
 };
 const message = (code: string) => MESSAGES[code] ?? "Something went wrong.";

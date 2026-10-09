@@ -15,7 +15,7 @@ import { MessageComposer } from "@/features/targets/message-composer";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { isAiEnabled } from "@/server/services/ai-replies";
 import { getLimitsContext, usedToday } from "@/server/services/limits";
-import { canSendDirectMessages } from "@/server/integrations/x/oauth";
+import { canReadFollowing, canSendDirectMessages } from "@/server/integrations/x/oauth";
 import { findConnection } from "@/server/repositories/x-accounts";
 import {
   chatLinkFor,
@@ -121,6 +121,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
           username={target.username}
           maxCost={formatUsd(BigInt(FIND_SIMILAR_MAX_MICROS))}
           finished={target.followingExhausted}
+          needsReconnect={!connection || !canReadFollowing(connection.scopes)}
         />
       )}
 

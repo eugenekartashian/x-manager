@@ -59,7 +59,7 @@ describe("startXConnection", () => {
     const owner = await createOwner("a");
     const { authorizeUrl } = startXConnection(owner, new Date(), { directMessages: true });
     expect(new URL(authorizeUrl).searchParams.get("scope")).toBe(
-      "tweet.read tweet.write users.read offline.access dm.read dm.write",
+      "tweet.read tweet.write users.read offline.access dm.read dm.write follows.read",
     );
   });
 });

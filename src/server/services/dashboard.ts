@@ -32,6 +32,8 @@ export type DashboardData = {
     targetLoads: number;
     targetLoadsLimit: number | null;
     aiIdeas: number;
+    messages: number;
+    messagesLimit: number;
     spendMicros: bigint | null; // superadmin only
   };
   budget: BudgetStatus | null; // superadmin only
@@ -39,6 +41,8 @@ export type DashboardData = {
     days: string[]; // YYYY-MM-DD, oldest first, workspace timezone
     reposts: { succeeded: number; skipped: number; problems: number }[];
     replies: number[];
+    /** Creator messages sent, and creators who reposted (found or marked) that day. */
+    messages: { sent: number; reposted: number }[];
     spendMicros: bigint[] | null; // superadmin only
   };
   recentRuns: Awaited<ReturnType<typeof runs.listRecentRuns>>;
@@ -71,6 +75,8 @@ export async function getDashboardData(
     runsPerDay,
     repliesPerDay,
     spendPerDay,
+    messagesPerDay,
+    creatorRepostsPerDay,
   ] = await Promise.all([
     findConnection(workspace.id),
     getBudgetStatus(workspace.id, now),
@@ -83,6 +89,8 @@ export async function getDashboardData(
     dashboard.dailyRunsByStatus(workspace.id, chartStart, tz),
     dashboard.dailyReplies(workspace.id, chartStart, tz),
     isAdmin ? dashboard.dailySpendMicros(workspace.id, chartStart, tz) : Promise.resolve([]),
+    dashboard.dailyMessages(workspace.id, chartStart, tz),
+    dashboard.dailyCreatorReposts(workspace.id, chartStart, tz),
   ]);
 
   // ── Needs attention ──
@@ -166,6 +174,8 @@ export async function getDashboardData(
   const byDay = <T>(rows: (T & { day: string })[]) => new Map(rows.map((row) => [row.day, row]));
   const repliesMap = byDay(repliesPerDay);
   const spendMap = byDay(spendPerDay);
+  const messagesMap = byDay(messagesPerDay);
+  const creatorRepostsMap = byDay(creatorRepostsPerDay);
   const reposts = days.map((day) => {
     const rows = runsPerDay.filter((row) => row.day === day);
     const sum = (statuses: RepostStatus[]) =>
@@ -192,12 +202,18 @@ export async function getDashboardData(
       targetLoads: featureCount("TARGET_LOAD"),
       targetLoadsLimit: limits?.targetLoadsPerDay ?? null,
       aiIdeas: featureCount("AI_IDEAS"),
+      messages: messagesMap.get(today)?.count ?? 0,
+      messagesLimit: workspace.limitMessagesPerDay,
       spendMicros: isAdmin ? (spendMap.get(today)?.micros ?? 0n) : null,
     },
     budget: isAdmin ? budget : null,
     chart: {
       days,
       reposts,
+      messages: days.map((day) => ({
+        sent: messagesMap.get(day)?.count ?? 0,
+        reposted: creatorRepostsMap.get(day)?.count ?? 0,
+      })),
       replies: days.map((day) => repliesMap.get(day)?.count ?? 0),
       spendMicros: isAdmin ? days.map((day) => spendMap.get(day)?.micros ?? 0n) : null,
     },

@@ -123,6 +123,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               }
             />
             <Stat label="AI idea requests" value={String(data.today.aiIdeas)} />
+            <Stat
+              label="Creator messages"
+              value={`${data.today.messages}/${data.today.messagesLimit}`}
+            />
             {isAdmin && data.today.spendMicros !== null && data.budget && (
               <Stat
                 label="API spend (estimate)"
@@ -163,6 +167,27 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               { value: data.chart.replies[index] ?? 0, className: "bg-blue-500", label: "Replies" },
             ],
           }))}
+        />
+        <DailyBars
+          title="Creator messages per day"
+          legend={[
+            { className: "bg-violet-500", label: "Messages sent" },
+            { className: "bg-green-600", label: "Creators reposted you" },
+          ]}
+          days={days.map((day, index) => {
+            const value = data.chart.messages[index] ?? { sent: 0, reposted: 0 };
+            return {
+              ...day,
+              segments: [
+                { value: value.sent, className: "bg-violet-500", label: "Messages sent" },
+                {
+                  value: value.reposted,
+                  className: "bg-green-600",
+                  label: "Creators reposted you",
+                },
+              ],
+            };
+          })}
         />
         {data.chart.spendMicros && (
           <DailyBars

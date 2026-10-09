@@ -83,6 +83,44 @@ describe("getDashboardData", () => {
     expect(data.today.targetLoadsLimit).toBeNull();
   });
 
+  it("counts creator messages and creators who reposted, per local day and workspace", async () => {
+    const a = await createOwner("a");
+    const b = await createOwner("b");
+    const creator = await prisma.targetAccount.create({
+      data: {
+        workspaceId: a.workspaceId,
+        xUserId: "c1",
+        username: "c1",
+        name: "C1",
+        lookedUpAt: NOW,
+      },
+    });
+    const event = (kind: "MESSAGE_OPENED" | "STATUS_CHANGED", createdAt: Date, undone = false) =>
+      prisma.creatorEvent.create({
+        data: {
+          workspaceId: a.workspaceId,
+          targetId: creator.id,
+          kind,
+          ...(kind === "STATUS_CHANGED" ? { status: "REPOSTED" as const } : { text: "hi" }),
+          createdAt,
+          ...(undone ? { undoneAt: NOW } : {}),
+        },
+      });
+    await event("MESSAGE_OPENED", new Date("2026-10-09T23:30:00Z")); // 10 Oct in Madrid
+    await event("MESSAGE_OPENED", new Date("2026-10-10T08:00:00Z"));
+    await event("MESSAGE_OPENED", new Date("2026-10-10T08:30:00Z"), true); // undone
+    await event("STATUS_CHANGED", new Date("2026-10-10T09:00:00Z"));
+
+    const data = await getDashboardData(await workspaceOf(a.workspaceId), "SUPERADMIN", NOW);
+    expect(data.today.messages).toBe(2);
+    expect(data.today.messagesLimit).toBe(30);
+    expect(data.chart.messages.at(-1)).toEqual({ sent: 2, reposted: 1 });
+
+    const other = await getDashboardData(await workspaceOf(b.workspaceId), "USER", NOW);
+    expect(other.today.messages).toBe(0);
+    expect(other.chart.messages.every((day) => day.sent === 0 && day.reposted === 0)).toBe(true);
+  });
+
   it("never includes another workspace's runs, replies or spend", async () => {
     const a = await createOwner("a");
     const b = await createOwner("b");

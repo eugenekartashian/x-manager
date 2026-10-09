@@ -270,4 +270,5 @@ The user wants RT4RT-style partner outreach (example: agencies DM-ing links with
 - One click = one page of ≤ 100 users (≤ $1, confirmed with the price). X bills every returned user, including ones filtered out, so the pagination token is stored per creator (`followingCursor`) and the next run continues instead of re-reading; at the end of the list the button is disabled (`followingExhausted`).
 - Filter: not the owner, not already a creator, never suggested before (any status), ≥ 10K followers (owner decision). Suggestions (`creator_candidate`, RLS on) show profile + connection badge + "via @creator"; Add (free — no X call, source DISCOVERY) / Skip (never suggested again).
 - Not yet: AI niche filter by bio; the owner's own followers as a source ($0.001 owned reads).
+- 2026-10-10 (D-038, live): the first run got 403 — `GET /2/users/:id/following` needs the OAuth scope `follows.read` ([docs](https://docs.x.com/x-api/users/get-following)). Added to the superadmin-only optional scopes; the button asks to reconnect until the connection has it.
 

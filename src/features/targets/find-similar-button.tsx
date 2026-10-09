@@ -10,12 +10,15 @@ export function FindSimilarButton({
   username,
   maxCost,
   finished,
+  needsReconnect,
 }: {
   targetId: string;
   username: string;
   maxCost: string;
   /** Their whole following list was already read. */
   finished: boolean;
+  /** The X connection lacks follows.read — reconnect first. */
+  needsReconnect: boolean;
 }) {
   const [result, setResult] = useState<FindSimilarResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -36,16 +39,18 @@ export function FindSimilarButton({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={pending || finished}
+          disabled={pending || finished || needsReconnect}
           onClick={run}
           className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 disabled:opacity-50"
         >
           {pending ? "Looking…" : "Find similar creators"}
         </button>
         <span className="text-foreground/50 text-xs">
-          {finished
-            ? `Everyone @${username} follows was checked.`
-            : `From who @${username} follows · up to ${maxCost} per run`}
+          {needsReconnect
+            ? "Disconnect and connect X again on the dashboard to allow reading who people follow."
+            : finished
+              ? `Everyone @${username} follows was checked.`
+              : `From who @${username} follows · up to ${maxCost} per run`}
         </span>
       </div>
       {result &&

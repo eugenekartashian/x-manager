@@ -34,6 +34,36 @@ export function dailyReplies(
     GROUP BY 1`;
 }
 
+/** Creator messages sent per day (undone ones don't count). */
+export function dailyMessages(
+  workspaceId: string,
+  since: Date,
+  timeZone: string,
+): Promise<DayCount[]> {
+  return prisma.$queryRaw`
+    SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone}, 'YYYY-MM-DD') AS day,
+           count(*)::int AS count
+    FROM creator_event
+    WHERE "workspaceId" = ${workspaceId} AND kind = 'MESSAGE_OPENED'
+      AND "createdAt" >= ${since} AND "undoneAt" IS NULL
+    GROUP BY 1`;
+}
+
+/** Creators marked "Reposted" per day (by a check or by hand). */
+export function dailyCreatorReposts(
+  workspaceId: string,
+  since: Date,
+  timeZone: string,
+): Promise<DayCount[]> {
+  return prisma.$queryRaw`
+    SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timeZone}, 'YYYY-MM-DD') AS day,
+           count(*)::int AS count
+    FROM creator_event
+    WHERE "workspaceId" = ${workspaceId} AND kind = 'STATUS_CHANGED' AND status = 'REPOSTED'
+      AND "createdAt" >= ${since} AND "undoneAt" IS NULL
+    GROUP BY 1`;
+}
+
 export function dailySpendMicros(
   workspaceId: string,
   since: Date,
