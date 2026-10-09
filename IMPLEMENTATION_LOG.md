@@ -369,3 +369,9 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 - `src/app/page.tsx` + `src/features/landing/*` (Reveal, Parallax, RequestForm, CSS mock-ups); migration `access_requests`; `services/access-requests.ts` (3 tests); admin section with Invite / Dismiss.
 - Checked with Playwright screenshots (desktop 1280, mobile 390) against a local production build. 292 tests passing.
+
+### 2026-10-09 · M7.0 — Price & ordering check (live, user-approved)
+
+- Timeline read of @john_gerk87 (24 h, max 20): HTTP 200, 20 Reposts + more pages → $0.10; Console showed $0.10 for 9 Oct.
+- `retweeted_by` on the pinned post (max 10) twice, with the owner re-reposting in between: owner moved from #2 to #1 → newest-first confirmed; the repeat was within the same UTC day (deduplicated).
+- Decision: incremental per-post check for 7.3 (D-033). Console balance at the time: $2.98 — top-up needed to keep scheduled Reposts running.
