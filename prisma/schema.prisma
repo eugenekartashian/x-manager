@@ -125,6 +125,8 @@ model Workspace {
   limitTargetLoadsPerDay    Int       @default(3)
   limitAiIdeasPerTargetDay  Int       @default(5)
   targetsEnabled            Boolean   @default(true)
+  // Collab messages a user may open in X per local day (M7.2, user decision: 30 for everyone).
+  limitMessagesPerDay       Int       @default(30)
   aiEnabled                 Boolean   @default(true)
 
   xAccount        XAccount?
@@ -138,6 +140,7 @@ model Workspace {
   slots           RepostSlot[]
   runs            ScheduledRepost[]
   featureUsage    FeatureUsage[]
+  creatorEvents   CreatorEvent[]
 
   @@map("workspace")
 }
@@ -366,15 +369,15 @@ model BilledResource {
 // Niche accounts the user wants to reply to (added by @handle). Profile data is a
 // snapshot from the last lookup. Replies are always posted by the user on x.com (D-008).
 model TargetAccount {
-  id             String        @id @default(uuid(7))
+  id             String         @id @default(uuid(7))
   workspaceId    String
-  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   xUserId        String
   username       String
   name           String
   bio            String?
   avatarUrl      String? // pbs.twimg.com only
-  verified       Boolean       @default(false)
+  verified       Boolean        @default(false)
   followersCount Int?
   followingCount Int?
   postsCount     Int?
@@ -382,15 +385,16 @@ model TargetAccount {
   lastRepliedAt  DateTime?
   postsFetchedAt DateTime?
   lookedUpAt     DateTime
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   // Collab CRM (M7.1, D-033).
-  status         CreatorStatus @default(NEW)
-  tags           String[]      @default([])
-  source         CreatorSource @default(MANUAL)
+  status         CreatorStatus  @default(NEW)
+  tags           String[]       @default([])
+  source         CreatorSource  @default(MANUAL)
   lastContactAt  DateTime?
   posts          TargetPost[]
   replies        ReplyLog[]
+  events         CreatorEvent[]
 
   @@unique([workspaceId, xUserId])
   @@index([workspaceId, followersCount])
@@ -476,6 +480,7 @@ model ReplyLog {
 enum FeatureKind {
   TARGET_LOAD
   AI_IDEAS
+  AI_MESSAGE
 }
 
 // Counts limited actions per workspace-local day (M6.3): target post loads, AI idea requests.
@@ -502,4 +507,28 @@ model AccessRequest {
 
   @@index([createdAt])
   @@map("access_request")
+}
+
+enum CreatorEventKind {
+  MESSAGE_OPENED // the user opened a prefilled DM in X (we can't see whether it was sent)
+  STATUS_CHANGED
+}
+
+// Collab CRM history per creator (M7.2). Scoped by workspace; deleted with the creator.
+model CreatorEvent {
+  id          String           @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  targetId    String
+  target      TargetAccount    @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  kind        CreatorEventKind
+  text        String?
+  postUrl     String?
+  status      CreatorStatus?
+  undoneAt    DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([workspaceId, kind, createdAt])
+  @@index([targetId, createdAt])
+  @@map("creator_event")
 }

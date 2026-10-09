@@ -8,9 +8,13 @@ import { formatAge, formatCount, formatDateTime } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
 import { isFreshPost } from "@/server/domain/reply-rules";
 import { CreatorDetails } from "@/features/targets/creator-details";
+import { CreatorHistory } from "@/features/targets/creator-history";
+import { MessageComposer } from "@/features/targets/message-composer";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { isAiEnabled } from "@/server/services/ai-replies";
 import { getLimitsContext, usedToday } from "@/server/services/limits";
+import { getPostsPageData } from "@/server/services/own-posts";
+import { creatorHistory, messagesToday } from "@/server/services/outreach";
 import { getSessionData, listRecentReplies } from "@/server/services/replies";
 
 export default async function ReplySessionPage({ params }: PageProps<"/targets/[id]">) {
@@ -39,9 +43,23 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
         usedToday(workspace.id, "AI_IDEAS", tz, now, target.id),
       ])
     : [0, 0];
-  const replies = (await listRecentReplies(workspace.id)).filter(
-    (reply) => reply.targetId === target.id,
-  );
+  const [allReplies, ownPosts, history, messages] = await Promise.all([
+    listRecentReplies(workspace.id),
+    getPostsPageData(workspace.id, now),
+    creatorHistory(workspace.id, target.id),
+    messagesToday(workspace, now),
+  ]);
+  const replies = allReplies.filter((reply) => reply.targetId === target.id);
+  // Own posts the message can link to: repost list first, then recent ones (no X calls).
+  const postOptions = ownPosts.connected
+    ? [...ownPosts.rotation, ...ownPosts.recent]
+        .filter((post, index, all) => all.findIndex((other) => other.id === post.id) === index)
+        .slice(0, 12)
+        .map((post) => ({
+          url: `https://x.com/i/status/${post.xPostId}`,
+          label: `${post.inRotation ? "★ " : ""}${(post.text || "(media)").replace(/\s+/g, " ").slice(0, 60)}`,
+        }))
+    : [];
 
   return (
     <>
@@ -79,6 +97,29 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
       </header>
 
       <CreatorDetails creator={target} />
+
+      <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
+        <h2 className="text-lg font-medium">Message</h2>
+        <p className="text-foreground/60 text-xs">
+          Write one personal message — X opens with it and you send it yourself. Different words for
+          every creator keep it human.
+        </p>
+        <MessageComposer
+          targetId={target.id}
+          username={target.username}
+          posts={postOptions}
+          aiEnabled={aiEnabled}
+          usedToday={messages.used}
+          dailyLimit={messages.limit}
+        />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-lg font-medium">History</h2>
+        <CreatorHistory events={history} timeZone={tz} />
+      </section>
+
+      <h2 className="text-lg font-medium">Reply under their posts</h2>
 
       <p className="bg-foreground/5 rounded-md px-3 py-2 text-sm">
         Replies today:{" "}

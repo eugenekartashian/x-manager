@@ -384,3 +384,11 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Tests: `creators.test.ts` (filters, paging, bulk, normalised tags, sources, isolation). 303 passing. UI not checked on a device yet.
 
 - 7.1 follow-up: 25 rows per page; floating bottom action bar (Move to… / + Label / Remove), labels shown under the name, fewer columns; status/label explanation on the page; labels removable on the creator page.
+
+### 2026-10-09 · M7.2 — Creator card & outreach
+
+- Migration `collab_outreach`: `creator_event` (MESSAGE_OPENED / STATUS_CHANGED, text, postUrl, previous status, undoneAt; RLS on), `workspace.limitMessagesPerDay` (default 30 — user decision, applies to everyone), FeatureKind `AI_MESSAGE`.
+- AI seam generalised: providers run a `JsonTask` (system, user, schema) and features validate with their own Zod schema; reply ideas unchanged (existing tests pass). New `collab-messages.ts` prompt: 3 different personal DMs, untrusted data in tags, no explicit content, no payment/follower promises.
+- `services/outreach.ts`: `openMessage` (validates text/post link, daily limit per local day, records event, NEW/NO_REPLY/DECLINED → Messaged, stamps last contact, returns `x.com/messages/compose?recipient_id&text` — mobile behaviour UNVERIFIED, UI offers Copy text + Open profile), undo within 24 h (restores status, frees the slot), manual status change with history, AI drafts (per-creator daily cap for users, budget check, usage recorded).
+- Creator page: status select, labels, note; "Message" (own post picker from the repost list/recent posts or a pasted link, AI drafts, Open in X, Copy text, n/30 today); History.
+- Tests: outreach rules + `outreach.test.ts` (validation, limit/reset, undo window, partners stay, isolation, AI prompt/usage/cap). 317 passing.

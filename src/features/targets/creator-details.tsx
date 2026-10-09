@@ -1,7 +1,8 @@
 import type { TargetAccount } from "@/generated/prisma/client";
 import { SubmitButton } from "@/features/posts/submit-button";
 import { removeLabelAction, removeTargetAction, saveNoteAction } from "./actions";
-import { STATUS_META } from "./creator-status";
+import { STATUS_META, STATUS_ORDER } from "./creator-status";
+import { changeStatusAction } from "./outreach-actions";
 
 /** Status, tags, note and remove on the creator page (M7.1; outreach arrives in 7.2). */
 export function CreatorDetails({ creator }: { creator: TargetAccount }) {
@@ -9,9 +10,27 @@ export function CreatorDetails({ creator }: { creator: TargetAccount }) {
   return (
     <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${status.tone}`}>
-          {status.label}
-        </span>
+        <form action={changeStatusAction} className="flex items-center gap-2">
+          <input type="hidden" name="targetId" value={creator.id} />
+          <label className="sr-only" htmlFor={`status-${creator.id}`}>
+            Status
+          </label>
+          <select
+            id={`status-${creator.id}`}
+            name="status"
+            defaultValue={creator.status}
+            className={`rounded-full border-0 px-2 py-0.5 text-xs font-medium ${status.tone}`}
+          >
+            {STATUS_ORDER.map((value) => (
+              <option key={value} value={value}>
+                {STATUS_META[value].label}
+              </option>
+            ))}
+          </select>
+          <SubmitButton variant="ghost" pendingLabel="…">
+            Save
+          </SubmitButton>
+        </form>
         {creator.tags.map((tag) => (
           <form key={tag} action={removeLabelAction} className="contents">
             <input type="hidden" name="targetId" value={creator.id} />

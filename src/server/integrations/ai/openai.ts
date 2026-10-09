@@ -1,36 +1,24 @@
 import "server-only";
 import OpenAI from "openai";
-import {
-  buildUserPrompt,
-  OUTPUT_JSON_SCHEMA,
-  parseIdeas,
-  SYSTEM_PROMPT,
-  type ReplyIdeasInput,
-  type ReplyIdeasResult,
-} from "./reply-ideas";
+import type { JsonTask, JsonTaskResult } from "./task";
 
 export const OPENAI_DEFAULT_MODEL = "gpt-5-mini";
 
-/** OpenAI Responses API (the key only needs "Responses: Write"). */
-export async function openAiReplyIdeas(
+/** OpenAI Responses API with strict JSON output (the key only needs "Responses: Write"). */
+export async function openAiJsonTask(
   apiKey: string,
   model: string,
-  input: ReplyIdeasInput,
-): Promise<ReplyIdeasResult> {
+  task: JsonTask,
+): Promise<JsonTaskResult> {
   const client = new OpenAI({ apiKey, maxRetries: 1, timeout: 30_000 });
   const response = await client.responses.create({
     model,
-    instructions: SYSTEM_PROMPT,
-    input: buildUserPrompt(input),
+    instructions: task.system,
+    input: task.user,
     reasoning: { effort: "low" },
     max_output_tokens: 2_000,
     text: {
-      format: {
-        type: "json_schema",
-        name: "reply_ideas",
-        schema: { ...OUTPUT_JSON_SCHEMA },
-        strict: true,
-      },
+      format: { type: "json_schema", name: task.name, schema: { ...task.schema }, strict: true },
     },
   });
 
@@ -38,11 +26,11 @@ export async function openAiReplyIdeas(
     (item) => item.type === "message" && item.content.some((part) => part.type === "refusal"),
   );
   if (refused) return { kind: "refused" };
-  const usage = {
+  return {
+    kind: "ok",
+    text: response.output_text,
     model: response.model,
     inputTokens: response.usage?.input_tokens ?? 0,
     outputTokens: response.usage?.output_tokens ?? 0,
   };
-  const ideas = parseIdeas(response.output_text);
-  return ideas ? { kind: "ok", ideas, ...usage } : { kind: "invalid", ...usage };
 }
