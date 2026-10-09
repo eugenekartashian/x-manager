@@ -46,6 +46,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     </div>
   );
 
+  // Users can delete their account with or without an X connection.
+  const deleteAccount = !isAdmin && (
+    <section className="flex flex-col gap-3 rounded-lg border border-red-500/30 p-4">
+      <h2 className="text-lg font-medium">Delete account</h2>
+      <DeleteAccountForm />
+    </section>
+  );
+
   // Nothing runs without X: show only the connect step (stats and charts would be stale).
   if (!connection) {
     return (
@@ -57,6 +65,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </p>
         </div>
         {xAccount}
+        {deleteAccount}
       </>
     );
   }
@@ -244,12 +253,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
       {xAccount}
 
-      {!isAdmin && (
-        <section className="flex flex-col gap-3 rounded-lg border border-red-500/30 p-4">
-          <h2 className="text-lg font-medium">Delete account</h2>
-          <DeleteAccountForm />
-        </section>
-      )}
+      {deleteAccount}
     </>
   );
 }
