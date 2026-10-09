@@ -8,6 +8,8 @@ import { formatCount, formatUsd } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
 import { CreatorDetails } from "@/features/targets/creator-details";
 import { CheckRepostButton } from "@/features/targets/check-repost-button";
+import { FindSimilarButton } from "@/features/targets/find-similar-button";
+import { FIND_SIMILAR_MAX_MICROS } from "@/server/services/discovery";
 import { CreatorHistory } from "@/features/targets/creator-history";
 import { MessageComposer } from "@/features/targets/message-composer";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
@@ -111,6 +113,14 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
           username={target.username}
           postUrl={promotedPostUrl}
           cost={showCosts ? formatUsd(BigInt(MAX_CHECK_COST_MICROS)) : null}
+        />
+      )}
+      {role === "SUPERADMIN" && (
+        <FindSimilarButton
+          targetId={target.id}
+          username={target.username}
+          maxCost={formatUsd(BigInt(FIND_SIMILAR_MAX_MICROS))}
+          finished={target.followingExhausted}
         />
       )}
 

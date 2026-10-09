@@ -264,3 +264,10 @@ The user wants RT4RT-style partner outreach (example: agencies DM-ing links with
 - Live: several creators returned no posts even after paging 5 pages with `exclude=replies,retweets` — they mostly re-share their own older posts. Owner decision: show the latest 3 posts, counting Reposts of the creator's OWN posts (shown as the original post with a "their repost" label and the Repost time; freshness and order use the Repost time); Reposts of other accounts and replies stay hidden. A reply is written under the original post.
 - Timeline call: `exclude=replies`, `expansions=referenced_tweets.id`, `tweet.fields` with `author_id` to tell own vs others' originals. Cost: each returned item and each expanded original is a Post read ($0.005), so a self-Repost costs ~$0.01; paging stops at 3 posts or 20 billed (≈ $0.02–0.10 per load). Migration `target_post_self_repost` (`repostedAt`).
 
+## D-038 · 2026-10-10 · "Find similar": suggestions from who a creator follows
+
+- Owner request: find similar creators without adding them by hand. Source: `GET /2/users/:id/following` of a creator already in the list ("Following/Followers: Read $0.010 per resource", [pricing](https://docs.x.com/x-api/getting-started/pricing), verified 2026-10-10). Superadmin only while costs are measured.
+- One click = one page of ≤ 100 users (≤ $1, confirmed with the price). X bills every returned user, including ones filtered out, so the pagination token is stored per creator (`followingCursor`) and the next run continues instead of re-reading; at the end of the list the button is disabled (`followingExhausted`).
+- Filter: not the owner, not already a creator, never suggested before (any status), ≥ 10K followers (owner decision). Suggestions (`creator_candidate`, RLS on) show profile + connection badge + "via @creator"; Add (free — no X call, source DISCOVERY) / Skip (never suggested again).
+- Not yet: AI niche filter by bio; the owner's own followers as a source ($0.001 owned reads).
+

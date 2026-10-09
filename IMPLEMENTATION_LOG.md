@@ -4,6 +4,13 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-10-10 · D-038 — Find similar creators
+
+- Migration `creator_candidates` (`creator_candidate` + RLS, `CandidateStatus`, `TargetAccount.followingCursor/followingExhausted`). `getFollowing` client, `fetchFollowing` (usage `followingRead`), `repositories/candidates.ts`, `services/discovery.ts` (`findSimilar`, `listSuggestions`, `addSuggestions`, `skipSuggestions`), superadmin actions, "Find similar creators" on the creator page, `/targets/suggestions`, "Suggestions (N)" on Creators. Repost check "Open ↗" now uses the proof link.
+- Tests: filtering (self, known, < 10K), billing per returned user, cursor continue + end, skip never re-suggested, add without X calls + cross-workspace denial.
+
+---
+
 ## 2026-10-10 · D-037 — Creator posts include their self-Reposts
 
 - `listCreatorPosts` (timeline without excluding Reposts; keeps Reposts of the creator's own posts as the original + `repostedAt`), `fetchUserPosts` dedups by post id, 3 posts shown, newest activity first, "their repost" label. Tests: own vs others' Reposts, dedup, billing of expanded posts; paging and 3-post cap updated.

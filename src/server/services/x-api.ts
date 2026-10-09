@@ -5,6 +5,7 @@ import {
   getMe,
   getPost,
   searchCreatorRepost,
+  getFollowing,
   getUsersByUsernames,
   listCreatorPosts,
   listOwnPosts,
@@ -201,6 +202,21 @@ export function undoRepostPost(
     },
     UNDO_REPOST_USAGE,
   );
+}
+
+/** One page of accounts a creator follows. Billed per returned user ($0.010). */
+export function fetchFollowing(
+  workspaceId: string,
+  xUserId: string,
+  options: { maxResults: number; paginationToken: string | null },
+): Promise<Result<{ profiles: XProfile[]; nextToken: string | null }, XActionError>> {
+  return callX(workspaceId, "read", async ({ accessToken }) => {
+    const page = await getFollowing(accessToken, xUserId, options);
+    return {
+      data: page,
+      usage: { operation: "followingRead", units: page.profiles.length },
+    };
+  });
 }
 
 /** One direct message to one X user (dm.write scope; D-034). */

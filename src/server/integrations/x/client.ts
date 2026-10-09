@@ -1,8 +1,10 @@
 import "server-only";
+import type { z } from "zod";
 import { XApiError } from "./errors";
 import { X_API_BASE, xRequest } from "./http";
 import {
   dmSendResponseSchema,
+  followingResponseSchema,
   meResponseSchema,
   postByIdResponseSchema,
   recentSearchResponseSchema,
@@ -298,15 +300,18 @@ export async function getUsersByUsernames(
   if (usernames.length > 100) throw new Error("At most 100 usernames per lookup");
   const url = new URL(`${X_API_BASE}/2/users/by`);
   url.searchParams.set("usernames", usernames.join(","));
-  url.searchParams.set(
-    "user.fields",
-    "description,profile_image_url,public_metrics,verified,connection_status",
-  );
+  url.searchParams.set("user.fields", PROFILE_FIELDS);
   const body = await xRequest(
     { method: "GET", url: url.toString(), headers: bearer(accessToken) },
     usersByResponseSchema,
   );
-  return body.data.map((user) => ({
+  return body.data.map(toProfile);
+}
+
+type RawUser = z.infer<typeof usersByResponseSchema>["data"][number];
+
+function toProfile(user: RawUser): XProfile {
+  return {
     id: user.id,
     username: user.username,
     name: user.name,
@@ -319,7 +324,29 @@ export async function getUsersByUsernames(
     // Verified live 2026-10-10: no relation → X leaves `connection_status` out.
     followsYou: (user.connection_status ?? []).includes("followed_by"),
     youFollow: (user.connection_status ?? []).includes("following"),
-  }));
+  };
+}
+
+const PROFILE_FIELDS = "description,profile_image_url,public_metrics,verified,connection_status";
+
+/**
+ * GET /2/users/:id/following — accounts this creator follows, one page.
+ * Billed per returned user ($0.010, "Following/Followers: Read").
+ */
+export async function getFollowing(
+  accessToken: string,
+  xUserId: string,
+  options: { maxResults: number; paginationToken?: string | null },
+): Promise<{ profiles: XProfile[]; nextToken: string | null }> {
+  const url = new URL(`${X_API_BASE}/2/users/${encodeURIComponent(xUserId)}/following`);
+  url.searchParams.set("max_results", String(Math.min(Math.max(options.maxResults, 1), 1000)));
+  url.searchParams.set("user.fields", PROFILE_FIELDS);
+  if (options.paginationToken) url.searchParams.set("pagination_token", options.paginationToken);
+  const body = await xRequest(
+    { method: "GET", url: url.toString(), headers: bearer(accessToken) },
+    followingResponseSchema,
+  );
+  return { profiles: body.data.map(toProfile), nextToken: body.meta.next_token ?? null };
 }
 
 export type RepostOutcome = "reposted" | "already_reposted";

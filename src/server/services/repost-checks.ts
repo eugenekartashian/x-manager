@@ -65,7 +65,9 @@ export async function checkCreatorRepost(
   return ok({
     found: true,
     kind: hit.kind,
-    url: `https://x.com/${target.username}/status/${hit.id}`,
+    url: promotion?.postUrl
+      ? repostProofUrl(hit, target.username, promotion.postUrl)
+      : `https://x.com/${target.username}/status/${hit.id}`,
   });
 }
 

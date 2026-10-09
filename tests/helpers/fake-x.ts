@@ -25,6 +25,8 @@ type Handlers = {
   openai?: (body: unknown) => Reply;
   repost?: (postId: string) => Reply;
   undoRepost?: (postId: string) => Reply;
+  /** GET /2/users/:id/following */
+  following?: (url: URL) => Reply;
   /** POST /2/dm_conversations/with/:id/messages */
   dm?: (participantId: string, text: string) => Reply;
 };
@@ -72,6 +74,7 @@ function route(
   if (path === "/2/users/by")
     return h.usersBy?.((url.searchParams.get("usernames") ?? "").split(","));
   if (/^\/2\/users\/[^/]+\/tweets$/.test(path)) return h.posts?.(url);
+  if (/^\/2\/users\/[^/]+\/following$/.test(path)) return h.following?.(url);
   const single = /^\/2\/tweets\/([^/]+)$/.exec(path);
   if (single) return h.post?.(decodeURIComponent(single[1] ?? ""));
   if (method === "POST" && /^\/2\/users\/[^/]+\/retweets$/.test(path)) {

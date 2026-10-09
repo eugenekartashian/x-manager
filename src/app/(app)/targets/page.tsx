@@ -20,6 +20,7 @@ import {
 } from "@/server/domain/reply-rules";
 import { formatUsd } from "@/lib/format";
 import { listCreators, parseCreatorFilters } from "@/server/services/creators";
+import { countSuggestions } from "@/server/services/discovery";
 import { getRepostOverview, maxBatchCostMicros } from "@/server/services/repost-checks";
 import { getLimits } from "@/server/services/limits";
 import { listRecentReplies, listTemplates } from "@/server/services/replies";
@@ -44,12 +45,13 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
 
   const params = await searchParams;
   const filters = parseCreatorFilters(params);
-  const [page, templates, replies, reposts, connection] = await Promise.all([
+  const [page, templates, replies, reposts, connection, suggestions] = await Promise.all([
     listCreators(workspace.id, filters),
     listTemplates(workspace.id),
     listRecentReplies(workspace.id),
     getRepostOverview(workspace.id),
     findConnection(workspace.id),
+    role === "SUPERADMIN" ? countSuggestions(workspace.id) : 0,
   ]);
   const all = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
   const cap = Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS);
@@ -91,6 +93,14 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
         <AddTargetsForm showCosts={role === "SUPERADMIN"} />
         <div className="flex flex-wrap items-start gap-3">
           <ImportFile />
+          {suggestions > 0 && (
+            <Link
+              href="/targets/suggestions"
+              className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
+            >
+              Suggestions ({suggestions})
+            </Link>
+          )}
           {all > 0 && (
             // Plain link: a file download, not a page navigation.
             <a

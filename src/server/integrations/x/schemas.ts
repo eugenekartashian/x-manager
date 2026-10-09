@@ -129,6 +129,11 @@ export const usersByResponseSchema = z.object({
     .default([]),
 });
 
+/** GET /2/users/:id/following — same user objects as /2/users/by, plus pagination. */
+export const followingResponseSchema = usersByResponseSchema.extend({
+  meta: z.object({ result_count: z.number().int(), next_token: z.string().optional() }),
+});
+
 /** GET /2/tweets/search/recent — only the fields the repost check needs. */
 export const recentSearchResponseSchema = z.object({
   data: z

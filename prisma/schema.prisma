@@ -133,6 +133,7 @@ model Workspace {
   usage           ExternalUsage[]
   billedResources BilledResource[]
   targets         TargetAccount[]
+  candidates      CreatorCandidate[]
   replyTemplates  ReplyTemplate[]
   replies         ReplyLog[]
   posts           OwnPost[]
@@ -370,40 +371,44 @@ model BilledResource {
 // Niche accounts the user wants to reply to (added by @handle). Profile data is a
 // snapshot from the last lookup. Replies are always posted by the user on x.com (D-008).
 model TargetAccount {
-  id             String         @id @default(uuid(7))
-  workspaceId    String
-  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  xUserId        String
-  username       String
-  name           String
-  bio            String?
-  avatarUrl      String? // pbs.twimg.com only
-  verified       Boolean        @default(false)
-  followersCount Int?
-  followingCount Int?
-  postsCount     Int?
-  note           String?
-  lastRepliedAt  DateTime?
-  postsFetchedAt DateTime?
-  lookedUpAt     DateTime
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                 String         @id @default(uuid(7))
+  workspaceId        String
+  workspace          Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  xUserId            String
+  username           String
+  name               String
+  bio                String?
+  avatarUrl          String? // pbs.twimg.com only
+  verified           Boolean        @default(false)
+  followersCount     Int?
+  followingCount     Int?
+  postsCount         Int?
+  note               String?
+  lastRepliedAt      DateTime?
+  postsFetchedAt     DateTime?
+  lookedUpAt         DateTime
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   // Collab CRM (M7.1, D-033).
-  status         CreatorStatus  @default(NEW)
-  tags           String[]       @default([])
-  source         CreatorSource  @default(MANUAL)
-  role           CreatorRole?
-  lastContactAt  DateTime?
+  status             CreatorStatus  @default(NEW)
+  tags               String[]       @default([])
+  source             CreatorSource  @default(MANUAL)
+  role               CreatorRole?
+  lastContactAt      DateTime?
   // Collab CRM (M7.3): when they reposted our post (auto-check or by hand) and when we did back.
-  theyRepostedAt DateTime?
-  repostedBackAt DateTime?
+  theyRepostedAt     DateTime?
+  repostedBackAt     DateTime?
   // Relationship with the connected account from X's connection_status at the last lookup
   // (null = unknown, e.g. added before D-036).
-  followsYou     Boolean?
-  youFollow      Boolean?
-  posts          TargetPost[]
-  replies        ReplyLog[]
-  events         CreatorEvent[]
+  followsYou         Boolean?
+  youFollow          Boolean?
+  // "Find similar" (D-038): where reading this creator's following list stopped
+  // (X pagination token; null = start over) and whether the list was read to the end.
+  followingCursor    String?
+  followingExhausted Boolean        @default(false)
+  posts              TargetPost[]
+  replies            ReplyLog[]
+  events             CreatorEvent[]
 
   @@unique([workspaceId, xUserId])
   @@index([workspaceId, followersCount])
@@ -567,4 +572,38 @@ model PromotedPostCheck {
 
   @@unique([workspaceId, xPostId])
   @@map("promoted_post_check")
+}
+
+/// "Find similar" suggestions (D-038): accounts a listed creator follows, waiting for Add/Skip.
+/// Kept after Add/Skip so the same person is never suggested (or paid for twice by mistake).
+model CreatorCandidate {
+  id             String          @id @default(uuid(7))
+  workspaceId    String
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  xUserId        String
+  username       String
+  name           String
+  bio            String?
+  avatarUrl      String? // pbs.twimg.com only
+  verified       Boolean         @default(false)
+  followersCount Int?
+  followingCount Int?
+  postsCount     Int?
+  followsYou     Boolean?
+  youFollow      Boolean?
+  /// Username of the creator whose following list it came from.
+  via            String
+  status         CandidateStatus @default(PENDING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([workspaceId, xUserId])
+  @@index([workspaceId, status, followersCount])
+  @@map("creator_candidate")
+}
+
+enum CandidateStatus {
+  PENDING
+  ADDED
+  SKIPPED
 }

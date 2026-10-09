@@ -71,7 +71,7 @@ describe("checkCreatorRepost", () => {
 
     expect(result).toEqual({
       ok: true,
-      data: { found: true, kind: "repost", url: "https://x.com/c11/status/900" },
+      data: { found: true, kind: "repost", url: "https://x.com/me_b/status/500/retweets" },
     });
     expect(x.calls[0]?.url.pathname).toBe("/2/tweets/search/recent");
     expect(x.calls[0]?.url.searchParams.get("query")).toBe(
