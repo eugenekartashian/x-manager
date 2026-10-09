@@ -259,12 +259,13 @@ describe("follows you (D-036)", () => {
     let known: Parameters<typeof usersByReply>[0] = {
       fan: { id: "1", connection: ["followed_by"] },
       friend: { id: "2", connection: ["followed_by", "following"] },
-      stranger: { id: "3", connection: [] },
-      old: { id: "4" },
+      stranger: { id: "3" },
+      fanOfMine: { id: "4", connection: ["following"] },
     };
     const fake = fakeX({ usersBy: (names) => usersByReply(known)(names) });
     restoreFetch = fake.restore;
-    await addTargets(owner.workspaceId, "fan friend stranger old", NOW);
+    await addTargets(owner.workspaceId, "fan friend stranger fanOfMine", NOW);
+    const old = await seed(owner.workspaceId, [{ username: "old", followers: 1 }]);
     expect(fake.calls[0]?.url.searchParams.get("user.fields")).toContain("connection_status");
 
     const names = async (conn: string) =>
@@ -273,6 +274,7 @@ describe("follows you (D-036)", () => {
         .sort();
     expect(await names("follows")).toEqual(["fan", "friend"]);
     expect(await names("mutual")).toEqual(["friend"]);
+    expect(await names("you_follow")).toEqual(["fanOfMine"]);
     expect(await names("none")).toEqual(["stranger"]);
     expect(await names("unknown")).toEqual(["old"]);
 
@@ -301,6 +303,7 @@ describe("follows you (D-036)", () => {
       where: { id: foreign[0]?.id ?? "" },
     });
     expect(untouched.followsYou).toBeNull();
-    expect(await prisma.targetAccount.count({ where: { workspaceId: owner.workspaceId } })).toBe(4);
+    expect(old).toHaveLength(1);
+    expect(await prisma.targetAccount.count({ where: { workspaceId: owner.workspaceId } })).toBe(5);
   });
 });

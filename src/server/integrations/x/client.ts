@@ -229,9 +229,9 @@ export type XProfile = {
   followers: number | null;
   following: number | null;
   posts: number | null;
-  /** From X's `connection_status`; null when X didn't return it. */
-  followsYou: boolean | null;
-  youFollow: boolean | null;
+  /** From X's `connection_status` (X omits the field when there is no relation). */
+  followsYou: boolean;
+  youFollow: boolean;
 };
 
 /**
@@ -264,8 +264,9 @@ export async function getUsersByUsernames(
     followers: user.public_metrics?.followers_count ?? null,
     following: user.public_metrics?.following_count ?? null,
     posts: user.public_metrics?.tweet_count ?? null,
-    followsYou: user.connection_status ? user.connection_status.includes("followed_by") : null,
-    youFollow: user.connection_status ? user.connection_status.includes("following") : null,
+    // Verified live 2026-10-10: no relation → X leaves `connection_status` out.
+    followsYou: (user.connection_status ?? []).includes("followed_by"),
+    youFollow: (user.connection_status ?? []).includes("following"),
   }));
 }
 

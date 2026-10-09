@@ -254,4 +254,5 @@ The user wants RT4RT-style partner outreach (example: agencies DM-ing links with
 - "Refresh from X" for selected creators (all users, confirm; cost shown to the superadmin) re-reads profiles: one User read each ($0.010, deduplicated per UTC day). Updates only creators already in the workspace.
 - UNVERIFIED until the first live lookup: whether X returns `connection_status` with our user-context token and omits or empties it when there is no relation.
 - Bulk send (D-035) stops after 3 X refusals in a row; the rest are marked "not sent — X refused 3 in a row".
+- 2026-10-10 (D-036, live): X returns `connection_status` for our user-context lookups (48 creators refreshed: 14 mutual, 15 "you follow", 1 "follows you") and **omits the field when there is no relation**, so a missing field now means "no connection" (the 18 such rows were set to false/false in production). "Not checked" = never looked up since D-036. Badge "You follow" and filter "You follow (not back)" added.
 

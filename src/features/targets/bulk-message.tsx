@@ -177,7 +177,9 @@ export function BulkMessage({ creators, posts, left }: Props) {
                       ? creator.youFollow
                         ? "Mutual"
                         : "Follows you"
-                      : "Not following you"}
+                      : creator.youFollow
+                        ? "You follow (not back)"
+                        : "No connection"}
                 </span>
                 {outcome && (
                   <span

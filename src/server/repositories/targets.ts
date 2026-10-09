@@ -130,11 +130,12 @@ export function findTargetIdByUsername(
 export type CreatorSort = "followers" | "recent" | "contact";
 
 /** Relationship filter (D-036): from X's connection_status at the last lookup. */
-export type ConnectionFilter = "follows" | "mutual" | "none" | "unknown";
+export type ConnectionFilter = "follows" | "mutual" | "you_follow" | "none" | "unknown";
 
 const CONNECTION_WHERE: Record<ConnectionFilter, Prisma.TargetAccountWhereInput> = {
   follows: { followsYou: true },
   mutual: { followsYou: true, youFollow: true },
+  you_follow: { followsYou: false, youFollow: true },
   none: { followsYou: false, youFollow: false },
   unknown: { followsYou: null },
 };

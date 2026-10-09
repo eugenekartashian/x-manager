@@ -30,7 +30,7 @@ const querySchema = z.object({
   status: z.enum(CREATOR_STATUSES).optional().catch(undefined),
   role: z.enum(CREATOR_ROLES).optional().catch(undefined),
   owed: z.literal("1").optional().catch(undefined),
-  conn: z.enum(["follows", "mutual", "none", "unknown"]).optional().catch(undefined),
+  conn: z.enum(["follows", "mutual", "you_follow", "none", "unknown"]).optional().catch(undefined),
   q: z.string().trim().max(50).optional().catch(undefined),
   tag: z.string().trim().max(MAX_TAG_LENGTH).optional().catch(undefined),
   sort: z.enum(["followers", "recent", "contact"]).catch("followers"),

@@ -137,9 +137,9 @@ export function CreatorsTable({
                   <span className="text-foreground/60 block text-xs break-all">
                     @{row.username}
                     <span className="md:hidden"> · {formatCount(row.followersCount)}</span>
-                    {row.followsYou && (
+                    {(row.followsYou || row.youFollow) && (
                       <span className="text-foreground/70 bg-foreground/10 ml-1.5 rounded px-1.5 text-[11px] whitespace-nowrap">
-                        {row.youFollow ? "Mutual" : "Follows you"}
+                        {row.followsYou ? (row.youFollow ? "Mutual" : "Follows you") : "You follow"}
                       </span>
                     )}
                   </span>

@@ -120,6 +120,7 @@ export function CreatorsFilters({ counts, total, tags, owedCount }: Props) {
           <option value="">Anyone</option>
           <option value="follows">Follows you</option>
           <option value="mutual">Mutual</option>
+          <option value="you_follow">You follow (not back)</option>
           <option value="none">No connection</option>
           <option value="unknown">Not checked</option>
         </Select>
