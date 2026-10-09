@@ -66,6 +66,7 @@ describe("parseCreatorFilters", () => {
       tag: "gym",
       sort: "recent",
       page: 2,
+      owed: false,
     });
     expect(parseCreatorFilters({ status: "HACK", sort: "drop table", page: "-5" })).toEqual({
       status: undefined,
@@ -73,6 +74,7 @@ describe("parseCreatorFilters", () => {
       tag: undefined,
       sort: "followers",
       page: 1,
+      owed: false,
     });
   });
 });
