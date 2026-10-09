@@ -141,6 +141,7 @@ model Workspace {
   runs            ScheduledRepost[]
   featureUsage    FeatureUsage[]
   creatorEvents   CreatorEvent[]
+  repostChecks    PromotedPostCheck[]
 
   @@map("workspace")
 }
@@ -393,6 +394,9 @@ model TargetAccount {
   source         CreatorSource  @default(MANUAL)
   role           CreatorRole?
   lastContactAt  DateTime?
+  // Collab CRM (M7.3): when they reposted our post (auto-check or by hand) and when we did back.
+  theyRepostedAt DateTime?
+  repostedBackAt DateTime?
   posts          TargetPost[]
   replies        ReplyLog[]
   events         CreatorEvent[]
@@ -489,6 +493,7 @@ enum FeatureKind {
   TARGET_LOAD
   AI_IDEAS
   AI_MESSAGE
+  REPOST_CHECK
 }
 
 // Counts limited actions per workspace-local day (M6.3): target post loads, AI idea requests.
@@ -539,4 +544,20 @@ model CreatorEvent {
   @@index([workspaceId, kind, createdAt])
   @@index([targetId, createdAt])
   @@map("creator_event")
+}
+
+// Incremental "who reposted my post" checks (M7.3, D-033). X lists reposters newest first, so
+// each check reads from the top and stops at accounts already seen → we pay only for new ones.
+model PromotedPostCheck {
+  id          String    @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  xPostId     String
+  seenIds     String[]  @default([]) // newest first, capped
+  checkedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, xPostId])
+  @@map("promoted_post_check")
 }

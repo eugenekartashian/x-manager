@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatUrl, statusAfterMessage } from "./outreach-rules";
+import { appChatUrl, chatUrl, statusAfterMessage } from "./outreach-rules";
 
 describe("chatUrl", () => {
   it("links the 1:1 X chat with both ids, lower first (as numbers, not strings)", () => {
@@ -27,5 +27,13 @@ describe("statusAfterMessage", () => {
     ["PARTNER", "PARTNER"],
   ])("%s → %s", (from, to) => {
     expect(statusAfterMessage(from)).toBe(to);
+  });
+});
+
+describe("appChatUrl", () => {
+  it("opens the chat in the X app with encoded text", () => {
+    expect(appChatUrl("123", "Hi & bye 🔥")).toBe(
+      "twitter://messages/compose?recipient_id=123&text=Hi%20%26%20bye%20%F0%9F%94%A5",
+    );
   });
 });

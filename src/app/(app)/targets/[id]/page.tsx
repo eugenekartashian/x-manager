@@ -112,6 +112,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
           targetId={target.id}
           username={target.username}
           chatLink={chatLink}
+          recipientXUserId={target.xUserId}
           posts={postOptions}
           aiEnabled={aiEnabled}
           usedToday={messages.used}

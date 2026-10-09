@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
+import { appChatUrl } from "@/server/domain/outreach-rules";
 import { draftMessagesAction, recordSentAction, undoMessageAction } from "./outreach-actions";
 
 type PostOption = { url: string; label: string };
@@ -11,6 +12,8 @@ type Props = {
   username: string;
   /** Direct link to the 1:1 X chat (built on the server from both user ids). */
   chatLink: string;
+  /** The creator's X user id — phones open the chat in the X app with it. */
+  recipientXUserId: string;
   posts: PostOption[];
   aiEnabled: boolean;
   usedToday: number;
@@ -28,6 +31,7 @@ export function MessageComposer({
   targetId,
   username,
   chatLink,
+  recipientXUserId,
   posts,
   aiEnabled,
   usedToday,
@@ -61,10 +65,16 @@ export function MessageComposer({
     // new tab takes focus — then open the chat. The message is saved as sent right away
     // (user decision: opening = sent unless they undo); "Undo" also lives in History for 24 h.
     const copiedOk = copySync(text);
-    // No "noopener" feature: with it window.open always returns null. Cut the opener instead.
-    const tab = window.open(chatLink, "_blank");
-    if (tab) tab.opener = null;
-    setOpened({ copiedOk, blocked: !tab });
+    if (isPhone()) {
+      // The X app opens the chat directly (web chat links only reach the inbox on phones).
+      window.location.href = appChatUrl(recipientXUserId, text);
+      setOpened({ copiedOk, blocked: false });
+    } else {
+      // No "noopener" feature: with it window.open always returns null. Cut the opener instead.
+      const tab = window.open(chatLink, "_blank");
+      if (tab) tab.opener = null;
+      setOpened({ copiedOk, blocked: !tab });
+    }
     startTransition(async () => {
       const result = await recordSentAction({ targetId, text, postUrl: link || undefined });
       if (result.ok) setSent({ eventId: result.eventId });
@@ -265,4 +275,8 @@ function copySync(value: string): boolean {
   document.body.removeChild(field);
   if (!ok) void navigator.clipboard?.writeText(value).catch(() => undefined);
   return ok;
+}
+
+function isPhone(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }

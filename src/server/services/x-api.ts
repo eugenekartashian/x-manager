@@ -4,10 +4,12 @@ import { err, ok, type Result } from "@/lib/result";
 import {
   getMe,
   getPost,
+  getReposters,
   getUsersByUsernames,
   listOwnPosts,
   repost,
   undoRepost,
+  type RepostersPage,
   type RepostOutcome,
   type XPost,
   type XProfile,
@@ -91,6 +93,25 @@ export function lookupUsers(
         operation: "userRead",
         units: users.length,
         resources: { kind: "user", ids: users.map((user) => user.id) },
+      },
+    };
+  });
+}
+
+/** One page of a post's reposters, newest first. Billed per returned user, once per UTC day. */
+export function fetchReposters(
+  workspaceId: string,
+  postId: string,
+  options: { maxResults: number; paginationToken?: string | undefined },
+): Promise<Result<RepostersPage, XActionError>> {
+  return callX(workspaceId, "read", async ({ accessToken }) => {
+    const page = await getReposters(accessToken, postId, options);
+    return {
+      data: page,
+      usage: {
+        operation: "userRead",
+        units: page.users.length,
+        resources: { kind: "user", ids: page.users.map((user) => user.id) },
       },
     };
   });

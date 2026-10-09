@@ -17,6 +17,8 @@ type Handlers = {
   posts?: (url: URL) => Reply;
   post?: (postId: string) => Reply;
   usersBy?: (usernames: string[]) => Reply;
+  /** GET /2/tweets/:id/retweeted_by */
+  repostedBy?: (postId: string, paginationToken: string | null, maxResults: number) => Reply;
   /** Fake Claude Messages API (api.anthropic.com/v1/messages). */
   anthropic?: (body: unknown) => Reply;
   /** Fake OpenAI Responses API (api.openai.com/v1/responses). */
@@ -57,6 +59,13 @@ function route(
   json: unknown,
 ): Reply | Promise<Reply> | undefined {
   const path = url.pathname;
+  const reposted = /^\/2\/tweets\/(\d+)\/retweeted_by$/.exec(path);
+  if (reposted)
+    return h.repostedBy?.(
+      reposted[1] ?? "",
+      url.searchParams.get("pagination_token"),
+      Number(url.searchParams.get("max_results") ?? "100"),
+    );
   if (url.hostname === "api.anthropic.com")
     return path === "/v1/messages" ? h.anthropic?.(json) : undefined;
   if (url.hostname === "api.openai.com")
@@ -214,5 +223,14 @@ export const openAiReply = (payload: unknown, options: { refusal?: boolean } = {
       },
     ],
     usage: { input_tokens: 500, output_tokens: 300, total_tokens: 800 },
+  },
+});
+
+/** A page of reposters, newest first; `next` becomes meta.next_token. */
+export const repostedByReply = (users: string[], next?: string) => ({
+  status: 200,
+  body: {
+    data: users.map((id) => ({ id, username: `u${id}`, name: `User ${id}` })),
+    meta: { result_count: users.length, ...(next ? { next_token: next } : {}) },
   },
 });

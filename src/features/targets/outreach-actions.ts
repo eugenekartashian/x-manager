@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireWorkspace } from "@/server/auth/session";
+import { checkRepostsNow, markRepostedBack } from "@/server/services/repost-checks";
 import {
   changeCreatorStatus,
   draftMessages,
@@ -85,6 +86,42 @@ export async function changeStatusAction(formData: FormData): Promise<void> {
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   await changeCreatorStatus(workspace.id, parsed.data.targetId, parsed.data.status);
+  revalidatePath(`/targets/${parsed.data.targetId}`);
+  revalidatePath("/targets");
+}
+
+const CHECK_MESSAGES: Record<string, string> = {
+  nothing_to_check: "Nothing to check — message creators with one of your posts first.",
+  daily_check_limit: "You've used today's manual checks — the automatic daily check still runs.",
+  budget_exceeded: "This month's usage limit is reached.",
+  rate_limited: "X is busy right now — try again in a few minutes.",
+};
+
+export async function checkRepostsNowAction(): Promise<{ ok: boolean; message: string }> {
+  const { workspace } = await requireWorkspace();
+  const result = await checkRepostsNow(workspace.id);
+  revalidatePath("/targets", "layout");
+  if (!result.ok)
+    return { ok: false, message: CHECK_MESSAGES[result.error] ?? "Check failed. Try again later." };
+  const { matched, newReposters } = result.data;
+  return {
+    ok: true,
+    message:
+      matched > 0
+        ? `${matched} creator${matched === 1 ? "" : "s"} reposted your post ✓`
+        : newReposters > 0
+          ? `${newReposters} new reposts, none from creators you're waiting for yet.`
+          : "No new reposts since the last check.",
+  };
+}
+
+export async function repostedBackAction(formData: FormData): Promise<void> {
+  const { workspace } = await requireWorkspace();
+  const parsed = z
+    .object({ targetId: z.uuid(), done: z.enum(["1", "0"]) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  await markRepostedBack(workspace.id, parsed.data.targetId, parsed.data.done === "1");
   revalidatePath(`/targets/${parsed.data.targetId}`);
   revalidatePath("/targets");
 }

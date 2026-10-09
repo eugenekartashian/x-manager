@@ -3,7 +3,7 @@ import { SubmitButton } from "@/features/posts/submit-button";
 import { removeLabelAction, removeTargetAction, saveNoteAction, setRoleAction } from "./actions";
 import { AutoSaveSelect } from "./auto-save-select";
 import { ROLE_LABELS, ROLE_ORDER, STATUS_META, STATUS_ORDER } from "./creator-status";
-import { changeStatusAction } from "./outreach-actions";
+import { changeStatusAction, repostedBackAction } from "./outreach-actions";
 
 /** Status and role (saved on change), labels, note and remove on the creator page. */
 export function CreatorDetails({ creator }: { creator: TargetAccount }) {
@@ -43,6 +43,41 @@ export function CreatorDetails({ creator }: { creator: TargetAccount }) {
           </form>
         ))}
       </div>
+      {creator.status === "REPOSTED" && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-green-600/10 px-3 py-2 text-sm">
+          {creator.repostedBackAt ? (
+            <>
+              <span>✓ They reposted your post and you reposted back.</span>
+              <form action={repostedBackAction} className="ml-auto">
+                <input type="hidden" name="targetId" value={creator.id} />
+                <input type="hidden" name="done" value="0" />
+                <button type="submit" className="text-foreground/60 text-xs underline">
+                  undo
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <span>✓ @{creator.username} reposted your post — repost one of theirs in X.</span>
+              <a
+                href={`https://x.com/${creator.username}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Open their profile ↗
+              </a>
+              <form action={repostedBackAction} className="ml-auto">
+                <input type="hidden" name="targetId" value={creator.id} />
+                <input type="hidden" name="done" value="1" />
+                <SubmitButton variant="primary" pendingLabel="…">
+                  ✓ I reposted back
+                </SubmitButton>
+              </form>
+            </>
+          )}
+        </div>
+      )}
       <form action={saveNoteAction} className="flex gap-2">
         <input type="hidden" name="targetId" value={creator.id} />
         <input

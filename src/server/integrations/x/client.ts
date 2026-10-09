@@ -4,6 +4,7 @@ import { X_API_BASE, xRequest } from "./http";
 import {
   meResponseSchema,
   postByIdResponseSchema,
+  repostedByResponseSchema,
   usersByResponseSchema,
   repostResponseSchema,
   userPostsResponseSchema,
@@ -312,4 +313,25 @@ function isAlreadyReposted(error: unknown): boolean {
     (error.status === 400 || error.status === 403) &&
     /already (re)?(tweet|post)ed|already reposted/i.test(error.detail ?? "")
   );
+}
+
+export type RepostersPage = { users: { id: string; username: string }[]; nextToken: string | null };
+
+/** One page of accounts that reposted a post, newest first. Billed per returned user. */
+export async function getReposters(
+  accessToken: string,
+  postId: string,
+  options: { maxResults: number; paginationToken?: string | undefined },
+): Promise<RepostersPage> {
+  const url = new URL(`${X_API_BASE}/2/tweets/${postId}/retweeted_by`);
+  url.searchParams.set("max_results", String(options.maxResults));
+  if (options.paginationToken) url.searchParams.set("pagination_token", options.paginationToken);
+  const body = await xRequest(
+    { method: "GET", url: url.toString(), headers: bearer(accessToken) },
+    repostedByResponseSchema,
+  );
+  return {
+    users: body.data.map((user) => ({ id: user.id, username: user.username })),
+    nextToken: body.meta?.next_token ?? null,
+  };
 }

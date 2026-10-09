@@ -101,6 +101,8 @@ export type CreatorSort = "followers" | "recent" | "contact";
 
 export type CreatorQuery = {
   status?: CreatorStatus;
+  /** They reposted our post and we haven't reposted back yet. */
+  owed?: boolean;
   role?: CreatorRole;
   search?: string;
   tag?: string;
@@ -114,6 +116,7 @@ function creatorWhere(workspaceId: string, query: CreatorQuery): Prisma.TargetAc
   return {
     workspaceId,
     ...(query.status ? { status: query.status } : {}),
+    ...(query.owed ? { status: "REPOSTED" as const, repostedBackAt: null } : {}),
     ...(query.role ? { role: query.role } : {}),
     ...(query.tag ? { tags: { has: query.tag } } : {}),
     ...(search

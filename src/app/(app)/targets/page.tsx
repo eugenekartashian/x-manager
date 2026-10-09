@@ -7,6 +7,7 @@ import { CreatorsFilters } from "@/features/targets/creators-filters";
 import { CreatorsTable } from "@/features/targets/creators-table";
 import { ImportFile } from "@/features/targets/import-file";
 import { QuickAddHelp } from "@/features/targets/quick-add-help";
+import { RepostOverview } from "@/features/targets/repost-overview";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { env } from "@/lib/env";
@@ -15,7 +16,9 @@ import {
   REPLY_COOLDOWN_HOUR_OPTIONS,
   REPLY_DAILY_LIMIT_OPTIONS,
 } from "@/server/domain/reply-rules";
+import { formatDateTime } from "@/lib/format";
 import { listCreators, parseCreatorFilters } from "@/server/services/creators";
+import { getRepostOverview } from "@/server/services/repost-checks";
 import { getLimits } from "@/server/services/limits";
 import { listRecentReplies, listTemplates } from "@/server/services/replies";
 import { MAX_TARGETS } from "@/server/services/targets";
@@ -39,14 +42,17 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
 
   const params = await searchParams;
   const filters = parseCreatorFilters(params);
-  const [page, templates, replies] = await Promise.all([
+  const [page, templates, replies, reposts] = await Promise.all([
     listCreators(workspace.id, filters),
     listTemplates(workspace.id),
     listRecentReplies(workspace.id),
+    getRepostOverview(workspace.id),
   ]);
   const all = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
   const cap = Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS);
-  const filtered = Boolean(filters.status || filters.q || filters.tag);
+  const filtered = Boolean(
+    filters.status || filters.q || filters.tag || filters.role || filters.owed,
+  );
 
   const pageHref = (target: number) => {
     const next = new URLSearchParams();
@@ -89,6 +95,23 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
         </div>
         <QuickAddHelp appUrl={env.APP_URL} />
       </section>
+
+      <RepostOverview
+        waitingForThem={reposts.waitingForThem}
+        waitingForMe={reposts.waitingForMe}
+        lastChecked={
+          reposts.lastCheckedAt ? formatDateTime(reposts.lastCheckedAt, workspace.timezone) : null
+        }
+      />
+
+      {filters.owed && (
+        <p className="rounded-md bg-green-600/10 px-3 py-2 text-sm">
+          Creators who reposted your post — repost one of theirs in X, then mark it on their page.{" "}
+          <Link href="/targets" className="underline">
+            Show everyone
+          </Link>
+        </p>
+      )}
 
       <section className="flex flex-col gap-3">
         <CreatorsFilters counts={page.counts} total={all} tags={page.tags} />

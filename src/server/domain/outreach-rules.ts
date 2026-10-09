@@ -23,3 +23,11 @@ export function chatUrl(myXUserId: string | null, theirXUserId: string): string 
 export function statusAfterMessage<S extends string>(current: S): S | "CONTACTED" {
   return current === "REPOSTED" || current === "PARTNER" ? current : "CONTACTED";
 }
+
+/**
+ * Phones: the X app's own link opens the 1:1 chat directly (verified on iPhone 2026-10-09;
+ * the x.com chat links only reach the inbox there). `text` is passed in case the app fills it.
+ */
+export function appChatUrl(theirXUserId: string, text: string): string {
+  return `twitter://messages/compose?recipient_id=${theirXUserId}&text=${encodeURIComponent(text)}`;
+}

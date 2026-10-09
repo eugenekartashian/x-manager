@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { processDueReposts } from "@/server/jobs/process-due-reposts";
 import { purgeStaleTargetPosts } from "@/server/jobs/purge-stale-content";
+import { runDailyRepostChecks } from "@/server/services/repost-checks";
 
 // Called by the scheduler (Supabase pg_cron → pg_net) every few minutes.
 export const maxDuration = 60;
@@ -17,8 +18,10 @@ export async function POST(request: Request) {
   const now = new Date();
   const summary = await processDueReposts(now, { writesEnabled: env.X_WRITES_ENABLED });
   const purgedTargetPosts = await purgeStaleTargetPosts(now);
+  // Reads only (never reposts); each promoted post is checked at most every 20 h.
+  const repostChecks = await runDailyRepostChecks(now);
   return NextResponse.json(
-    { ...summary, purgedTargetPosts },
+    { ...summary, purgedTargetPosts, repostChecks },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

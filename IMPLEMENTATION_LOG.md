@@ -396,3 +396,10 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - 7.2 follow-up: synchronous copy (hidden textarea + execCommand) before opening the X chat — the async Clipboard API failed once the new tab took focus; verified in Chromium with Playwright (copy then window.open → clipboard has the text). Status and role save on change (AutoSaveSelect, "Saved ✓"); all new selects use the shared Select component.
 - 7.2 follow-up 2: direct X Chat link (`chatUrl`, ids compared as BigInt); "Copy & open chat" records nothing — `recordSentMessage` runs on "✓ Yes, sent" ("Not yet" leaves no trace; "Undo" after saving); undone events hidden from history; popup-blocked fallback link instead of navigating away. 319 tests passing.
 - 7.2 follow-up 3: "Copy & open chat" saves the message as sent immediately (user decision); undo in the panel and in History (24 h). Test history of @john_gerk87 removed in production on the user's request (11 events, status back to New).
+
+### 2026-10-10 · M7.3 — Repost checks ("Promote a post")
+
+- Migration `repost_checks`: `promoted_post_check` (seen reposter ids newest-first, checkedAt; RLS on), `target_account.theyRepostedAt / repostedBackAt`, FeatureKind `REPOST_CHECK`.
+- X client `getReposters` (Zod), `fetchReposters` (userRead usage, per-day dedup); `domain/repost-check-rules.ts` (scan/merge, tested); `services/repost-checks.ts` (own posts only, budget guard, incremental scan, auto "Reposted", daily job in `/api/jobs/run` + "No reply" after 3 days, "Check now", "I reposted back"); owed filter `?owed=1`.
+- UI: overview panel on Creators (waiting for them / for you, last check, Check now), green "reposted your post" panel on the creator page.
+- Phones: X app chat link (user-verified). 330+ tests passing.
