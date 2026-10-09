@@ -191,9 +191,9 @@ export function CreatorsTable({
           {ids.length <= MAX_BULK ? (
             <Link
               href={`/targets/reply?ids=${ids.join(",")}`}
-              className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm font-medium"
+              className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
             >
-              Reply
+              Reply in comments
             </Link>
           ) : (
             <span className="text-foreground/50 text-xs">Reply: up to {MAX_BULK}</span>
@@ -204,7 +204,7 @@ export function CreatorsTable({
                 href={`/targets/message?ids=${ids.join(",")}`}
                 className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
               >
-                Message
+                Direct message
               </Link>
             ) : (
               <span className="text-foreground/50 text-xs">Message: up to {MAX_BULK}</span>
@@ -286,7 +286,7 @@ export function CreatorsTable({
               onClick={() => submit("remove")}
               className="rounded-md bg-red-600 px-2.5 py-1.5 text-sm font-medium text-white"
             >
-              Remove {ids.length}?
+              Delete {ids.length} {ids.length === 1 ? "creator" : "creators"}?
             </button>
           ) : (
             <button
@@ -294,7 +294,7 @@ export function CreatorsTable({
               onClick={() => setConfirmRemove(true)}
               className={`${control} text-red-700 dark:text-red-400`}
             >
-              Remove
+              Delete from list
             </button>
           )}
           <button
