@@ -49,6 +49,9 @@ export function MessageComposer({
   const [aiPending, startAi] = useTransition();
   const link = postUrl === "custom" ? customUrl.trim() : postUrl;
   const limitReached = usedToday >= dailyLimit;
+  // The chosen post's link always goes out with the message, even if the text doesn't have it.
+  const linkMissing = Boolean(link) && !text.includes(postIdOf(link));
+  const finalText = linkMissing ? `${text.trimEnd()}\n${link}` : text;
 
   function askAi() {
     setError(null);
@@ -64,10 +67,10 @@ export function MessageComposer({
     // X can't prefill chat text (verified 2026-10-09): copy first — synchronously, before the
     // new tab takes focus — then open the chat. The message is saved as sent right away
     // (user decision: opening = sent unless they undo); "Undo" also lives in History for 24 h.
-    const copiedOk = copySync(text);
+    const copiedOk = copySync(finalText);
     if (isPhone()) {
       // The X app opens the chat directly (web chat links only reach the inbox on phones).
-      window.location.href = appChatUrl(recipientXUserId, text);
+      window.location.href = appChatUrl(recipientXUserId, finalText);
       setOpened({ copiedOk, blocked: false });
     } else {
       // No "noopener" feature: with it window.open always returns null. Cut the opener instead.
@@ -76,7 +79,11 @@ export function MessageComposer({
       setOpened({ copiedOk, blocked: !tab });
     }
     startTransition(async () => {
-      const result = await recordSentAction({ targetId, text, postUrl: link || undefined });
+      const result = await recordSentAction({
+        targetId,
+        text: finalText,
+        postUrl: link || undefined,
+      });
       if (result.ok) setSent({ eventId: result.eventId });
       else setError(result.message);
     });
@@ -91,7 +98,7 @@ export function MessageComposer({
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(finalText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2_000);
     } catch {
@@ -192,6 +199,11 @@ export function MessageComposer({
         aria-label="Message"
         className={control}
       />
+      {linkMissing && text.trim() && (
+        <p className="text-foreground/60 -mt-1 text-xs">
+          The link to your post will be added at the end of the message.
+        </p>
+      )}
       {drafts.length > 0 && (
         <ul className="flex flex-col gap-1.5" aria-label="AI drafts">
           {drafts.map((draft) => (
@@ -279,4 +291,9 @@ function copySync(value: string): boolean {
 
 function isPhone(): boolean {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+/** "…/status/123" → "123"; any form of the same post link counts as included. */
+function postIdOf(url: string): string {
+  return /status\/(\d+)/.exec(url)?.[1] ?? url;
 }

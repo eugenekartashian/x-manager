@@ -403,3 +403,4 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - X client `getReposters` (Zod), `fetchReposters` (userRead usage, per-day dedup); `domain/repost-check-rules.ts` (scan/merge, tested); `services/repost-checks.ts` (own posts only, budget guard, incremental scan, auto "Reposted", daily job in `/api/jobs/run` + "No reply" after 3 days, "Check now", "I reposted back"); owed filter `?owed=1`.
 - UI: overview panel on Creators (waiting for them / for you, last check, Check now), green "reposted your post" panel on the creator page.
 - Phones: X app chat link (user-verified). 332 tests passing.
+- 7.3 follow-up: the chosen post link is appended to the message when the text doesn't contain it (copy, app link, history) — hand-written texts lost the link before.
