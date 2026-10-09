@@ -7,6 +7,7 @@ import { ReplyComposer } from "@/features/replies/reply-composer";
 import { formatAge, formatCount, formatDateTime } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
 import { isFreshPost } from "@/server/domain/reply-rules";
+import { CreatorDetails } from "@/features/targets/creator-details";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { isAiEnabled } from "@/server/services/ai-replies";
 import { getLimitsContext, usedToday } from "@/server/services/limits";
@@ -45,7 +46,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
   return (
     <>
       <Link href="/targets" className="text-foreground/70 hover:text-foreground text-sm">
-        ← Targets
+        ← Creators
       </Link>
 
       <header className="flex items-start gap-3">
@@ -74,9 +75,10 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
           <p className="text-foreground/60 text-xs">
             {formatCount(target.followersCount)} followers · {formatCount(target.postsCount)} posts
           </p>
-          {target.note && <p className="mt-1 text-sm">📝 {target.note}</p>}
         </div>
       </header>
+
+      <CreatorDetails creator={target} />
 
       <p className="bg-foreground/5 rounded-md px-3 py-2 text-sm">
         Replies today:{" "}

@@ -366,15 +366,15 @@ model BilledResource {
 // Niche accounts the user wants to reply to (added by @handle). Profile data is a
 // snapshot from the last lookup. Replies are always posted by the user on x.com (D-008).
 model TargetAccount {
-  id             String       @id @default(uuid(7))
+  id             String        @id @default(uuid(7))
   workspaceId    String
-  workspace      Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   xUserId        String
   username       String
   name           String
   bio            String?
   avatarUrl      String? // pbs.twimg.com only
-  verified       Boolean      @default(false)
+  verified       Boolean       @default(false)
   followersCount Int?
   followingCount Int?
   postsCount     Int?
@@ -382,14 +382,37 @@ model TargetAccount {
   lastRepliedAt  DateTime?
   postsFetchedAt DateTime?
   lookedUpAt     DateTime
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  // Collab CRM (M7.1, D-033).
+  status         CreatorStatus @default(NEW)
+  tags           String[]      @default([])
+  source         CreatorSource @default(MANUAL)
+  lastContactAt  DateTime?
   posts          TargetPost[]
   replies        ReplyLog[]
 
   @@unique([workspaceId, xUserId])
   @@index([workspaceId, followersCount])
+  @@index([workspaceId, status])
   @@map("target_account")
+}
+
+/// Where a creator is in the collaboration pipeline (set by the user; M7.3 adds automatic REPOSTED).
+enum CreatorStatus {
+  NEW // not contacted yet
+  CONTACTED // message sent, waiting
+  REPOSTED // they reposted our post
+  PARTNER // ongoing collaboration
+  DECLINED
+  NO_REPLY
+}
+
+enum CreatorSource {
+  MANUAL
+  IMPORT
+  SHARE
+  DISCOVERY
 }
 
 // Latest posts of a target account, fetched on demand for a reply session.

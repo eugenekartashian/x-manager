@@ -375,3 +375,10 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Timeline read of @john_gerk87 (24 h, max 20): HTTP 200, 20 Reposts + more pages → $0.10; Console showed $0.10 for 9 Oct.
 - `retweeted_by` on the pinned post (max 10) twice, with the owner re-reposting in between: owner moved from #2 to #1 → newest-first confirmed; the repeat was within the same UTC day (deduplicated).
 - Decision: incremental per-post check for 7.3 (D-033). Console balance at the time: $2.98 — top-up needed to keep scheduled Reposts running.
+
+### 2026-10-09 · M7.1 — Creators table (Collab CRM)
+
+- Migration `creators_crm`: `target_account.status` (NEW / CONTACTED / REPOSTED / PARTNER / DECLINED / NO_REPLY), `tags text[]`, `source` (MANUAL / IMPORT / SHARE / DISCOVERY), `lastContactAt`, index (workspaceId, status).
+- `services/creators.ts`: URL filters parsed with fallbacks, paging (50), counts per status, tag list, bulk status / tag / remove (≤ 100, scoped by workspace). Adds record their source.
+- UI: nav "Creators" (route stays /targets); status tabs with counts, search, tag filter, sort, pagination; table on desktop, cards on mobile; selection → set status, ±tag, remove (no bulk messaging); import .xlsx/.csv in the browser (`read-excel-file`, new dependency approved) in batches of 100 — existing accounts skipped before any X lookup; note + remove moved to the creator page; templates/limits collapsed.
+- Tests: `creators.test.ts` (filters, paging, bulk, normalised tags, sources, isolation). 303 passing. UI not checked on a device yet.

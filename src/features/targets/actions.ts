@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { ActionState } from "@/features/posts/actions";
 import { errorMessage } from "@/features/posts/messages";
 import { requireWorkspace } from "@/server/auth/session";
+import { removeCreators, setCreatorStatus, tagCreators } from "@/server/services/creators";
 import { addTargets, findTargetId, removeTarget, saveTargetNote } from "@/server/services/targets";
 
 const MESSAGES: Record<string, string> = {
@@ -25,7 +26,8 @@ export async function addTargetsAction(
   const input = addSchema.safeParse({ handles: formData.get("handles") ?? "" });
   if (!input.success) return { status: "error", message: MESSAGES.too_many ?? "" };
 
-  const result = await addTargets(workspace.id, input.data.handles);
+  const source = formData.get("source") === "IMPORT" ? "IMPORT" : "MANUAL";
+  const result = await addTargets(workspace.id, input.data.handles, new Date(), source);
   revalidatePath("/targets");
   if (!result.ok)
     return { status: "error", message: MESSAGES[result.error] ?? errorMessage(result.error) };
@@ -51,6 +53,7 @@ export async function removeTargetAction(formData: FormData): Promise<void> {
   if (!input.success) return;
   await removeTarget(workspace.id, input.data.targetId);
   revalidatePath("/targets");
+  redirect("/targets");
 }
 
 const noteSchema = z.object({ targetId: z.uuid(), note: z.string().max(1_000) });
@@ -74,7 +77,7 @@ export async function addSharedTargetAction(
   const input = sharedSchema.safeParse({ handle: formData.get("handle") ?? "" });
   if (!input.success) return { status: "error", message: "No valid @username to add." };
 
-  const result = await addTargets(workspace.id, input.data.handle);
+  const result = await addTargets(workspace.id, input.data.handle, new Date(), "SHARE");
   if (!result.ok) {
     return { status: "error", message: MESSAGES[result.error] ?? errorMessage(result.error) };
   }
@@ -87,4 +90,37 @@ export async function addSharedTargetAction(
   revalidatePath("/targets");
   const id = await findTargetId(workspace.id, input.data.handle);
   redirect(id ? `/targets/${id}` : "/targets");
+}
+
+const BULK_MESSAGES: Record<string, string> = {
+  invalid_selection: "Select between 1 and 100 creators.",
+  invalid_tag: "Tags: up to 24 letters, numbers, - or _.",
+  invalid_status: "Pick a status.",
+};
+
+/** Status / tag / remove for the selected rows of the creators table (M7.1). */
+export async function bulkCreatorsAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { workspace } = await requireWorkspace();
+  const ids = formData.getAll("id").filter((value): value is string => typeof value === "string");
+  const op = formData.get("op");
+  const text = (name: string) => {
+    const value = formData.get(name);
+    return typeof value === "string" ? value : "";
+  };
+
+  const result =
+    op === "status"
+      ? await setCreatorStatus(workspace.id, ids, text("status"))
+      : op === "tag-add" || op === "tag-remove"
+        ? await tagCreators(workspace.id, ids, text("tag"), op === "tag-add" ? "add" : "remove")
+        : op === "remove"
+          ? await removeCreators(workspace.id, ids)
+          : null;
+  revalidatePath("/targets");
+  if (!result) return { status: "error", message: "Unknown action." };
+  if (!result.ok) return { status: "error", message: BULK_MESSAGES[result.error] ?? "" };
+  return { status: "success", message: "Saved." };
 }

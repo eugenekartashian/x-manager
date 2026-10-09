@@ -1,5 +1,10 @@
 import "server-only";
-import type { TargetAccount } from "@/generated/prisma/client";
+import type {
+  CreatorSource,
+  CreatorStatus,
+  Prisma,
+  TargetAccount,
+} from "@/generated/prisma/client";
 import { prisma } from "@/server/db";
 import type { XProfile } from "@/server/integrations/x/client";
 
@@ -37,6 +42,7 @@ export async function upsertTargets(
   workspaceId: string,
   profiles: XProfile[],
   now: Date,
+  source: CreatorSource = "MANUAL",
 ): Promise<void> {
   await prisma.$transaction(
     profiles.map((profile) => {
@@ -53,7 +59,7 @@ export async function upsertTargets(
       };
       return prisma.targetAccount.upsert({
         where: { workspaceId_xUserId: { workspaceId, xUserId: profile.id } },
-        create: { workspaceId, xUserId: profile.id, ...fields },
+        create: { workspaceId, xUserId: profile.id, source, ...fields },
         update: fields,
       });
     }),
@@ -86,4 +92,110 @@ export function findTargetIdByUsername(
     where: { workspaceId, username: { equals: username, mode: "insensitive" } },
     select: { id: true },
   });
+}
+
+// ─── Collab CRM table (M7.1) ─────────────────────────────────────────────────
+
+export type CreatorSort = "followers" | "recent" | "contact";
+
+export type CreatorQuery = {
+  status?: CreatorStatus;
+  search?: string;
+  tag?: string;
+  sort: CreatorSort;
+  page: number; // 1-based
+  pageSize: number;
+};
+
+function creatorWhere(workspaceId: string, query: CreatorQuery): Prisma.TargetAccountWhereInput {
+  const search = query.search?.trim().replace(/^@/, "");
+  return {
+    workspaceId,
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.tag ? { tags: { has: query.tag } } : {}),
+    ...(search
+      ? {
+          OR: [
+            { username: { contains: search, mode: "insensitive" } },
+            { name: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+}
+
+const CREATOR_ORDER: Record<CreatorSort, Prisma.TargetAccountOrderByWithRelationInput[]> = {
+  followers: [{ followersCount: { sort: "desc", nulls: "last" } }, { username: "asc" }],
+  recent: [{ createdAt: "desc" }],
+  contact: [{ lastContactAt: { sort: "desc", nulls: "last" } }, { username: "asc" }],
+};
+
+export async function listCreatorsPage(
+  workspaceId: string,
+  query: CreatorQuery,
+): Promise<{ rows: TargetAccount[]; total: number }> {
+  const where = creatorWhere(workspaceId, query);
+  const [rows, total] = await prisma.$transaction([
+    prisma.targetAccount.findMany({
+      where,
+      orderBy: CREATOR_ORDER[query.sort],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+    }),
+    prisma.targetAccount.count({ where }),
+  ]);
+  return { rows, total };
+}
+
+export async function countCreatorsByStatus(
+  workspaceId: string,
+): Promise<Partial<Record<CreatorStatus, number>>> {
+  const rows = await prisma.targetAccount.groupBy({
+    by: ["status"],
+    where: { workspaceId },
+    _count: { _all: true },
+  });
+  return Object.fromEntries(rows.map((row) => [row.status, row._count._all]));
+}
+
+export async function listCreatorTags(workspaceId: string): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ tag: string }[]>`
+    SELECT DISTINCT unnest(tags) AS tag FROM target_account
+    WHERE "workspaceId" = ${workspaceId}
+    ORDER BY tag
+    LIMIT 200`;
+  return rows.map((row) => row.tag);
+}
+
+/** Scoped bulk status change; contacting stamps lastContactAt. */
+export async function setCreatorsStatus(
+  workspaceId: string,
+  ids: string[],
+  status: CreatorStatus,
+  now: Date,
+): Promise<number> {
+  const { count } = await prisma.targetAccount.updateMany({
+    where: { workspaceId, id: { in: ids } },
+    data: { status, ...(status === "CONTACTED" ? { lastContactAt: now } : {}) },
+  });
+  return count;
+}
+
+export async function addCreatorsTag(workspaceId: string, ids: string[], tag: string) {
+  return prisma.$executeRaw`
+    UPDATE target_account SET tags = array_append(tags, ${tag})
+    WHERE "workspaceId" = ${workspaceId} AND id = ANY(${ids}) AND NOT (${tag} = ANY(tags))`;
+}
+
+export async function removeCreatorsTag(workspaceId: string, ids: string[], tag: string) {
+  return prisma.$executeRaw`
+    UPDATE target_account SET tags = array_remove(tags, ${tag})
+    WHERE "workspaceId" = ${workspaceId} AND id = ANY(${ids})`;
+}
+
+export async function deleteCreators(workspaceId: string, ids: string[]): Promise<number> {
+  const { count } = await prisma.targetAccount.deleteMany({
+    where: { workspaceId, id: { in: ids } },
+  });
+  return count;
 }

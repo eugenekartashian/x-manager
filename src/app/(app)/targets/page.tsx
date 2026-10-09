@@ -3,9 +3,11 @@ import { ReplyLimitsForm } from "@/features/replies/limits-form";
 import { RecentReplies } from "@/features/replies/recent-replies";
 import { TemplatesSection } from "@/features/replies/templates-section";
 import { AddTargetsForm } from "@/features/targets/add-targets-form";
+import { CreatorsFilters } from "@/features/targets/creators-filters";
+import { CreatorsTable } from "@/features/targets/creators-table";
+import { ImportFile } from "@/features/targets/import-file";
 import { QuickAddHelp } from "@/features/targets/quick-add-help";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
-import { TargetList } from "@/features/targets/target-list";
 import { ConnectXFirst } from "@/features/x-account/connect-x-first";
 import { env } from "@/lib/env";
 import { requireWorkspace } from "@/server/auth/session";
@@ -13,13 +15,15 @@ import {
   REPLY_COOLDOWN_HOUR_OPTIONS,
   REPLY_DAILY_LIMIT_OPTIONS,
 } from "@/server/domain/reply-rules";
-import type { TargetSort } from "@/server/repositories/targets";
-import { listRecentReplies, listTemplates } from "@/server/services/replies";
+import { listCreators, parseCreatorFilters } from "@/server/services/creators";
 import { getLimits } from "@/server/services/limits";
-import { listTargets, MAX_TARGETS } from "@/server/services/targets";
+import { listRecentReplies, listTemplates } from "@/server/services/replies";
+import { MAX_TARGETS } from "@/server/services/targets";
 import { connectedXUserId } from "@/server/services/x-api";
 
-export default async function TargetsPage({ searchParams }: PageProps<"/targets">) {
+// Creators (Collab CRM, M7.1): the people you reply to and collaborate with. Route stays
+// /targets so existing links and the iPhone Shortcut keep working.
+export default async function CreatorsPage({ searchParams }: PageProps<"/targets">) {
   const { workspace, role } = await requireWorkspace();
   const limits = await getLimits(workspace.id);
   if (limits && !limits.targetsEnabled) return <TargetsDisabled />;
@@ -27,83 +31,118 @@ export default async function TargetsPage({ searchParams }: PageProps<"/targets"
   if (!connected.ok) {
     return (
       <ConnectXFirst
-        title="Targets"
+        title="Creators"
         message="Connect your X account first — account lookups use your X connection."
       />
     );
   }
 
-  const { sort: rawSort } = await searchParams;
-  const sort: TargetSort = rawSort === "recent" ? "recent" : "followers";
-  const [targets, templates, replies] = await Promise.all([
-    listTargets(workspace.id, sort),
+  const params = await searchParams;
+  const filters = parseCreatorFilters(params);
+  const [page, templates, replies] = await Promise.all([
+    listCreators(workspace.id, filters),
     listTemplates(workspace.id),
     listRecentReplies(workspace.id),
   ]);
+  const all = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
+  const cap = Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS);
+  const filtered = Boolean(filters.status || filters.q || filters.tag);
+
+  const pageHref = (target: number) => {
+    const next = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === "string" && key !== "page") next.set(key, value);
+    }
+    if (target > 1) next.set("page", String(target));
+    const query = next.toString();
+    return query ? `/targets?${query}` : "/targets";
+  };
 
   return (
     <>
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Targets</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Creators{" "}
+          <span className="text-foreground/40 text-lg font-normal">
+            {all}/{cap}
+          </span>
+        </h1>
         <p className="text-foreground/70 text-sm">
-          Niche accounts you want to reply to. X does not allow apps to reply to other accounts, so
-          replies are always posted by you on x.com — this list keeps them organised.
+          Accounts you reply to and collaborate with. Everything you post on X — replies, messages,
+          Reposts — you do yourself; this list keeps track.
         </p>
       </div>
 
-      <AddTargetsForm showCosts={role === "SUPERADMIN"} />
-      <QuickAddHelp appUrl={env.APP_URL} />
-
-      <TemplatesSection templates={templates} />
-
-      {role === "SUPERADMIN" && (
-        <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
-          <h2 className="text-lg font-medium">Reply limits</h2>
-          <ReplyLimitsForm
-            cooldownHours={workspace.replyCooldownHours}
-            perDay={workspace.replyDailyLimit}
-            cooldownOptions={REPLY_COOLDOWN_HOUR_OPTIONS}
-            dailyOptions={REPLY_DAILY_LIMIT_OPTIONS}
-          />
-        </section>
-      )}
+      <section className="flex flex-col gap-3">
+        <AddTargetsForm showCosts={role === "SUPERADMIN"} />
+        <div className="flex flex-wrap items-start gap-3">
+          <ImportFile />
+          {all > 0 && (
+            // Plain link: a file download, not a page navigation.
+            <a
+              href="/api/targets/export"
+              className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm"
+            >
+              Export CSV
+            </a>
+          )}
+        </div>
+        <QuickAddHelp appUrl={env.APP_URL} />
+      </section>
 
       <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-medium">
-            Target list{" "}
-            <span className="text-foreground/50">
-              ({targets.length}/{Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS)})
-            </span>
-          </h2>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Link
-              href="/targets"
-              aria-current={sort === "followers" ? "page" : undefined}
-              className={`rounded-md px-3 py-1 ${sort === "followers" ? "bg-foreground text-background" : "hover:bg-foreground/5"}`}
-            >
-              Most followers
-            </Link>
-            <Link
-              href="/targets?sort=recent"
-              aria-current={sort === "recent" ? "page" : undefined}
-              className={`rounded-md px-3 py-1 ${sort === "recent" ? "bg-foreground text-background" : "hover:bg-foreground/5"}`}
-            >
-              Recently added
-            </Link>
-            {targets.length > 0 && (
-              // Plain link: a file download, not a page navigation.
-              <a
-                href="/api/targets/export"
-                className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1"
+        <CreatorsFilters counts={page.counts} total={all} tags={page.tags} />
+        <CreatorsTable rows={page.rows} timeZone={workspace.timezone} filtered={filtered} />
+        {page.pages > 1 && (
+          <nav aria-label="Pages" className="flex items-center justify-between text-sm">
+            {filters.page > 1 ? (
+              <Link
+                href={pageHref(filters.page - 1)}
+                scroll={false}
+                className="hover:bg-foreground/5 rounded-md px-3 py-1.5"
               >
-                Export CSV
-              </a>
+                ← Previous
+              </Link>
+            ) : (
+              <span />
             )}
-          </div>
-        </div>
-        <TargetList targets={targets} timeZone={workspace.timezone} />
+            <span className="text-foreground/60">
+              Page {filters.page} of {page.pages} · {page.total} creators
+            </span>
+            {filters.page < page.pages ? (
+              <Link
+                href={pageHref(filters.page + 1)}
+                scroll={false}
+                className="hover:bg-foreground/5 rounded-md px-3 py-1.5"
+              >
+                Next →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </nav>
+        )}
       </section>
+
+      <details className="border-foreground/10 rounded-lg border p-4">
+        <summary className="cursor-pointer font-medium">
+          Reply templates{role === "SUPERADMIN" && " & limits"}
+        </summary>
+        <div className="mt-4 flex flex-col gap-6">
+          <TemplatesSection templates={templates} />
+          {role === "SUPERADMIN" && (
+            <div className="flex flex-col gap-3">
+              <h3 className="font-medium">Reply limits</h3>
+              <ReplyLimitsForm
+                cooldownHours={workspace.replyCooldownHours}
+                perDay={workspace.replyDailyLimit}
+                cooldownOptions={REPLY_COOLDOWN_HOUR_OPTIONS}
+                dailyOptions={REPLY_DAILY_LIMIT_OPTIONS}
+              />
+            </div>
+          )}
+        </div>
+      </details>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">Recent replies</h2>

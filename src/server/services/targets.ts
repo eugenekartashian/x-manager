@@ -1,5 +1,5 @@
 import "server-only";
-import type { TargetAccount } from "@/generated/prisma/client";
+import type { CreatorSource, TargetAccount } from "@/generated/prisma/client";
 import { formatSpreadsheetDateTime } from "@/lib/format";
 import { parseHandles } from "@/lib/handles";
 import { err, ok, type Result } from "@/lib/result";
@@ -37,6 +37,7 @@ export async function addTargets(
   workspaceId: string,
   input: string,
   now: Date = new Date(),
+  source: CreatorSource = "MANUAL",
 ): Promise<Result<AddTargetsResult, AddTargetsError>> {
   const limits = await getLimits(workspaceId);
   if (limits && !limits.targetsEnabled) return err("feature_disabled");
@@ -65,7 +66,7 @@ export async function addTargets(
   if (!found.ok) return found;
 
   const profiles = found.data.filter((profile) => profile.id !== me.data);
-  await targets.upsertTargets(workspaceId, profiles, now);
+  await targets.upsertTargets(workspaceId, profiles, now, source);
 
   const foundNames = new Set(found.data.map((profile) => profile.username.toLowerCase()));
   return ok({
