@@ -7,6 +7,7 @@ import {
   messagesToday,
   bulkCandidates,
   recordSentMessage,
+  saveMessageLimit,
   sendBulkViaApi,
   sendMessageViaApi,
   undoOpenedMessage,
@@ -448,5 +449,15 @@ describe("bulk messages via the X API (D-035)", () => {
     ).toEqual({ ok: true, data: [{ targetId: other.target.id, ok: false, error: "not_found" }] });
     expect((await bulkCandidates(workspace.id, [other.target.id], NOW)).ready).toEqual([]);
     expect(calls).toBe(0);
+  });
+});
+
+describe("saveMessageLimit", () => {
+  it("accepts only the listed limits and applies them to the daily count", async () => {
+    const { workspace } = await setup();
+    expect(await saveMessageLimit(workspace.id, 51)).toEqual({ ok: false, error: "invalid_limit" });
+    expect(await saveMessageLimit(workspace.id, 50)).toEqual({ ok: true, data: null });
+    const updated = await prisma.workspace.findUniqueOrThrow({ where: { id: workspace.id } });
+    expect((await messagesToday(updated, NOW)).limit).toBe(50);
   });
 });

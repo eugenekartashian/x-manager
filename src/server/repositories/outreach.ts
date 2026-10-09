@@ -10,6 +10,13 @@ export function countMessagesOpenedSince(workspaceId: string, since: Date): Prom
   });
 }
 
+export async function updateMessageLimit(workspaceId: string, perDay: number): Promise<void> {
+  await prisma.workspace.update({
+    where: { id: workspaceId },
+    data: { limitMessagesPerDay: perDay },
+  });
+}
+
 /** The workspace's creators among `ids` (at most `limit`). */
 export function findCreatorsByIds(workspaceId: string, ids: string[], limit: number) {
   return prisma.targetAccount.findMany({

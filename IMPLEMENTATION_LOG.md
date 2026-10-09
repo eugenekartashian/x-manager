@@ -4,6 +4,14 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-10-10 · Outreach polish
+
+- Admin → "Your messages": superadmin's own messages-per-day (10/15/20/30/40/50, default 30).
+- Bulk message page: "↻ Another version" per creator, max 3 (uses the model's spare drafts first, then one more AI call); sent summary + compact sent rows; results stay after the page refreshes.
+- AI drafts: first name only, no bio facts, 2–3 sentences.
+
+---
+
 ## 2026-10-10 · D-036 — Follows you / Mutual on creators; stop after 3 refusals
 
 - Migration `creator_connection` (`followsYou`, `youFollow`, index). Lookups request `connection_status`; badges, connection filter (`conn=`), "Refresh from X" bulk action (`refreshCreators`, update-only), connection badge on the bulk message page. Bulk send stops after 3 refusals in a row (`MAX_REFUSALS_IN_ROW`).

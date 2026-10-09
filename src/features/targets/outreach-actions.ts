@@ -184,7 +184,13 @@ const bulkDraftSchema = z.object({
   postUrl: z.string().max(300).optional(),
 });
 
-export type BulkDraft = { targetId: string; text: string | null; error: string | null };
+export type BulkDraft = {
+  targetId: string;
+  text: string | null;
+  /** The model's other drafts — "Another version" uses them before asking the AI again. */
+  alternatives: string[];
+  error: string | null;
+};
 
 /** One AI message per selected creator, drafted in parallel (superadmin, D-035). */
 export async function draftBulkAction(
@@ -198,8 +204,8 @@ export async function draftBulkAction(
     targetIds.map(async (targetId): Promise<BulkDraft> => {
       const result = await draftMessages(workspace, { targetId, ...(postUrl ? { postUrl } : {}) });
       return result.ok
-        ? { targetId, text: result.data[0] ?? "", error: null }
-        : { targetId, text: null, error: message(result.error) };
+        ? { targetId, text: result.data[0] ?? "", alternatives: result.data.slice(1), error: null }
+        : { targetId, text: null, alternatives: [], error: message(result.error) };
     }),
   );
   revalidatePath("/", "layout"); // spend

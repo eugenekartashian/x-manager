@@ -7,6 +7,7 @@ import { requireSuperadmin } from "@/server/auth/session";
 import { inviteUser, revokeAccess } from "@/server/services/access";
 import { approveRequest, dismissRequest } from "@/server/services/access-requests";
 import { saveUserLimits } from "@/server/services/limits";
+import { saveMessageLimit } from "@/server/services/outreach";
 
 const MESSAGES: Record<string, string> = {
   invalid_email: "Enter a valid email address.",
@@ -92,4 +93,19 @@ export async function dismissRequestAction(formData: FormData): Promise<void> {
   const input = requestIdSchema.safeParse(Object.fromEntries(formData));
   if (input.success) await dismissRequest(input.data.requestId);
   revalidatePath("/admin");
+}
+
+/** The superadmin's own messages-per-day limit (manual + X API). */
+export async function saveMessageLimitAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { workspace } = await requireSuperadmin();
+  const perDay = z.coerce.number().int().safeParse(formData.get("perDay"));
+  const result = perDay.success ? await saveMessageLimit(workspace.id, perDay.data) : null;
+  revalidatePath("/admin");
+  revalidatePath("/targets", "layout");
+  return result?.ok
+    ? { status: "success", message: "Saved — applies right away." }
+    : { status: "error", message: "Pick one of the listed limits." };
 }

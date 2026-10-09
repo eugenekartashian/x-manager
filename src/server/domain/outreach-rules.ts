@@ -1,6 +1,9 @@
 // Collab outreach rules (M7.2, D-033). Messages are drafted here and sent by the user in X.
 
 export const MAX_MESSAGE_LENGTH = 1_000;
+/** Daily message limit choices for the superadmin (default 30; owner raises it slowly). */
+export const MESSAGE_LIMIT_OPTIONS = [10, 15, 20, 30, 40, 50] as const;
+
 /** One bulk send (superadmin, D-035) messages at most this many creators. */
 export const MAX_BULK_MESSAGES = 10;
 /**

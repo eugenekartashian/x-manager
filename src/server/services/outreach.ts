@@ -17,6 +17,7 @@ import {
   bulkSkipReason,
   MAX_BULK_MESSAGES,
   MAX_REFUSALS_IN_ROW,
+  MESSAGE_LIMIT_OPTIONS,
   withPostLink,
   type BulkSkipReason,
 } from "@/server/domain/outreach-rules";
@@ -136,6 +137,16 @@ export async function sendMessageViaApi(
   if (!sent.ok) return sent;
   const event = await saveMessage(workspace.id, prepared.data, now);
   return ok({ eventId: event.id });
+}
+
+/** Messages per day for this workspace (one of MESSAGE_LIMIT_OPTIONS). */
+export async function saveMessageLimit(
+  workspaceId: string,
+  perDay: number,
+): Promise<Result<null, "invalid_limit">> {
+  if (!(MESSAGE_LIMIT_OPTIONS as readonly number[]).includes(perDay)) return err("invalid_limit");
+  await outreach.updateMessageLimit(workspaceId, perDay);
+  return ok(null);
 }
 
 export async function undoOpenedMessage(

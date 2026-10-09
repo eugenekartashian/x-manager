@@ -1,10 +1,12 @@
 import { AccessRequests } from "@/features/admin/access-requests";
 import { InviteForm } from "@/features/admin/invite-form";
 import { MemberList } from "@/features/admin/member-list";
+import { MessageLimitForm } from "@/features/admin/message-limit-form";
 import { formatUsd } from "@/lib/format";
 import { requireSuperadmin } from "@/server/auth/session";
 import { countDistinctTargets, listMembers, totalSpendMicros } from "@/server/services/admin";
 import { listAccessRequests } from "@/server/services/access-requests";
+import { MESSAGE_LIMIT_OPTIONS } from "@/server/domain/outreach-rules";
 import { globalBudgetMicros } from "@/server/services/budget";
 
 export default async function AdminPage() {
@@ -36,6 +38,15 @@ export default async function AdminPage() {
           </a>
         </p>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Your messages</h2>
+        <p className="text-foreground/70 text-sm">
+          How many creator messages you can send per day — by hand and through the X API together. X
+          publishes no limit; raise it slowly and watch for refusals.
+        </p>
+        <MessageLimitForm perDay={workspace.limitMessagesPerDay} options={MESSAGE_LIMIT_OPTIONS} />
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
 import { withPostLink } from "@/server/domain/outreach-rules";
-import { draftBulkAction, sendBulkAction } from "./outreach-actions";
+import { draftBulkAction, draftMessagesAction, sendBulkAction } from "./outreach-actions";
 
 type Creator = {
   id: string;
@@ -14,7 +14,17 @@ type Creator = {
   youFollow: boolean | null;
 };
 type PostOption = { url: string; label: string };
-type Row = { text: string; error: string | null; include: boolean };
+type Row = {
+  text: string;
+  error: string | null;
+  include: boolean;
+  /** Unused AI drafts for this creator. */
+  spare: string[];
+  regens: number;
+};
+
+/** "Another version" per creator — the first ones come from spare drafts, then the AI. */
+const MAX_REGENS = 3;
 type Outcome = { ok: boolean; message: string | null };
 
 type Skipped = { id: string; username: string; reason: string };
@@ -43,6 +53,7 @@ export function BulkMessage({
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [outcomes, setOutcomes] = useState<Record<string, Outcome>>({});
   const [error, setError] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
   const [writing, startWriting] = useTransition();
   const [sending, startSending] = useTransition();
   const started = useRef(false);
@@ -65,6 +76,8 @@ export function BulkMessage({
             text: draft?.text ?? current[creator.id]?.text ?? "",
             error: draft?.error ?? null,
             include: current[creator.id]?.include ?? true,
+            spare: draft?.alternatives ?? [],
+            regens: current[creator.id]?.regens ?? 0,
           };
         }
         return next;
@@ -84,8 +97,39 @@ export function BulkMessage({
   const update = (id: string, change: Partial<Row>) =>
     setRows((current) => ({
       ...current,
-      [id]: { text: "", error: null, include: true, ...current[id], ...change },
+      [id]: {
+        text: "",
+        error: null,
+        include: true,
+        spare: [],
+        regens: 0,
+        ...current[id],
+        ...change,
+      },
     }));
+
+  async function regenerate(id: string) {
+    const row = rows[id];
+    if (!row || row.regens >= MAX_REGENS) return;
+    const [next, ...rest] = row.spare;
+    if (next) {
+      update(id, { text: next, spare: rest, regens: row.regens + 1, error: null });
+      return;
+    }
+    setRegenerating(id);
+    const result = await draftMessagesAction({ targetId: id, postUrl: postUrl || undefined });
+    setRegenerating(null);
+    if (result.ok && result.drafts[0]) {
+      update(id, {
+        text: result.drafts[0],
+        spare: result.drafts.slice(1),
+        regens: row.regens + 1,
+        error: null,
+      });
+    } else {
+      update(id, { error: result.ok ? "AI returned nothing." : result.message });
+    }
+  }
 
   const toSend = creators.filter((creator) => {
     const row = rows[creator.id];
@@ -286,6 +330,18 @@ export function BulkMessage({
                 aria-label={`Message to @${creator.username}`}
                 className={control}
               />
+              {row && !writing && (
+                <button
+                  type="button"
+                  onClick={() => void regenerate(creator.id)}
+                  disabled={sending || regenerating !== null || row.regens >= MAX_REGENS}
+                  className="text-foreground/60 hover:text-foreground self-start text-xs disabled:opacity-40"
+                >
+                  {regenerating === creator.id
+                    ? "✨ Writing…"
+                    : `↻ Another version (${MAX_REGENS - row.regens} left)`}
+                </button>
+              )}
             </li>
           );
         })}
