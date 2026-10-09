@@ -13,6 +13,7 @@ import { MessageComposer } from "@/features/targets/message-composer";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { isAiEnabled } from "@/server/services/ai-replies";
 import { getLimitsContext, usedToday } from "@/server/services/limits";
+import { findConnection } from "@/server/repositories/x-accounts";
 import { getPostsPageData } from "@/server/services/own-posts";
 import { creatorHistory, messagesToday } from "@/server/services/outreach";
 import { getSessionData, listRecentReplies } from "@/server/services/replies";
@@ -43,12 +44,14 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
         usedToday(workspace.id, "AI_IDEAS", tz, now, target.id),
       ])
     : [0, 0];
-  const [allReplies, ownPosts, history, messages] = await Promise.all([
+  const [allReplies, ownPosts, history, messages, connection] = await Promise.all([
     listRecentReplies(workspace.id),
     getPostsPageData(workspace.id, now),
     creatorHistory(workspace.id, target.id),
     messagesToday(workspace, now),
+    findConnection(workspace.id),
   ]);
+  const me = connection?.username ?? "i";
   const replies = allReplies.filter((reply) => reply.targetId === target.id);
   // Own posts the message can link to: repost list first, then recent ones (no X calls).
   const postOptions = ownPosts.connected
@@ -56,7 +59,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
         .filter((post, index, all) => all.findIndex((other) => other.id === post.id) === index)
         .slice(0, 12)
         .map((post) => ({
-          url: `https://x.com/i/status/${post.xPostId}`,
+          url: `https://x.com/${me}/status/${post.xPostId}`,
           label: `${post.inRotation ? "★ " : ""}${(post.text || "(media)").replace(/\s+/g, " ").slice(0, 60)}`,
         }))
     : [];
@@ -101,8 +104,8 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
       <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
         <h2 className="text-lg font-medium">Message</h2>
         <p className="text-foreground/60 text-xs">
-          Write one personal message — X opens with it and you send it yourself. Different words for
-          every creator keep it human.
+          Write one personal message — it’s copied and X opens the chat; you paste and send it
+          yourself. Different words for every creator keep it human.
         </p>
         <MessageComposer
           targetId={target.id}

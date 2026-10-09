@@ -31,7 +31,8 @@ export function MessageComposer({
   const [text, setText] = useState("");
   const [drafts, setDrafts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [opened, setOpened] = useState<{ eventId: string } | null>(null);
+  const [opened, setOpened] = useState<{ eventId: string; copiedOk: boolean } | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
   const [aiPending, startAi] = useTransition();
@@ -49,6 +50,12 @@ export function MessageComposer({
 
   function openInX() {
     setError(null);
+    // X's DM link opens the chat but doesn't prefill text (seen 2026-10-09), so copy the text
+    // first — inside the click, which the clipboard API requires — then open the chat.
+    let copiedOk = true;
+    navigator.clipboard?.writeText(text).catch(() => {
+      copiedOk = false;
+    });
     // Open the tab inside the click so popup blockers allow it.
     const tab = window.open("about:blank", "_blank");
     startTransition(async () => {
@@ -60,7 +67,7 @@ export function MessageComposer({
         } else {
           window.location.href = result.intentUrl;
         }
-        setOpened({ eventId: result.eventId });
+        setOpened({ eventId: result.eventId, copiedOk });
       } else {
         tab?.close();
         setError(result.message);
@@ -78,18 +85,38 @@ export function MessageComposer({
     }
   }
 
-  if (opened) {
+  if (opened && confirmed) {
     return (
       <div className="flex flex-col gap-2 rounded-md bg-green-500/10 px-3 py-3 text-sm">
         <p className="font-medium text-green-800 dark:text-green-300">
-          Opened in X — send it there. @{username} is now “Messaged”.
+          ✓ Sent — @{username} is “Messaged”. Mark “They reposted” on this page when they do.
         </p>
-        <p className="text-foreground/70">
-          If X didn&apos;t open the chat,{" "}
-          <button type="button" onClick={copy} className="underline">
-            {copied ? "copied ✓" : "copy the text"}
-          </button>{" "}
-          and{" "}
+        <button
+          type="button"
+          onClick={() => {
+            setOpened(null);
+            setConfirmed(false);
+            setText("");
+            setDrafts([]);
+          }}
+          className="text-foreground/70 self-start text-xs underline"
+        >
+          Write another message
+        </button>
+      </div>
+    );
+  }
+
+  if (opened) {
+    return (
+      <div className="flex flex-col gap-3 rounded-md bg-blue-500/10 px-3 py-3 text-sm">
+        <p className="font-medium">
+          {opened.copiedOk
+            ? "Text copied ✓ — paste it into the chat with @" + username + " and send."
+            : "Copy the text below and paste it into the chat with @" + username + "."}
+        </p>
+        <p className="text-foreground/70 text-xs">
+          Paste: ⌘V on a computer, long-press → Paste on the phone. If the chat didn&apos;t open,{" "}
           <a
             href={`https://x.com/${username}`}
             target="_blank"
@@ -98,19 +125,31 @@ export function MessageComposer({
           >
             open their profile ↗
           </a>{" "}
-          → Message.
+          → Message.{" "}
+          <button type="button" onClick={copy} className="underline">
+            {copied ? "Copied ✓" : "Copy again"}
+          </button>
         </p>
-        <div className="flex gap-3">
+        <p className="font-medium">Did you send it?</p>
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={() => setConfirmed(true)}
+            className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium"
+          >
+            ✓ Yes, sent
+          </button>
+          <button
+            type="button"
+            disabled={pending}
             onClick={() =>
               startTransition(async () => {
                 if (await undoMessageAction({ eventId: opened.eventId, targetId })) setOpened(null);
               })
             }
-            className="text-foreground/70 text-xs underline"
+            className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm"
           >
-            Didn&apos;t send it? Undo
+            No — undo
           </button>
         </div>
       </div>
@@ -182,7 +221,7 @@ export function MessageComposer({
           disabled={pending || limitReached || !text.trim()}
           className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
         >
-          {pending ? "Opening…" : "Open in X ↗"}
+          {pending ? "Opening…" : "Copy & open chat ↗"}
         </button>
         {aiEnabled && (
           <button

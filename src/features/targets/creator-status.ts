@@ -1,4 +1,4 @@
-import type { CreatorStatus } from "@/generated/prisma/client";
+import type { CreatorRole, CreatorStatus } from "@/generated/prisma/client";
 
 // Labels and colours for the Collab CRM statuses (client-safe).
 export const STATUS_META: Record<CreatorStatus, { label: string; tone: string }> = {
@@ -18,3 +18,11 @@ export const STATUS_ORDER: CreatorStatus[] = [
   "NO_REPLY",
   "DECLINED",
 ];
+
+export const ROLE_LABELS: Record<CreatorRole, string> = {
+  TOP: "Top",
+  BOTTOM: "Bottom",
+  VERSATILE: "Vers",
+};
+
+export const ROLE_ORDER: CreatorRole[] = ["TOP", "BOTTOM", "VERSATILE"];

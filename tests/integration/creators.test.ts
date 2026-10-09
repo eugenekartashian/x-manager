@@ -5,6 +5,7 @@ import {
   normalizeTag,
   parseCreatorFilters,
   removeCreators,
+  setCreatorRole,
   setCreatorStatus,
   tagCreators,
 } from "@/server/services/creators";
@@ -210,5 +211,40 @@ describe("normalizeTag", () => {
     ["x".repeat(25), null],
   ])("%s → %s", (raw, expected) => {
     expect(normalizeTag(raw)).toBe(expected);
+  });
+});
+
+describe("roles", () => {
+  it("sets, filters and clears a role; refuses bad values and other workspaces", async () => {
+    const owner = await createOwner("a");
+    const other = await createOwner("b");
+    const [alex, gio] = await seed(owner.workspaceId, [
+      { username: "alex", followers: 1 },
+      { username: "gio", followers: 2 },
+    ]);
+
+    expect(await setCreatorRole(owner.workspaceId, [alex?.id ?? ""], "BOTTOM")).toEqual({
+      ok: true,
+      data: { updated: 1 },
+    });
+    expect(await setCreatorRole(owner.workspaceId, [gio?.id ?? ""], "ALPHA")).toEqual({
+      ok: false,
+      error: "invalid_status",
+    });
+    expect(
+      (await listCreators(owner.workspaceId, filters({ role: "BOTTOM" }))).rows.map(
+        (row) => row.username,
+      ),
+    ).toEqual(["alex"]);
+    expect(parseCreatorFilters({ role: "nonsense" }).role).toBeUndefined();
+
+    expect(await setCreatorRole(other.workspaceId, [alex?.id ?? ""], "TOP")).toEqual({
+      ok: true,
+      data: { updated: 0 },
+    });
+    await setCreatorRole(owner.workspaceId, [alex?.id ?? ""], "");
+    expect(
+      (await prisma.targetAccount.findUniqueOrThrow({ where: { id: alex?.id ?? "" } })).role,
+    ).toBeNull();
   });
 });

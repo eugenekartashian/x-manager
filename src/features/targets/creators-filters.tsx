@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import type { CreatorStatus } from "@/generated/prisma/client";
-import { STATUS_META, STATUS_ORDER } from "./creator-status";
+import { ROLE_LABELS, ROLE_ORDER, STATUS_META, STATUS_ORDER } from "./creator-status";
 
 type Props = {
   counts: Partial<Record<CreatorStatus, number>>;
@@ -90,6 +90,19 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
             className={`${control} min-w-0 flex-1`}
           />
         </form>
+        <select
+          aria-label="Filter by role"
+          value={params.get("role") ?? ""}
+          onChange={(event) => go({ role: event.target.value || null })}
+          className={control}
+        >
+          <option value="">Any role</option>
+          {ROLE_ORDER.map((role) => (
+            <option key={role} value={role}>
+              {ROLE_LABELS[role]}
+            </option>
+          ))}
+        </select>
         {tags.length > 0 && (
           <select
             aria-label="Filter by label"

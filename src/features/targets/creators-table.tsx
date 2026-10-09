@@ -8,7 +8,7 @@ import { ActionMessage } from "@/features/posts/action-message";
 import type { ActionState } from "@/features/posts/actions";
 import { formatCount, formatDateTime } from "@/lib/format";
 import { bulkCreatorsAction } from "./actions";
-import { STATUS_META, STATUS_ORDER } from "./creator-status";
+import { ROLE_LABELS, ROLE_ORDER, STATUS_META, STATUS_ORDER } from "./creator-status";
 
 type Props = { rows: TargetAccount[]; timeZone: string; filtered: boolean };
 
@@ -45,7 +45,10 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
     });
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((row) => row.id)));
 
-  function submit(op: "status" | "tag-add" | "remove", extra: Record<string, string> = {}) {
+  function submit(
+    op: "status" | "role" | "tag-add" | "remove",
+    extra: Record<string, string> = {},
+  ) {
     const formData = new FormData();
     formData.set("op", op);
     for (const [key, value] of Object.entries(extra)) formData.set(key, value);
@@ -61,7 +64,7 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
       <ActionMessage state={state} />
 
       <div className="border-foreground/10 overflow-hidden rounded-lg border">
-        <div className="text-foreground/50 bg-foreground/3 hidden grid-cols-[1.75rem_minmax(0,1fr)_4.5rem_6.5rem_6.5rem] items-center gap-3 px-3 py-2 text-xs md:grid">
+        <div className="text-foreground/50 bg-foreground/3 hidden grid-cols-[1.75rem_minmax(0,1fr)_4.5rem_6.5rem] items-center gap-3 px-3 py-2 text-xs md:grid">
           <input
             type="checkbox"
             checked={allSelected}
@@ -72,13 +75,12 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
           <span>Creator</span>
           <span className="text-right">Followers</span>
           <span>Status</span>
-          <span>Last contact</span>
         </div>
         <ul className="divide-foreground/10 divide-y">
           {rows.map((row) => (
             <li
               key={row.id}
-              className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 md:grid-cols-[1.75rem_minmax(0,1fr)_4.5rem_6.5rem_6.5rem] ${
+              className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 md:grid-cols-[1.75rem_minmax(0,1fr)_4.5rem_6.5rem] ${
                 selected.has(row.id) ? "bg-foreground/4" : ""
               }`}
             >
@@ -106,18 +108,32 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
                   )}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{row.name}</span>
-                  <span className="text-foreground/60 block truncate text-xs">
+                  {/* Never truncated: long names wrap instead (user request). */}
+                  <span className="flex flex-wrap items-baseline gap-x-1.5 text-sm font-medium break-words">
+                    {row.name}
+                    {row.role && (
+                      <span className="bg-foreground/10 rounded px-1.5 text-[11px] font-medium">
+                        {ROLE_LABELS[row.role]}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-foreground/60 block text-xs break-all">
                     @{row.username}
                     <span className="md:hidden"> · {formatCount(row.followersCount)}</span>
                   </span>
-                  {row.tags.length > 0 && (
-                    <span className="mt-0.5 flex flex-wrap gap-1">
+                  {(row.tags.length > 0 || row.lastContactAt) && (
+                    <span className="text-foreground/50 mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
                       {row.tags.map((item) => (
-                        <span key={item} className="bg-foreground/5 rounded px-1.5 text-[11px]">
+                        <span
+                          key={item}
+                          className="bg-foreground/5 text-foreground/70 rounded px-1.5"
+                        >
                           {item}
                         </span>
                       ))}
+                      {row.lastContactAt && (
+                        <span>· contacted {formatDateTime(row.lastContactAt, timeZone)}</span>
+                      )}
                     </span>
                   )}
                 </span>
@@ -126,9 +142,6 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
                 {formatCount(row.followersCount)}
               </span>
               <StatusPill status={row.status} />
-              <span className="text-foreground/60 hidden text-xs md:block">
-                {row.lastContactAt ? formatDateTime(row.lastContactAt, timeZone) : "—"}
-              </span>
             </li>
           ))}
         </ul>
@@ -170,6 +183,26 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
                 {STATUS_META[status].label}
               </option>
             ))}
+          </select>
+          <select
+            aria-label="Set role"
+            value=""
+            disabled={pending}
+            onChange={(event) =>
+              event.target.value &&
+              submit("role", { role: event.target.value === "none" ? "" : event.target.value })
+            }
+            className={control}
+          >
+            <option value="" disabled>
+              Role…
+            </option>
+            {ROLE_ORDER.map((role) => (
+              <option key={role} value={role}>
+                {ROLE_LABELS[role]}
+              </option>
+            ))}
+            <option value="none">No role</option>
           </select>
           <span className="flex gap-1">
             <input

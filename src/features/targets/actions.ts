@@ -6,7 +6,12 @@ import { z } from "zod";
 import type { ActionState } from "@/features/posts/actions";
 import { errorMessage } from "@/features/posts/messages";
 import { requireWorkspace } from "@/server/auth/session";
-import { removeCreators, setCreatorStatus, tagCreators } from "@/server/services/creators";
+import {
+  removeCreators,
+  setCreatorRole,
+  setCreatorStatus,
+  tagCreators,
+} from "@/server/services/creators";
 import { addTargets, findTargetId, removeTarget, saveTargetNote } from "@/server/services/targets";
 
 const MESSAGES: Record<string, string> = {
@@ -114,11 +119,13 @@ export async function bulkCreatorsAction(
   const result =
     op === "status"
       ? await setCreatorStatus(workspace.id, ids, text("status"))
-      : op === "tag-add" || op === "tag-remove"
-        ? await tagCreators(workspace.id, ids, text("tag"), op === "tag-add" ? "add" : "remove")
-        : op === "remove"
-          ? await removeCreators(workspace.id, ids)
-          : null;
+      : op === "role"
+        ? await setCreatorRole(workspace.id, ids, text("role"))
+        : op === "tag-add" || op === "tag-remove"
+          ? await tagCreators(workspace.id, ids, text("tag"), op === "tag-add" ? "add" : "remove")
+          : op === "remove"
+            ? await removeCreators(workspace.id, ids)
+            : null;
   revalidatePath("/targets");
   if (!result) return { status: "error", message: "Unknown action." };
   if (!result.ok) return { status: "error", message: BULK_MESSAGES[result.error] ?? "" };
@@ -132,6 +139,17 @@ export async function removeLabelAction(formData: FormData): Promise<void> {
   const input = labelSchema.safeParse(Object.fromEntries(formData));
   if (!input.success) return;
   await tagCreators(workspace.id, [input.data.targetId], input.data.tag, "remove");
+  revalidatePath(`/targets/${input.data.targetId}`);
+  revalidatePath("/targets");
+}
+
+export async function setRoleAction(formData: FormData): Promise<void> {
+  const { workspace } = await requireWorkspace();
+  const input = z
+    .object({ targetId: z.uuid(), role: z.string().max(20) })
+    .safeParse(Object.fromEntries(formData));
+  if (!input.success) return;
+  await setCreatorRole(workspace.id, [input.data.targetId], input.data.role);
   revalidatePath(`/targets/${input.data.targetId}`);
   revalidatePath("/targets");
 }

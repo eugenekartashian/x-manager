@@ -1,5 +1,6 @@
 import "server-only";
 import type {
+  CreatorRole,
   CreatorSource,
   CreatorStatus,
   Prisma,
@@ -100,6 +101,7 @@ export type CreatorSort = "followers" | "recent" | "contact";
 
 export type CreatorQuery = {
   status?: CreatorStatus;
+  role?: CreatorRole;
   search?: string;
   tag?: string;
   sort: CreatorSort;
@@ -112,6 +114,7 @@ function creatorWhere(workspaceId: string, query: CreatorQuery): Prisma.TargetAc
   return {
     workspaceId,
     ...(query.status ? { status: query.status } : {}),
+    ...(query.role ? { role: query.role } : {}),
     ...(query.tag ? { tags: { has: query.tag } } : {}),
     ...(search
       ? {
@@ -196,6 +199,18 @@ export async function removeCreatorsTag(workspaceId: string, ids: string[], tag:
 export async function deleteCreators(workspaceId: string, ids: string[]): Promise<number> {
   const { count } = await prisma.targetAccount.deleteMany({
     where: { workspaceId, id: { in: ids } },
+  });
+  return count;
+}
+
+export async function setCreatorsRole(
+  workspaceId: string,
+  ids: string[],
+  role: CreatorRole | null,
+): Promise<number> {
+  const { count } = await prisma.targetAccount.updateMany({
+    where: { workspaceId, id: { in: ids } },
+    data: { role },
   });
   return count;
 }

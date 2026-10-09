@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import type { CreatorStatus, TargetAccount } from "@/generated/prisma/client";
+import type { CreatorRole, CreatorStatus, TargetAccount } from "@/generated/prisma/client";
 import { err, ok, type Result } from "@/lib/result";
 import * as targets from "@/server/repositories/targets";
 
@@ -16,12 +16,19 @@ export const CREATOR_STATUSES = [
   "NO_REPLY",
 ] as const satisfies readonly CreatorStatus[];
 
+export const CREATOR_ROLES = [
+  "TOP",
+  "BOTTOM",
+  "VERSATILE",
+] as const satisfies readonly CreatorRole[];
+
 export const CREATORS_PAGE_SIZE = 25;
 export const MAX_BULK = 100;
 const MAX_TAG_LENGTH = 24;
 
 const querySchema = z.object({
   status: z.enum(CREATOR_STATUSES).optional().catch(undefined),
+  role: z.enum(CREATOR_ROLES).optional().catch(undefined),
   q: z.string().trim().max(50).optional().catch(undefined),
   tag: z.string().trim().max(MAX_TAG_LENGTH).optional().catch(undefined),
   sort: z.enum(["followers", "recent", "contact"]).catch("followers"),
@@ -30,6 +37,7 @@ const querySchema = z.object({
 
 export type CreatorFilters = {
   status: CreatorStatus | undefined;
+  role: CreatorRole | undefined;
   q: string | undefined;
   tag: string | undefined;
   sort: targets.CreatorSort;
@@ -43,6 +51,7 @@ export function parseCreatorFilters(
   const pick = (key: string) => (typeof params[key] === "string" ? params[key] : undefined);
   const parsed = querySchema.parse({
     status: pick("status"),
+    role: pick("role"),
     q: pick("q") || undefined,
     tag: pick("tag") || undefined,
     sort: pick("sort"),
@@ -50,6 +59,7 @@ export function parseCreatorFilters(
   });
   return {
     status: parsed.status,
+    role: parsed.role,
     q: parsed.q,
     tag: parsed.tag,
     sort: parsed.sort,
@@ -72,6 +82,7 @@ export async function listCreators(
   const [{ rows, total }, counts, tags] = await Promise.all([
     targets.listCreatorsPage(workspaceId, {
       ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.role ? { role: filters.role } : {}),
       ...(filters.q ? { search: filters.q } : {}),
       ...(filters.tag ? { tag: filters.tag } : {}),
       sort: filters.sort,
@@ -130,4 +141,19 @@ export async function removeCreators(
   const parsedIds = idsSchema.safeParse(ids);
   if (!parsedIds.success) return err("invalid_selection");
   return ok({ removed: await targets.deleteCreators(workspaceId, parsedIds.data) });
+}
+
+/** Sets (or clears with "") the role of the selected creators. */
+export async function setCreatorRole(
+  workspaceId: string,
+  ids: string[],
+  role: string,
+): Promise<Result<{ updated: number }, BulkError>> {
+  const parsedIds = idsSchema.safeParse(ids);
+  if (!parsedIds.success) return err("invalid_selection");
+  const parsedRole = z.union([z.literal(""), z.enum(CREATOR_ROLES)]).safeParse(role);
+  if (!parsedRole.success) return err("invalid_status");
+  return ok({
+    updated: await targets.setCreatorsRole(workspaceId, parsedIds.data, parsedRole.data || null),
+  });
 }

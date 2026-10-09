@@ -391,6 +391,7 @@ model TargetAccount {
   status         CreatorStatus  @default(NEW)
   tags           String[]       @default([])
   source         CreatorSource  @default(MANUAL)
+  role           CreatorRole?
   lastContactAt  DateTime?
   posts          TargetPost[]
   replies        ReplyLog[]
@@ -410,6 +411,13 @@ enum CreatorStatus {
   PARTNER // ongoing collaboration
   DECLINED
   NO_REPLY
+}
+
+/// Creator's role in their content — set by the user, used to filter outreach.
+enum CreatorRole {
+  TOP
+  BOTTOM
+  VERSATILE
 }
 
 enum CreatorSource {
