@@ -116,7 +116,12 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
       )}
 
       <section className="flex flex-col gap-3">
-        <CreatorsFilters counts={page.counts} total={all} tags={page.tags} />
+        <CreatorsFilters
+          counts={page.counts}
+          total={all}
+          tags={page.tags}
+          owedCount={reposts.waitingForMe}
+        />
         <CreatorsTable rows={page.rows} timeZone={workspace.timezone} filtered={filtered} />
         {page.pages > 1 && (
           <nav aria-label="Pages" className="flex items-center justify-between text-sm">

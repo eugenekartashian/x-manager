@@ -11,18 +11,21 @@ type Props = {
   counts: Partial<Record<CreatorStatus, number>>;
   total: number;
   tags: string[];
+  /** Reposted us and still waiting for our repost back. */
+  owedCount: number;
 };
 
 const control =
   "border-foreground/15 rounded-md border bg-transparent px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none";
 
 /** Status tabs + search / tag / sort. State lives in the URL (shareable, back button works). */
-export function CreatorsFilters({ counts, total, tags }: Props) {
+export function CreatorsFilters({ counts, total, tags, owedCount }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [search, setSearch] = useState(params.get("q") ?? "");
   const status = params.get("status");
+  const owed = params.get("owed") === "1";
 
   const hrefWith = (changes: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
@@ -42,13 +45,14 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
     go({ q: search.trim() || null });
   }
 
-  const tabs: { value: CreatorStatus | null; label: string; count: number }[] = [
+  const tabs: { value: CreatorStatus | null; label: string; count: number; owed?: true }[] = [
     { value: null, label: "All", count: total },
     ...STATUS_ORDER.map((value) => ({
       value,
       label: STATUS_META[value].label,
       count: counts[value] ?? 0,
     })),
+    { value: null, label: "Waiting for my repost", count: owedCount, owed: true },
   ];
 
   return (
@@ -61,11 +65,14 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
       </p>
       <nav aria-label="Filter by status" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
         {tabs.map((tab) => {
-          const active = (status ?? null) === tab.value;
+          // The "waiting for my repost" view is its own tab, not "All".
+          const active = tab.owed ? owed : !owed && (status ?? null) === tab.value;
           return (
             <Link
               key={tab.label}
-              href={hrefWith({ status: tab.value })}
+              href={hrefWith(
+                tab.owed ? { status: null, owed: "1" } : { status: tab.value, owed: null },
+              )}
               scroll={false}
               aria-current={active ? "page" : undefined}
               className={`shrink-0 rounded-full px-3 py-1.5 text-sm whitespace-nowrap ${
