@@ -94,6 +94,58 @@ export async function listOwnPosts(
   };
 }
 
+export type CreatorPost = XPost & {
+  /** When the creator reposted this post of their own; null for a post shown as published. */
+  repostedAt: Date | null;
+};
+
+/**
+ * GET /2/users/:id/tweets for another creator: their original posts plus Reposts of their
+ * OWN posts (many creators mostly re-share old posts — shown as the original, with the
+ * Repost time). Replies and Reposts of other people are left out. Billed per returned post
+ * and per expanded post.
+ */
+export async function listCreatorPosts(
+  accessToken: string,
+  xUserId: string,
+  options: { maxResults: number; paginationToken?: string },
+): Promise<{ posts: CreatorPost[]; nextToken: string | null; billedPostIds: string[] }> {
+  const url = new URL(`${X_API_BASE}/2/users/${encodeURIComponent(xUserId)}/tweets`);
+  url.searchParams.set("max_results", String(Math.min(Math.max(options.maxResults, 5), 100)));
+  url.searchParams.set("exclude", "replies");
+  url.searchParams.set(
+    "tweet.fields",
+    "author_id,created_at,public_metrics,attachments,in_reply_to_user_id,referenced_tweets",
+  );
+  setMediaParams(url);
+  if (options.paginationToken) url.searchParams.set("pagination_token", options.paginationToken);
+
+  const body = await xRequest(
+    { method: "GET", url: url.toString(), headers: bearer(accessToken) },
+    userPostsResponseSchema,
+  );
+  const posts: CreatorPost[] = [];
+  for (const item of body.data) {
+    if (isReply(item)) continue;
+    const repostOf = item.referenced_tweets?.find((ref) => ref.type === "retweeted")?.id;
+    if (!repostOf) {
+      posts.push({ ...toXPost(item, body.includes), repostedAt: null });
+      continue;
+    }
+    const original = body.includes.tweets.find((tweet) => tweet.id === repostOf);
+    if (!original || original.author_id !== xUserId || !original.created_at) continue;
+    posts.push({
+      ...toXPost({ ...original, created_at: original.created_at }, body.includes),
+      repostedAt: new Date(item.created_at),
+    });
+  }
+  return {
+    posts,
+    nextToken: body.meta.next_token ?? null,
+    billedPostIds: [...body.data.map((post) => post.id), ...body.includes.tweets.map((t) => t.id)],
+  };
+}
+
 /**
  * GET /2/tweets/:id — one post with its author. Returns null when the post does
  * not exist or is not visible (X answers 200 without `data`, or 404).

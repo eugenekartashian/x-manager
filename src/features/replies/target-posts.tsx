@@ -47,7 +47,7 @@ export function TargetPosts({
       {posts.length === 0 ? (
         <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-6 text-center text-sm">
           {target.postsFetchedAt
-            ? `No new original posts from @${target.username} — lately they’ve only been replying or reposting. Try again later.`
+            ? `No new original posts from @${target.username} — lately they’ve only been replying or reposting other people. Try again later.`
             : "Load the latest posts to pick one to reply to."}
         </p>
       ) : (
@@ -80,7 +80,15 @@ export function TargetPosts({
                     {post.text}
                   </p>
                   <p className="text-foreground/60 mt-1 flex flex-wrap gap-x-3 text-xs">
-                    {isFreshPost(post.postedAt, now) ? (
+                    {post.repostedAt && (
+                      <span
+                        className="rounded bg-blue-500/10 px-1.5 font-medium text-blue-700 dark:text-blue-300"
+                        title={`Their own post from ${formatDateTime(post.postedAt, timeZone)}, reposted again — a reply lands under the original.`}
+                      >
+                        their repost
+                      </span>
+                    )}
+                    {isFreshPost(post.repostedAt ?? post.postedAt, now) ? (
                       <span className="rounded bg-green-600/10 px-1.5 font-medium text-green-700 dark:text-green-400">
                         fresh
                       </span>
@@ -92,8 +100,10 @@ export function TargetPosts({
                         old
                       </span>
                     )}
-                    <span title={formatDateTime(post.postedAt, timeZone)}>
-                      {formatAge(post.postedAt, now)}
+                    <span title={formatDateTime(post.repostedAt ?? post.postedAt, timeZone)}>
+                      {post.repostedAt
+                        ? `reposted ${formatAge(post.repostedAt, now)}`
+                        : formatAge(post.postedAt, now)}
                     </span>
                     <span>♥ {formatCount(post.likeCount)}</span>
                     <span>💬 {formatCount(post.replyCount)}</span>

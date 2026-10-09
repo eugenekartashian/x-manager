@@ -6,10 +6,12 @@ import {
   getPost,
   searchCreatorRepost,
   getUsersByUsernames,
+  listCreatorPosts,
   listOwnPosts,
   repost,
   sendDirectMessage,
   undoRepost,
+  type CreatorPost,
   type CreatorRepost,
   type RepostOutcome,
   type XPost,
@@ -67,24 +69,25 @@ export function fetchUserPosts(
   workspaceId: string,
   xUserId: string,
   options: { pageSize: number; wanted: number; maxPages: number; maxBilled: number },
-): Promise<Result<XPost[], XActionError>> {
+): Promise<Result<CreatorPost[], XActionError>> {
   return callX(workspaceId, "read", async ({ accessToken }) => {
-    const posts: XPost[] = [];
+    const byId = new Map<string, CreatorPost>();
     const billed: string[] = [];
     let paginationToken: string | undefined;
     for (let page = 0; page < options.maxPages; page++) {
-      const result = await listOwnPosts(accessToken, xUserId, {
+      const result = await listCreatorPosts(accessToken, xUserId, {
         maxResults: options.pageSize,
         ...(paginationToken ? { paginationToken } : {}),
       });
-      posts.push(...result.posts);
-      billed.push(...result.billedPostIds, ...result.quotedPostIds);
-      if (!result.nextToken || posts.length >= options.wanted) break;
+      // A post and its later self-Repost (or several Reposts) count once, newest activity wins.
+      for (const post of result.posts) if (!byId.has(post.id)) byId.set(post.id, post);
+      billed.push(...result.billedPostIds);
+      if (!result.nextToken || byId.size >= options.wanted) break;
       if (billed.length >= options.maxBilled) break;
       paginationToken = result.nextToken;
     }
     return {
-      data: posts,
+      data: [...byId.values()],
       usage: {
         operation: "postRead",
         units: billed.length,

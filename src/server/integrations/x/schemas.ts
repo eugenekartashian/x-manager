@@ -42,7 +42,17 @@ export const includesSchema = z
   .object({
     media: z.array(mediaSchema).default([]),
     tweets: z
-      .array(z.object({ id: z.string(), text: z.string(), attachments: attachmentsSchema }))
+      .array(
+        z.object({
+          id: z.string(),
+          text: z.string(),
+          attachments: attachmentsSchema,
+          // Present when requested (creator timelines: the original of a self-Repost).
+          author_id: z.string().optional(),
+          created_at: z.iso.datetime().optional(),
+          public_metrics: publicMetricsSchema.optional(),
+        }),
+      )
       .default([]),
   })
   .default({ media: [], tweets: [] });

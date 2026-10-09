@@ -13,7 +13,7 @@ export type ReplyLimits = { cooldownHours: number; perDay: number };
 export const MAX_REPLY_LENGTH = 280;
 export const MAX_TEMPLATES = 50;
 /** Show this many of the account's latest original posts… */
-export const TARGET_POSTS_SHOWN = 5;
+export const TARGET_POSTS_SHOWN = 3;
 /** …out of this many fetched (replies and Reposts are filtered out, so fetch extra). */
 export const TARGET_POSTS_FETCHED = 10;
 /**

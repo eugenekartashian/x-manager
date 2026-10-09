@@ -17,7 +17,7 @@ export function LoadPostsForm({ targetId, hasPosts, showCosts, note }: Props) {
       <input type="hidden" name="targetId" value={targetId} />
       <SubmitButton variant={hasPosts ? "secondary" : "primary"} pendingLabel="Loading from X…">
         {hasPosts ? "Reload latest posts" : "Load latest posts"}
-        {showCosts && <span className="opacity-70"> (≈ $0.03)</span>}
+        {showCosts && <span className="opacity-70"> (≈ $0.02–0.10)</span>}
       </SubmitButton>
       {note && <p className="text-foreground/60 text-xs">{note}</p>}
       <ActionMessage state={state} />

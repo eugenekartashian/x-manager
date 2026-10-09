@@ -259,3 +259,8 @@ The user wants RT4RT-style partner outreach (example: agencies DM-ing links with
 - 2026-10-10 (D-036, live): first X refusals (403) after 28 accepted API messages that day — @huntermasonx ("you follow") and @MendesGuiilherm (no connection). Cause unknown: the recipients' DM settings or an X limit on the sender. Next check: send 1–2 to Mutual creators the next day; if refused too, pause sending.
 - 2026-10-10: AI message drafts — first name only (no emoji/promo text, never the @username), no facts or labels from the bio, 2–3 short sentences; language still follows the bio (owner feedback on live drafts).
 
+## D-037 · 2026-10-10 · Creator posts include their self-Reposts
+
+- Live: several creators returned no posts even after paging 5 pages with `exclude=replies,retweets` — they mostly re-share their own older posts. Owner decision: show the latest 3 posts, counting Reposts of the creator's OWN posts (shown as the original post with a "their repost" label and the Repost time; freshness and order use the Repost time); Reposts of other accounts and replies stay hidden. A reply is written under the original post.
+- Timeline call: `exclude=replies`, `expansions=referenced_tweets.id`, `tweet.fields` with `author_id` to tell own vs others' originals. Cost: each returned item and each expanded original is a Post read ($0.005), so a self-Repost costs ~$0.01; paging stops at 3 posts or 20 billed (≈ $0.02–0.10 per load). Migration `target_post_self_repost` (`repostedAt`).
+

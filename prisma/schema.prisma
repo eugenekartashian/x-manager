@@ -451,6 +451,8 @@ model TargetPost {
   likeCount       Int?
   replyCount      Int?
   impressionCount Int?
+  // Set when the creator recently reposted this post of their own (it's shown as fresh then).
+  repostedAt      DateTime?
   fetchedAt       DateTime
 
   @@unique([targetId, xPostId])

@@ -53,7 +53,7 @@ export async function claimTargetPostsLoad(
 export async function replaceTargetPosts(
   workspaceId: string,
   targetId: string,
-  posts: XPost[],
+  posts: (XPost & { repostedAt?: Date | null })[],
   now: Date,
 ): Promise<void> {
   await prisma.$transaction([
@@ -71,17 +71,25 @@ export async function replaceTargetPosts(
         likeCount: post.metrics?.likes ?? null,
         replyCount: post.metrics?.replies ?? null,
         impressionCount: post.metrics?.impressions ?? null,
+        repostedAt: post.repostedAt ?? null,
         fetchedAt: now,
       })),
     }),
   ]);
 }
 
-export function listTargetPosts(workspaceId: string, targetId: string): Promise<TargetPost[]> {
-  return prisma.targetPost.findMany({
+/** Newest activity first: a recent self-Repost of an old post counts as recent. */
+export async function listTargetPosts(
+  workspaceId: string,
+  targetId: string,
+): Promise<TargetPost[]> {
+  const posts = await prisma.targetPost.findMany({
     where: { workspaceId, targetId },
     orderBy: { postedAt: "desc" },
+    take: 50,
   });
+  const activity = (post: TargetPost) => (post.repostedAt ?? post.postedAt).getTime();
+  return posts.sort((a, b) => activity(b) - activity(a));
 }
 
 export function findTargetPost(

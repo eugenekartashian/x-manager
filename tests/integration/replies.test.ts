@@ -132,7 +132,7 @@ describe("creators who mostly repost", () => {
 
     expect(await loadTargetPosts(workspace.id, target.id, T0)).toEqual({
       ok: true,
-      data: { loaded: 5 },
+      data: { loaded: 3 },
     });
     expect(x.calls.map((call) => call.url.searchParams.get("pagination_token"))).toEqual([
       null,
@@ -159,18 +159,78 @@ describe("creators who mostly repost", () => {
   });
 });
 
+describe("self-Reposts", () => {
+  it("shows Reposts of their own posts (as the original, newest activity first), not others'", async () => {
+    const { workspace, byName } = await workspaceWithTargets();
+    const target = byName.alex;
+    if (!target) throw new Error("setup");
+    const original = (id: string, authorId: string, day: number) => ({
+      id,
+      text: `Original ${id}`,
+      author_id: authorId,
+      created_at: new Date(Date.UTC(2026, 8, day)).toISOString(),
+      public_metrics: { retweet_count: 1, reply_count: 2, like_count: 3, quote_count: 0 },
+    });
+    const repost = (id: string, of: string, hour: number) => ({
+      id,
+      text: `RT ${of}`,
+      created_at: new Date(T0.getTime() - hour * 3_600_000).toISOString(),
+      referenced_tweets: [{ type: "retweeted", id: of }],
+    });
+    const x = withFakeX({
+      posts: () => ({
+        status: 200,
+        body: {
+          data: [
+            repost("r1", "own-old", 1), // their own old post, reposted an hour ago
+            repost("r2", "someone-else", 2), // a Repost of another account — skipped
+            {
+              id: "p1",
+              text: "Fresh original",
+              created_at: new Date(T0.getTime() - 3 * 3_600_000).toISOString(),
+            },
+            repost("r3", "own-old", 5), // the same post reposted earlier — counted once
+          ],
+          includes: {
+            tweets: [original("own-old", target.xUserId, 1), original("someone-else", "x-999", 2)],
+          },
+          meta: { result_count: 4 },
+        },
+      }),
+    });
+
+    expect(await loadTargetPosts(workspace.id, target.id, T0)).toEqual({
+      ok: true,
+      data: { loaded: 2 },
+    });
+    expect(x.calls[0]?.url.searchParams.get("exclude")).toBe("replies");
+    const session = await getSessionData(workspace, target.id, T0);
+    expect(
+      session?.posts.map((post) => [post.xPostId, post.repostedAt?.toISOString() ?? null]),
+    ).toEqual([
+      ["own-old", new Date(T0.getTime() - 3_600_000).toISOString()],
+      ["p1", null],
+    ]);
+    // Every returned item and expanded post is billed.
+    const usage = await prisma.externalUsage.findFirstOrThrow({
+      where: { workspaceId: workspace.id, operation: "postRead" },
+    });
+    expect(usage.units).toBe(6);
+  });
+});
+
 describe("loading keeps the latest original posts", () => {
-  it("shows at most 5 of the fetched posts", async () => {
+  it("shows at most 3 of the fetched posts", async () => {
     const { workspace, byName } = await workspaceWithTargets();
     const target = byName.alex;
     if (!target) throw new Error("setup");
 
     expect(await loadPosts(workspace.id, target.id, ["7", "6", "5", "4", "3", "2", "1"])).toEqual({
       ok: true,
-      data: { loaded: 5 },
+      data: { loaded: 3 },
     });
     const session = await getSessionData(workspace, target.id, T0);
-    expect(session?.posts.map((post) => post.xPostId)).toEqual(["7", "6", "5", "4", "3"]);
+    expect(session?.posts.map((post) => post.xPostId)).toEqual(["7", "6", "5"]);
   });
 });
 

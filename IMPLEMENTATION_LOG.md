@@ -4,6 +4,12 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-10-10 · D-037 — Creator posts include their self-Reposts
+
+- `listCreatorPosts` (timeline without excluding Reposts; keeps Reposts of the creator's own posts as the original + `repostedAt`), `fetchUserPosts` dedups by post id, 3 posts shown, newest activity first, "their repost" label. Tests: own vs others' Reposts, dedup, billing of expanded posts; paging and 3-post cap updated.
+
+---
+
 ## 2026-10-10 · Outreach polish
 
 - Admin → "Your messages": superadmin's own messages-per-day (10/15/20/30/40/50, default 30).
