@@ -180,3 +180,8 @@ export async function runDailyRepostChecks(
   const expired = await checks.expireNoReply(since, now);
   return { workspaces: workspaceIds.length, matched, expired };
 }
+
+/** Free: creators messaged > 3 days ago without a repost become "No reply". */
+export function expireStaleMessaged(now: Date = new Date()): Promise<number> {
+  return checks.expireNoReply(new Date(now.getTime() - REPOST_WAIT_MS), now);
+}
