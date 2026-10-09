@@ -121,7 +121,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
 
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-medium">History</h2>
-        <CreatorHistory events={history} timeZone={tz} />
+        <CreatorHistory events={history} timeZone={tz} now={now} />
       </section>
 
       <h2 className="text-lg font-medium">Reply under their posts</h2>

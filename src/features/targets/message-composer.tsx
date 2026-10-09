@@ -57,25 +57,18 @@ export function MessageComposer({
 
   function openInX() {
     setError(null);
-    // X can't prefill chat text (verified 2026-10-09), so the message is copied first —
-    // synchronously, before the new tab takes focus — and nothing is recorded yet.
+    // X can't prefill chat text (verified 2026-10-09): copy first — synchronously, before the
+    // new tab takes focus — then open the chat. The message is saved as sent right away
+    // (user decision: opening = sent unless they undo); "Undo" also lives in History for 24 h.
     const copiedOk = copySync(text);
     // No "noopener" feature: with it window.open always returns null. Cut the opener instead.
     const tab = window.open(chatLink, "_blank");
     if (tab) tab.opener = null;
     setOpened({ copiedOk, blocked: !tab });
-  }
-
-  function confirmSent() {
-    setError(null);
     startTransition(async () => {
       const result = await recordSentAction({ targetId, text, postUrl: link || undefined });
-      if (result.ok) {
-        setSent({ eventId: result.eventId });
-        setOpened(null);
-      } else {
-        setError(result.message);
-      }
+      if (result.ok) setSent({ eventId: result.eventId });
+      else setError(result.message);
     });
   }
 
@@ -96,89 +89,58 @@ export function MessageComposer({
     }
   }
 
-  if (sent) {
-    return (
-      <div className="flex flex-col gap-2 rounded-md bg-green-500/10 px-3 py-3 text-sm">
-        <p className="font-medium text-green-800 dark:text-green-300">
-          ✓ Saved — @{username} is “Messaged”. Change the status above when they repost.
-        </p>
-        <div className="flex gap-4 text-xs">
-          <button type="button" onClick={reset} className="text-foreground/70 underline">
-            Write another message
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                if (await undoMessageAction({ eventId: sent.eventId, targetId })) setSent(null);
-              })
-            }
-            className="text-foreground/50 underline"
-          >
-            Undo
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (opened) {
     return (
       <div className="flex flex-col gap-3 rounded-md bg-blue-500/10 px-3 py-3 text-sm">
         <p className="font-medium">
           {opened.copiedOk
-            ? "Text copied ✓ — now click the message box in the X chat with @" +
+            ? "Text copied ✓ — click the message box in the X chat with @" +
               username +
               " and paste it (⌘V), then send."
-            : "Copy the text below and paste it into the chat with @" + username + "."}
+            : "Copy the text and paste it into the chat with @" + username + "."}
         </p>
         <p className="text-foreground/70 text-xs">
           X can&apos;t fill the chat for us — the text is in your clipboard. Paste: ⌘V / Ctrl+V on a
-          computer, long-press → Paste on the phone. If the chat didn&apos;t open,{" "}
-          <a
-            href={`https://x.com/${username}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            open their profile ↗
-          </a>{" "}
-          → Message.{" "}
+          computer, long-press → Paste on the phone.{" "}
           <button type="button" onClick={copy} className="underline">
             {copied ? "Copied ✓" : "Copy again"}
-          </button>
+          </button>{" "}
+          ·{" "}
+          <a href={chatLink} target="_blank" rel="noopener noreferrer" className="underline">
+            {opened.blocked ? "Open the chat ↗" : "Open the chat again ↗"}
+          </a>
         </p>
-        <a
-          href={chatLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`self-start text-sm underline ${opened.blocked ? "font-semibold" : "text-foreground/70"}`}
-        >
-          {opened.blocked ? "Open the chat with @" + username + " ↗" : "Open the chat again ↗"}
-        </a>
-        <p className="font-medium">Did you send it?</p>
-        {error && (
+        {error ? (
           <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">
             {error}
+          </p>
+        ) : (
+          <p className="text-green-800 dark:text-green-300">
+            {sent ? "✓ Saved as sent — @" + username + " is “Messaged”." : "Saving…"}
           </p>
         )}
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={pending}
-            onClick={confirmSent}
-            className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+            onClick={reset}
+            className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium"
           >
-            {pending ? "Saving…" : "✓ Yes, sent"}
+            Done
           </button>
-          <button
-            type="button"
-            onClick={() => setOpened(null)}
-            className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm"
-          >
-            Not yet
-          </button>
+          {sent && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  if (await undoMessageAction({ eventId: sent.eventId, targetId })) reset();
+                })
+              }
+              className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm"
+            >
+              Didn&apos;t send it — undo
+            </button>
+          )}
         </div>
       </div>
     );

@@ -1,9 +1,19 @@
 import type { CreatorEvent } from "@/generated/prisma/client";
+import { MESSAGE_UNDO_WINDOW_MS } from "@/server/domain/outreach-rules";
+import { UndoMessageButton } from "./undo-message-button";
 import { formatDateTime } from "@/lib/format";
 import { STATUS_META } from "./creator-status";
 
 /** Timeline of messages and status changes for one creator (M7.2). */
-export function CreatorHistory({ events, timeZone }: { events: CreatorEvent[]; timeZone: string }) {
+export function CreatorHistory({
+  events,
+  timeZone,
+  now,
+}: {
+  events: CreatorEvent[];
+  timeZone: string;
+  now: Date;
+}) {
   if (events.length === 0) {
     return <p className="text-foreground/60 text-sm">No contact yet.</p>;
   }
@@ -18,6 +28,9 @@ export function CreatorHistory({ events, timeZone }: { events: CreatorEvent[]; t
             {event.kind === "MESSAGE_OPENED" ? (
               <>
                 <span className="font-medium">Messaged</span>
+                {now.getTime() - event.createdAt.getTime() < MESSAGE_UNDO_WINDOW_MS && (
+                  <UndoMessageButton eventId={event.id} targetId={event.targetId} />
+                )}
                 {event.undoneAt && <span className="text-foreground/60"> (undone)</span>}
                 {event.text && (
                   <span className="text-foreground/70 mt-0.5 line-clamp-2 block break-words whitespace-pre-line">
