@@ -77,7 +77,7 @@ describe("parseCreatorFilters", () => {
 });
 
 describe("listCreators", () => {
-  it("filters by status, tag and search; sorts; counts per status; pages of 50", async () => {
+  it("filters by status, tag and search; sorts; counts per status; pages of 25", async () => {
     const owner = await createOwner("a");
     await seed(owner.workspaceId, [
       { username: "alex", followers: 100, status: "CONTACTED", tags: ["gym"] },
@@ -106,7 +106,7 @@ describe("listCreators", () => {
 
     await seed(
       owner.workspaceId,
-      Array.from({ length: 50 }, (_, i) => ({ username: `bulk${i}`, followers: i })),
+      Array.from({ length: 25 }, (_, i) => ({ username: `bulk${i}`, followers: i })),
     );
     const page2 = await listCreators(owner.workspaceId, filters({ page: "2" }));
     expect(page2.pages).toBe(2);

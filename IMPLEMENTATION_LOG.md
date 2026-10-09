@@ -382,3 +382,5 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - `services/creators.ts`: URL filters parsed with fallbacks, paging (50), counts per status, tag list, bulk status / tag / remove (≤ 100, scoped by workspace). Adds record their source.
 - UI: nav "Creators" (route stays /targets); status tabs with counts, search, tag filter, sort, pagination; table on desktop, cards on mobile; selection → set status, ±tag, remove (no bulk messaging); import .xlsx/.csv in the browser (`read-excel-file`, new dependency approved) in batches of 100 — existing accounts skipped before any X lookup; note + remove moved to the creator page; templates/limits collapsed.
 - Tests: `creators.test.ts` (filters, paging, bulk, normalised tags, sources, isolation). 303 passing. UI not checked on a device yet.
+
+- 7.1 follow-up: 25 rows per page; floating bottom action bar (Move to… / + Label / Remove), labels shown under the name, fewer columns; status/label explanation on the page; labels removable on the creator page.

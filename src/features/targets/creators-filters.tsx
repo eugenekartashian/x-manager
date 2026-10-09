@@ -52,6 +52,12 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
+      <p className="text-foreground/60 text-xs">
+        <strong className="text-foreground/80">Status</strong> = where you are with a creator (it
+        updates itself when you message them or they repost).{" "}
+        <strong className="text-foreground/80">Labels</strong> = your own groups, e.g. gym, top,
+        spain — to filter and write to the right people. Select rows to change them.
+      </p>
       <nav aria-label="Filter by status" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
         {tabs.map((tab) => {
           const active = (status ?? null) === tab.value;
@@ -86,15 +92,15 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
         </form>
         {tags.length > 0 && (
           <select
-            aria-label="Filter by tag"
+            aria-label="Filter by label"
             value={params.get("tag") ?? ""}
             onChange={(event) => go({ tag: event.target.value || null })}
             className={control}
           >
-            <option value="">All tags</option>
+            <option value="">All labels</option>
             {tags.map((tag) => (
               <option key={tag} value={tag}>
-                #{tag}
+                {tag}
               </option>
             ))}
           </select>

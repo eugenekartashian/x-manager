@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import type { CreatorStatus, TargetAccount } from "@/generated/prisma/client";
 import { ActionMessage } from "@/features/posts/action-message";
 import type { ActionState } from "@/features/posts/actions";
@@ -14,14 +14,15 @@ type Props = { rows: TargetAccount[]; timeZone: string; filtered: boolean };
 
 const initial: ActionState = { status: "idle", message: "" };
 const control =
-  "border-foreground/15 rounded-md border bg-transparent px-2 py-1 text-sm focus-visible:ring-2 focus-visible:outline-none";
+  "border-foreground/15 rounded-md border bg-transparent px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-40";
 
-/** Creators table (desktop) / cards (mobile) with row selection and bulk actions (M7.1). */
+/** Creators table (desktop) / cards (mobile) with selection and a floating action bar (M7.1). */
 export function CreatorsTable({ rows, timeZone, filtered }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [state, action, pending] = useActionState(bulkCreatorsAction, initial);
-  const [tag, setTag] = useState("");
+  const [label, setLabel] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   if (rows.length === 0) {
     return (
@@ -33,6 +34,7 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
     );
   }
 
+  const ids = [...selected];
   const allSelected = rows.every((row) => selected.has(row.id));
   const toggle = (id: string) =>
     setSelected((current) => {
@@ -42,114 +44,24 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
       return next;
     });
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((row) => row.id)));
-  const ids = [...selected];
+
+  function submit(op: "status" | "tag-add" | "remove", extra: Record<string, string> = {}) {
+    const formData = new FormData();
+    formData.set("op", op);
+    for (const [key, value] of Object.entries(extra)) formData.set(key, value);
+    for (const id of ids) formData.append("id", id);
+    action(formData);
+    setConfirmRemove(false);
+    if (op === "tag-add") setLabel("");
+    if (op === "remove") setSelected(new Set());
+  }
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Bulk toolbar — appears only with a selection. No bulk messaging by design (D-033). */}
-      {ids.length > 0 && (
-        <form
-          action={(formData) => {
-            for (const id of ids) formData.append("id", id);
-            action(formData);
-            setConfirmRemove(false);
-          }}
-          className="bg-foreground/5 sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg p-2 text-sm"
-        >
-          <span className="px-1 font-medium">{ids.length} selected</span>
-          <select
-            name="status"
-            aria-label="New status"
-            defaultValue=""
-            className={control}
-            onChange={(event) => {
-              if (!event.target.value) return;
-              const form = event.target.form;
-              const op = form?.elements.namedItem("op") as HTMLInputElement | null;
-              if (op) op.value = "status";
-              form?.requestSubmit();
-            }}
-          >
-            <option value="" disabled>
-              Set status…
-            </option>
-            {STATUS_ORDER.map((status) => (
-              <option key={status} value={status}>
-                {STATUS_META[status].label}
-              </option>
-            ))}
-          </select>
-          <input type="hidden" name="op" defaultValue="status" />
-          <input
-            name="tag"
-            value={tag}
-            onChange={(event) => setTag(event.target.value)}
-            placeholder="tag"
-            aria-label="Tag"
-            className={`${control} w-28`}
-          />
-          <button
-            type="submit"
-            disabled={!tag || pending}
-            className={control}
-            onClick={(event) => {
-              const op = event.currentTarget.form?.elements.namedItem(
-                "op",
-              ) as HTMLInputElement | null;
-              if (op) op.value = "tag-add";
-            }}
-          >
-            + Tag
-          </button>
-          <button
-            type="submit"
-            disabled={!tag || pending}
-            className={control}
-            onClick={(event) => {
-              const op = event.currentTarget.form?.elements.namedItem(
-                "op",
-              ) as HTMLInputElement | null;
-              if (op) op.value = "tag-remove";
-            }}
-          >
-            − Tag
-          </button>
-          {confirmRemove ? (
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-md bg-red-600 px-2 py-1 text-sm font-medium text-white"
-              onClick={(event) => {
-                const op = event.currentTarget.form?.elements.namedItem(
-                  "op",
-                ) as HTMLInputElement | null;
-                if (op) op.value = "remove";
-              }}
-            >
-              Confirm remove {ids.length}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmRemove(true)}
-              className={`${control} text-red-700 dark:text-red-400`}
-            >
-              Remove
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setSelected(new Set())}
-            className="text-foreground/60 ml-auto px-2 text-sm"
-          >
-            Clear
-          </button>
-        </form>
-      )}
       <ActionMessage state={state} />
 
       <div className="border-foreground/10 overflow-hidden rounded-lg border">
-        <div className="text-foreground/50 bg-foreground/[0.03] hidden grid-cols-[2rem_minmax(0,1fr)_6rem_8rem_minmax(0,10rem)_7rem] items-center gap-3 px-3 py-2 text-xs md:grid">
+        <div className="text-foreground/50 bg-foreground/3 hidden grid-cols-[1.75rem_minmax(0,1fr)_4.5rem_6.5rem_6.5rem] items-center gap-3 px-3 py-2 text-xs md:grid">
           <input
             type="checkbox"
             checked={allSelected}
@@ -160,15 +72,14 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
           <span>Creator</span>
           <span className="text-right">Followers</span>
           <span>Status</span>
-          <span>Tags</span>
           <span>Last contact</span>
         </div>
         <ul className="divide-foreground/10 divide-y">
           {rows.map((row) => (
             <li
               key={row.id}
-              className={`grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-3 py-2.5 md:grid-cols-[2rem_minmax(0,1fr)_6rem_8rem_minmax(0,10rem)_7rem] ${
-                selected.has(row.id) ? "bg-foreground/[0.04]" : ""
+              className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 md:grid-cols-[1.75rem_minmax(0,1fr)_4.5rem_6.5rem_6.5rem] ${
+                selected.has(row.id) ? "bg-foreground/4" : ""
               }`}
             >
               <input
@@ -176,7 +87,7 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
                 checked={selected.has(row.id)}
                 onChange={() => toggle(row.id)}
                 aria-label={`Select @${row.username}`}
-                className="size-4 self-start md:self-center"
+                className="size-4"
               />
               <Link
                 href={`/targets/${row.id}`}
@@ -198,36 +109,23 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
                   <span className="block truncate text-sm font-medium">{row.name}</span>
                   <span className="text-foreground/60 block truncate text-xs">
                     @{row.username}
-                    <span className="md:hidden">
-                      {" "}
-                      · {formatCount(row.followersCount)} followers
-                    </span>
+                    <span className="md:hidden"> · {formatCount(row.followersCount)}</span>
                   </span>
-                  {row.note && (
-                    <span className="text-foreground/50 block truncate text-xs">📝 {row.note}</span>
+                  {row.tags.length > 0 && (
+                    <span className="mt-0.5 flex flex-wrap gap-1">
+                      {row.tags.map((item) => (
+                        <span key={item} className="bg-foreground/5 rounded px-1.5 text-[11px]">
+                          {item}
+                        </span>
+                      ))}
+                    </span>
                   )}
                 </span>
               </Link>
               <span className="hidden text-right text-sm tabular-nums md:block">
                 {formatCount(row.followersCount)}
               </span>
-              <span className="col-start-2 flex flex-wrap items-center gap-1.5 md:col-start-auto">
-                <StatusPill status={row.status} />
-                <span className="flex flex-wrap gap-1 md:hidden">
-                  {row.tags.map((item) => (
-                    <span key={item} className="bg-foreground/5 rounded px-1.5 text-xs">
-                      #{item}
-                    </span>
-                  ))}
-                </span>
-              </span>
-              <span className="hidden flex-wrap gap-1 md:flex">
-                {row.tags.map((item) => (
-                  <span key={item} className="bg-foreground/5 rounded px-1.5 text-xs">
-                    #{item}
-                  </span>
-                ))}
-              </span>
+              <StatusPill status={row.status} />
               <span className="text-foreground/60 hidden text-xs md:block">
                 {row.lastContactAt ? formatDateTime(row.lastContactAt, timeZone) : "—"}
               </span>
@@ -242,6 +140,85 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
       >
         {allSelected ? "Unselect all" : "Select all on this page"}
       </button>
+      {/* Space so the floating bar never covers the last rows. */}
+      {ids.length > 0 && <div className="h-20" aria-hidden />}
+
+      {/* Floating action bar (bottom, like Gmail): appears only with a selection, never
+          covers the list. No bulk messaging by design (D-033). */}
+      {ids.length > 0 && (
+        <form
+          ref={formRef}
+          onSubmit={(event) => event.preventDefault()}
+          className="border-foreground/10 bg-background fixed inset-x-3 bottom-3 z-30 mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-xl border p-2.5 shadow-xl"
+          aria-label="Actions for selected creators"
+        >
+          <span className="px-1 text-sm font-medium">{ids.length} selected</span>
+          <select
+            aria-label="Move to status"
+            value=""
+            disabled={pending}
+            onChange={(event) =>
+              event.target.value && submit("status", { status: event.target.value })
+            }
+            className={control}
+          >
+            <option value="" disabled>
+              Move to…
+            </option>
+            {STATUS_ORDER.map((status) => (
+              <option key={status} value={status}>
+                {STATUS_META[status].label}
+              </option>
+            ))}
+          </select>
+          <span className="flex gap-1">
+            <input
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && label) submit("tag-add", { tag: label });
+              }}
+              placeholder="label, e.g. gym"
+              aria-label="Label to add"
+              className={`${control} w-36`}
+            />
+            <button
+              type="button"
+              disabled={!label || pending}
+              onClick={() => submit("tag-add", { tag: label })}
+              className={control}
+            >
+              + Label
+            </button>
+          </span>
+          {confirmRemove ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => submit("remove")}
+              className="rounded-md bg-red-600 px-2.5 py-1.5 text-sm font-medium text-white"
+            >
+              Remove {ids.length}?
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmRemove(true)}
+              className={`${control} text-red-700 dark:text-red-400`}
+            >
+              Remove
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            aria-label="Clear selection"
+            className="text-foreground/60 hover:bg-foreground/5 ml-auto rounded-md px-2 py-1 text-sm"
+          >
+            ✕
+          </button>
+        </form>
+      )}
     </div>
   );
 }
@@ -249,7 +226,9 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
 function StatusPill({ status }: { status: CreatorStatus }) {
   const meta = STATUS_META[status];
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${meta.tone}`}>
+    <span
+      className={`justify-self-start rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${meta.tone}`}
+    >
       {meta.label}
     </span>
   );

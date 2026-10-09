@@ -124,3 +124,14 @@ export async function bulkCreatorsAction(
   if (!result.ok) return { status: "error", message: BULK_MESSAGES[result.error] ?? "" };
   return { status: "success", message: "Saved." };
 }
+
+const labelSchema = z.object({ targetId: z.uuid(), tag: z.string().max(40) });
+
+export async function removeLabelAction(formData: FormData): Promise<void> {
+  const { workspace } = await requireWorkspace();
+  const input = labelSchema.safeParse(Object.fromEntries(formData));
+  if (!input.success) return;
+  await tagCreators(workspace.id, [input.data.targetId], input.data.tag, "remove");
+  revalidatePath(`/targets/${input.data.targetId}`);
+  revalidatePath("/targets");
+}

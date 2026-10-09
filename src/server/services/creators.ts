@@ -16,7 +16,7 @@ export const CREATOR_STATUSES = [
   "NO_REPLY",
 ] as const satisfies readonly CreatorStatus[];
 
-export const CREATORS_PAGE_SIZE = 50;
+export const CREATORS_PAGE_SIZE = 25;
 export const MAX_BULK = 100;
 const MAX_TAG_LENGTH = 24;
 

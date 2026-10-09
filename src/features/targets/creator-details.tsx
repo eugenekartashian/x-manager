@@ -1,6 +1,6 @@
 import type { TargetAccount } from "@/generated/prisma/client";
 import { SubmitButton } from "@/features/posts/submit-button";
-import { removeTargetAction, saveNoteAction } from "./actions";
+import { removeLabelAction, removeTargetAction, saveNoteAction } from "./actions";
 import { STATUS_META } from "./creator-status";
 
 /** Status, tags, note and remove on the creator page (M7.1; outreach arrives in 7.2). */
@@ -13,13 +13,18 @@ export function CreatorDetails({ creator }: { creator: TargetAccount }) {
           {status.label}
         </span>
         {creator.tags.map((tag) => (
-          <span key={tag} className="bg-foreground/5 rounded px-1.5 text-xs">
-            #{tag}
-          </span>
+          <form key={tag} action={removeLabelAction} className="contents">
+            <input type="hidden" name="targetId" value={creator.id} />
+            <input type="hidden" name="tag" value={tag} />
+            <button
+              type="submit"
+              title={`Remove label ${tag}`}
+              className="bg-foreground/5 hover:bg-foreground/10 rounded px-1.5 text-xs"
+            >
+              {tag} ×
+            </button>
+          </form>
         ))}
-        <span className="text-foreground/50 text-xs">
-          Change status and tags from the Creators list.
-        </span>
       </div>
       <form action={saveNoteAction} className="flex gap-2">
         <input type="hidden" name="targetId" value={creator.id} />
