@@ -1,102 +1,62 @@
 import "server-only";
-import type { PromotedPostCheck } from "@/generated/prisma/client";
 import { prisma } from "@/server/db";
 
-// Repost checks (M7.3). Every query is scoped by workspaceId, except the job's listing of
-// workspaces with something to check and the global "no reply" expiry.
+// Repost checks (M7.3). Every query is scoped by workspaceId, except the free global
+// "no reply" expiry used by the cron job.
 
-/** Confirmed messages with a post link to creators still waiting ("Messaged"). */
-export function pendingPromotions(workspaceId: string, since: Date) {
-  return prisma.creatorEvent.findMany({
+/** The latest confirmed message with a post link to this creator, if any. */
+export function latestPromotion(workspaceId: string, targetId: string, since: Date) {
+  return prisma.creatorEvent.findFirst({
     where: {
       workspaceId,
+      targetId,
       kind: "MESSAGE_OPENED",
       undoneAt: null,
       postUrl: { not: null },
       createdAt: { gte: since },
-      target: { status: "CONTACTED" },
     },
-    select: { postUrl: true, target: { select: { id: true, xUserId: true } } },
-    take: 1_000,
+    orderBy: { createdAt: "desc" },
+    select: { postUrl: true, createdAt: true },
   });
 }
 
-export async function workspacesWithPendingPromotions(
-  since: Date,
-  limit: number,
-): Promise<string[]> {
-  const rows = await prisma.creatorEvent.findMany({
-    where: {
-      kind: "MESSAGE_OPENED",
-      undoneAt: null,
-      postUrl: { not: null },
-      createdAt: { gte: since },
-      target: { status: "CONTACTED" },
-    },
-    distinct: ["workspaceId"],
-    select: { workspaceId: true },
-    take: limit,
-  });
-  return rows.map((row) => row.workspaceId);
-}
-
-export function findCheck(workspaceId: string, xPostId: string): Promise<PromotedPostCheck | null> {
-  return prisma.promotedPostCheck.findUnique({
-    where: { workspaceId_xPostId: { workspaceId, xPostId } },
-  });
-}
-
-export async function saveCheck(
-  workspaceId: string,
-  xPostId: string,
-  seenIds: string[],
-  now: Date,
-) {
-  await prisma.promotedPostCheck.upsert({
-    where: { workspaceId_xPostId: { workspaceId, xPostId } },
-    create: { workspaceId, xPostId, seenIds, checkedAt: now },
-    update: { seenIds, checkedAt: now },
-  });
-}
-
-export function listChecks(workspaceId: string) {
-  return prisma.promotedPostCheck.findMany({
-    where: { workspaceId },
-    orderBy: { checkedAt: { sort: "desc", nulls: "last" } },
-    take: 50,
-  });
-}
-
-/** Messaged creators whose X ids reposted → "Reposted" (+ history). Returns how many. */
-export async function markReposted(
-  workspaceId: string,
-  xUserIds: string[],
-  now: Date,
-): Promise<number> {
-  if (xUserIds.length === 0) return 0;
-  const targets = await prisma.targetAccount.findMany({
-    where: { workspaceId, status: "CONTACTED", xUserId: { in: xUserIds } },
+/** Creators still "Messaged" (waiting for their repost), newest contact first. */
+export function waitingCreators(workspaceId: string, take: number) {
+  return prisma.targetAccount.findMany({
+    where: { workspaceId, status: "CONTACTED" },
+    orderBy: { lastContactAt: "desc" },
     select: { id: true },
+    take,
   });
-  if (targets.length === 0) return 0;
-  const ids = targets.map((target) => target.id);
-  await prisma.$transaction([
-    prisma.targetAccount.updateMany({
-      where: { workspaceId, id: { in: ids }, status: "CONTACTED" },
-      data: { status: "REPOSTED", theyRepostedAt: now },
-    }),
-    prisma.creatorEvent.createMany({
-      data: ids.map((targetId) => ({
-        workspaceId,
-        targetId,
-        kind: "STATUS_CHANGED" as const,
-        status: "REPOSTED" as const,
-        text: "Found by the daily repost check",
-        createdAt: now,
-      })),
-    }),
-  ]);
-  return ids.length;
+}
+
+/** Found their Repost → "Reposted" (unless already further along) + history. */
+export async function markCreatorReposted(
+  workspaceId: string,
+  targetId: string,
+  note: string,
+  now: Date,
+): Promise<boolean> {
+  const { count } = await prisma.targetAccount.updateMany({
+    where: {
+      id: targetId,
+      workspaceId,
+      status: { in: ["NEW", "CONTACTED", "NO_REPLY", "DECLINED"] },
+    },
+    data: { status: "REPOSTED", theyRepostedAt: now },
+  });
+  if (count === 0) return false;
+  await prisma.creatorEvent.create({
+    data: {
+      workspaceId,
+      targetId,
+      kind: "STATUS_CHANGED",
+      status: "REPOSTED",
+      text: note,
+      createdAt: now,
+    },
+  });
+  return true;
 }
 
 /** Messaged long ago and still no repost → "No reply" (all workspaces, bounded). */
@@ -146,14 +106,4 @@ export function countWaitingForMe(workspaceId: string): Promise<number> {
 
 export function countWaitingForThem(workspaceId: string): Promise<number> {
   return prisma.targetAccount.count({ where: { workspaceId, status: "CONTACTED" } });
-}
-
-/** Which of these post ids are the workspace's own (synced) posts. */
-export async function ownPostIds(workspaceId: string, xPostIds: string[]): Promise<Set<string>> {
-  if (xPostIds.length === 0) return new Set();
-  const rows = await prisma.ownPost.findMany({
-    where: { workspaceId, xPostId: { in: xPostIds } },
-    select: { xPostId: true },
-  });
-  return new Set(rows.map((row) => row.xPostId));
 }

@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireWorkspace } from "@/server/auth/session";
-import { checkRepostsNow, markRepostedBack } from "@/server/services/repost-checks";
+import {
+  checkAllWaiting,
+  checkCreatorRepost,
+  markRepostedBack,
+} from "@/server/services/repost-checks";
 import {
   changeCreatorStatus,
   draftMessages,
@@ -91,28 +95,43 @@ export async function changeStatusAction(formData: FormData): Promise<void> {
 }
 
 const CHECK_MESSAGES: Record<string, string> = {
-  nothing_to_check: "Nothing to check — message creators with one of your posts first.",
-  daily_check_limit: "You've used today's manual checks — the automatic daily check still runs.",
+  not_found: "This creator is no longer in your list.",
+  no_promoted_post: "Send them a message with one of your posts first (last 7 days).",
+  daily_check_limit: "Daily limit of checks reached. Try again tomorrow.",
   budget_exceeded: "This month's usage limit is reached.",
   rate_limited: "X is busy right now — try again in a few minutes.",
 };
+const checkMessage = (code: string) => CHECK_MESSAGES[code] ?? "Check failed. Try again later.";
 
-export async function checkRepostsNowAction(): Promise<{ ok: boolean; message: string }> {
+export type CreatorCheckResult =
+  | { ok: true; found: boolean; url?: string; kind?: "repost" | "quote" }
+  | { ok: false; message: string };
+
+/** "Did @x repost?" — one exact X search for that creator (≤ $0.01). */
+export async function checkCreatorAction(targetId: string): Promise<CreatorCheckResult> {
   const { workspace } = await requireWorkspace();
-  const result = await checkRepostsNow(workspace.id);
+  if (!z.uuid().safeParse(targetId).success)
+    return { ok: false, message: checkMessage("not_found") };
+  const result = await checkCreatorRepost(workspace.id, targetId);
+  revalidatePath(`/targets/${targetId}`);
+  revalidatePath("/targets");
+  if (!result.ok) return { ok: false, message: checkMessage(result.error) };
+  return result.data.found
+    ? { ok: true, found: true, url: result.data.url, kind: result.data.kind }
+    : { ok: true, found: false };
+}
+
+export async function checkAllWaitingAction(): Promise<{ ok: boolean; message: string }> {
+  const { workspace } = await requireWorkspace();
+  const summary = await checkAllWaiting(workspace.id);
   revalidatePath("/targets", "layout");
-  if (!result.ok)
-    return { ok: false, message: CHECK_MESSAGES[result.error] ?? "Check failed. Try again later." };
-  const { matched, newReposters } = result.data;
-  return {
-    ok: true,
-    message:
-      matched > 0
-        ? `${matched} creator${matched === 1 ? "" : "s"} reposted your post ✓`
-        : newReposters > 0
-          ? `${newReposters} new reposts, none from creators you're waiting for yet.`
-          : "No new reposts since the last check.",
-  };
+  const base =
+    summary.checked === 0
+      ? "Nobody to check — message creators with one of your posts first."
+      : `Checked ${summary.checked}: ${summary.found} reposted ✓`;
+  return summary.stoppedBy
+    ? { ok: summary.checked > 0, message: `${base}. Stopped: ${checkMessage(summary.stoppedBy)}` }
+    : { ok: true, message: base };
 }
 
 export async function repostedBackAction(formData: FormData): Promise<void> {

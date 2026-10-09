@@ -4,7 +4,7 @@ import { X_API_BASE, xRequest } from "./http";
 import {
   meResponseSchema,
   postByIdResponseSchema,
-  repostedByResponseSchema,
+  recentSearchResponseSchema,
   usersByResponseSchema,
   repostResponseSchema,
   userPostsResponseSchema,
@@ -315,23 +315,32 @@ function isAlreadyReposted(error: unknown): boolean {
   );
 }
 
-export type RepostersPage = { users: { id: string; username: string }[]; nextToken: string | null };
+export type CreatorRepost = { id: string; kind: "repost" | "quote"; createdAt: Date | null };
 
-/** One page of accounts that reposted a post, newest first. Billed per returned user. */
-export async function getReposters(
+/**
+ * Did this author repost or quote this post in the last 7 days? One recent-search query:
+ * `from:<author id> (retweets_of_tweet_id:<post> OR quotes_of_tweet_id:<post>)` — exact no
+ * matter how many other Reposts they made. Billed per returned post (0–2 results).
+ */
+export async function searchCreatorRepost(
   accessToken: string,
+  authorXUserId: string,
   postId: string,
-  options: { maxResults: number; paginationToken?: string | undefined },
-): Promise<RepostersPage> {
-  const url = new URL(`${X_API_BASE}/2/tweets/${postId}/retweeted_by`);
-  url.searchParams.set("max_results", String(options.maxResults));
-  if (options.paginationToken) url.searchParams.set("pagination_token", options.paginationToken);
+): Promise<CreatorRepost[]> {
+  const url = new URL(`${X_API_BASE}/2/tweets/search/recent`);
+  url.searchParams.set(
+    "query",
+    `from:${authorXUserId} (retweets_of_tweet_id:${postId} OR quotes_of_tweet_id:${postId})`,
+  );
+  url.searchParams.set("max_results", "10");
+  url.searchParams.set("tweet.fields", "created_at,referenced_tweets");
   const body = await xRequest(
     { method: "GET", url: url.toString(), headers: bearer(accessToken) },
-    repostedByResponseSchema,
+    recentSearchResponseSchema,
   );
-  return {
-    users: body.data.map((user) => ({ id: user.id, username: user.username })),
-    nextToken: body.meta?.next_token ?? null,
-  };
+  return body.data.map((post) => ({
+    id: post.id,
+    kind: post.referenced_tweets?.some((ref) => ref.type === "quoted") ? "quote" : "repost",
+    createdAt: post.created_at ? new Date(post.created_at) : null,
+  }));
 }

@@ -4,10 +4,11 @@ import { notFound } from "next/navigation";
 import { LoadPostsForm } from "@/features/replies/load-posts-form";
 import { RecentReplies } from "@/features/replies/recent-replies";
 import { ReplyComposer } from "@/features/replies/reply-composer";
-import { formatAge, formatCount, formatDateTime } from "@/lib/format";
+import { formatAge, formatCount, formatDateTime, formatUsd } from "@/lib/format";
 import { requireWorkspace } from "@/server/auth/session";
 import { isFreshPost } from "@/server/domain/reply-rules";
 import { CreatorDetails } from "@/features/targets/creator-details";
+import { CheckRepostButton } from "@/features/targets/check-repost-button";
 import { CreatorHistory } from "@/features/targets/creator-history";
 import { MessageComposer } from "@/features/targets/message-composer";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
@@ -16,6 +17,8 @@ import { getLimitsContext, usedToday } from "@/server/services/limits";
 import { findConnection } from "@/server/repositories/x-accounts";
 import { getPostsPageData } from "@/server/services/own-posts";
 import { chatLinkFor, creatorHistory, messagesToday } from "@/server/services/outreach";
+import { latestPromotedPostUrl } from "@/server/services/repost-checks";
+import { MAX_CHECK_COST_MICROS } from "@/server/domain/repost-check-rules";
 import { getSessionData, listRecentReplies } from "@/server/services/replies";
 
 export default async function ReplySessionPage({ params }: PageProps<"/targets/[id]">) {
@@ -53,6 +56,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
   ]);
   const me = connection?.username ?? "i";
   const chatLink = await chatLinkFor(workspace.id, target.xUserId);
+  const promotedPostUrl = await latestPromotedPostUrl(workspace.id, target.id, now);
   const replies = allReplies.filter((reply) => reply.targetId === target.id);
   // Own posts the message can link to: repost list first, then recent ones (no X calls).
   const postOptions = ownPosts.connected
@@ -101,6 +105,14 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
       </header>
 
       <CreatorDetails creator={target} />
+      {promotedPostUrl && target.status !== "REPOSTED" && target.status !== "PARTNER" && (
+        <CheckRepostButton
+          targetId={target.id}
+          username={target.username}
+          postUrl={promotedPostUrl}
+          cost={showCosts ? formatUsd(BigInt(MAX_CHECK_COST_MICROS)) : null}
+        />
+      )}
 
       <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-4">
         <h2 className="text-lg font-medium">Message</h2>

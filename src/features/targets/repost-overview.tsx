@@ -2,27 +2,19 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { checkRepostsNowAction } from "./outreach-actions";
+import { checkAllWaitingAction } from "./outreach-actions";
 
 type Props = {
   waitingForThem: number;
   waitingForMe: number;
-  lastChecked: string | null; // formatted on the server
-  postsToCheck: number;
-  /** Worst-case price, superadmin only (users never see prices). */
+  /** Worst-case price of "Check all", superadmin only (users never see prices). */
   maxCost: string | null;
 };
 
-/** Who we're waiting for, who's waiting for us, and a manual "Check now" (M7.3). */
-export function RepostOverview({
-  waitingForThem,
-  waitingForMe,
-  lastChecked,
-  postsToCheck,
-  maxCost,
-}: Props) {
-  const [confirming, setConfirming] = useState(false);
+/** Who we're waiting for, who's waiting for us, and a manual "Check all waiting" (M7.3). */
+export function RepostOverview({ waitingForThem, waitingForMe, maxCost }: Props) {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   if (waitingForThem === 0 && waitingForMe === 0) return null;
 
@@ -42,31 +34,26 @@ export function RepostOverview({
         ) : (
           <span className="text-foreground/60">Nobody waiting for your repost</span>
         )}
-        <span className="text-foreground/50 text-xs">
-          {lastChecked ? `Checked ${lastChecked}` : "Not checked yet"}
-        </span>
-        {waitingForThem > 0 && postsToCheck > 0 && !confirming && (
+        {waitingForThem > 0 && !confirming && (
           <button
             type="button"
-            disabled={pending}
             onClick={() => setConfirming(true)}
-            className="border-foreground/15 hover:bg-foreground/5 ml-auto rounded-md border px-3 py-1.5 disabled:opacity-50"
+            className="border-foreground/15 hover:bg-foreground/5 ml-auto rounded-md border px-3 py-1.5"
           >
-            {pending ? "Checking…" : "Check now"}
+            Check all waiting ({waitingForThem})
           </button>
         )}
         {confirming && (
           <span className="ml-auto flex flex-wrap items-center gap-2">
             <span className="text-foreground/70 text-xs">
-              Reads who reposted {postsToCheck} post{postsToCheck === 1 ? "" : "s"}
-              {maxCost ? ` · up to ${maxCost}` : ""}
+              One exact X check per creator{maxCost ? ` · up to ${maxCost}` : ""}
             </span>
             <button
               type="button"
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  const result = await checkRepostsNowAction();
+                  const result = await checkAllWaitingAction();
                   setMessage({ ok: result.ok, text: result.message });
                   setConfirming(false);
                 })
@@ -85,6 +72,9 @@ export function RepostOverview({
           </span>
         )}
       </div>
+      <p className="text-foreground/50 text-xs">
+        Checks run only when you click — nothing is read from X automatically.
+      </p>
       {message && (
         <p
           role="status"

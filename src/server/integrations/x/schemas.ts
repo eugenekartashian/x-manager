@@ -113,10 +113,15 @@ export const usersByResponseSchema = z.object({
     .default([]),
 });
 
-/** GET /2/tweets/:id/retweeted_by — newest reposters first (verified 2026-10-09, D-033). */
-export const repostedByResponseSchema = z.object({
-  data: z.array(z.object({ id: z.string().min(1), username: z.string().min(1) })).default([]),
-  meta: z
-    .object({ result_count: z.number().int().optional(), next_token: z.string().optional() })
-    .optional(),
+/** GET /2/tweets/search/recent — only the fields the repost check needs. */
+export const recentSearchResponseSchema = z.object({
+  data: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        created_at: z.iso.datetime().optional(),
+        referenced_tweets: referencedPostsSchema,
+      }),
+    )
+    .default([]),
 });

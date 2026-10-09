@@ -4,12 +4,12 @@ import { err, ok, type Result } from "@/lib/result";
 import {
   getMe,
   getPost,
-  getReposters,
+  searchCreatorRepost,
   getUsersByUsernames,
   listOwnPosts,
   repost,
   undoRepost,
-  type RepostersPage,
+  type CreatorRepost,
   type RepostOutcome,
   type XPost,
   type XProfile,
@@ -98,20 +98,20 @@ export function lookupUsers(
   });
 }
 
-/** One page of a post's reposters, newest first. Billed per returned user, once per UTC day. */
-export function fetchReposters(
+/** Exact "did this creator repost/quote my post" check (recent search). Billed per result. */
+export function findCreatorRepost(
   workspaceId: string,
+  authorXUserId: string,
   postId: string,
-  options: { maxResults: number; paginationToken?: string | undefined },
-): Promise<Result<RepostersPage, XActionError>> {
+): Promise<Result<CreatorRepost[], XActionError>> {
   return callX(workspaceId, "read", async ({ accessToken }) => {
-    const page = await getReposters(accessToken, postId, options);
+    const found = await searchCreatorRepost(accessToken, authorXUserId, postId);
     return {
-      data: page,
+      data: found,
       usage: {
-        operation: "userRead",
-        units: page.users.length,
-        resources: { kind: "user", ids: page.users.map((user) => user.id) },
+        operation: "postRead",
+        units: found.length,
+        resources: { kind: "post", ids: found.map((post) => post.id) },
       },
     };
   });

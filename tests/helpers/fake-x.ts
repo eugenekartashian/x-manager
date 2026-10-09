@@ -17,8 +17,8 @@ type Handlers = {
   posts?: (url: URL) => Reply;
   post?: (postId: string) => Reply;
   usersBy?: (usernames: string[]) => Reply;
-  /** GET /2/tweets/:id/retweeted_by */
-  repostedBy?: (postId: string, paginationToken: string | null, maxResults: number) => Reply;
+  /** GET /2/tweets/search/recent */
+  search?: (query: string) => Reply;
   /** Fake Claude Messages API (api.anthropic.com/v1/messages). */
   anthropic?: (body: unknown) => Reply;
   /** Fake OpenAI Responses API (api.openai.com/v1/responses). */
@@ -59,13 +59,7 @@ function route(
   json: unknown,
 ): Reply | Promise<Reply> | undefined {
   const path = url.pathname;
-  const reposted = /^\/2\/tweets\/(\d+)\/retweeted_by$/.exec(path);
-  if (reposted)
-    return h.repostedBy?.(
-      reposted[1] ?? "",
-      url.searchParams.get("pagination_token"),
-      Number(url.searchParams.get("max_results") ?? "100"),
-    );
+  if (path === "/2/tweets/search/recent") return h.search?.(url.searchParams.get("query") ?? "");
   if (url.hostname === "api.anthropic.com")
     return path === "/v1/messages" ? h.anthropic?.(json) : undefined;
   if (url.hostname === "api.openai.com")
@@ -226,11 +220,24 @@ export const openAiReply = (payload: unknown, options: { refusal?: boolean } = {
   },
 });
 
-/** A page of reposters, newest first; `next` becomes meta.next_token. */
-export const repostedByReply = (users: string[], next?: string) => ({
+/** Recent-search results: ids with "repost" or "quote" references to `postId`. */
+export const searchReply = (
+  results: { id: string; kind: "repost" | "quote"; postId: string }[],
+) => ({
   status: 200,
   body: {
-    data: users.map((id) => ({ id, username: `u${id}`, name: `User ${id}` })),
-    meta: { result_count: users.length, ...(next ? { next_token: next } : {}) },
+    ...(results.length
+      ? {
+          data: results.map((result) => ({
+            id: result.id,
+            text: "RT",
+            created_at: "2026-10-10T08:00:00.000Z",
+            referenced_tweets: [
+              { type: result.kind === "repost" ? "retweeted" : "quoted", id: result.postId },
+            ],
+          })),
+        }
+      : {}),
+    meta: { result_count: results.length },
   },
 });

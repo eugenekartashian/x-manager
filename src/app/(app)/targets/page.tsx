@@ -16,9 +16,9 @@ import {
   REPLY_COOLDOWN_HOUR_OPTIONS,
   REPLY_DAILY_LIMIT_OPTIONS,
 } from "@/server/domain/reply-rules";
-import { formatDateTime, formatUsd } from "@/lib/format";
+import { formatUsd } from "@/lib/format";
 import { listCreators, parseCreatorFilters } from "@/server/services/creators";
-import { getRepostOverview } from "@/server/services/repost-checks";
+import { getRepostOverview, maxBatchCostMicros } from "@/server/services/repost-checks";
 import { getLimits } from "@/server/services/limits";
 import { listRecentReplies, listTemplates } from "@/server/services/replies";
 import { MAX_TARGETS } from "@/server/services/targets";
@@ -99,11 +99,11 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
       <RepostOverview
         waitingForThem={reposts.waitingForThem}
         waitingForMe={reposts.waitingForMe}
-        lastChecked={
-          reposts.lastCheckedAt ? formatDateTime(reposts.lastCheckedAt, workspace.timezone) : null
+        maxCost={
+          role === "SUPERADMIN"
+            ? formatUsd(BigInt(maxBatchCostMicros(reposts.waitingForThem)))
+            : null
         }
-        postsToCheck={reposts.postsToCheck}
-        maxCost={role === "SUPERADMIN" ? formatUsd(BigInt(reposts.maxCostMicros)) : null}
       />
 
       {filters.owed && (

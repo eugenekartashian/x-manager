@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { processDueReposts } from "@/server/jobs/process-due-reposts";
 import { purgeStaleTargetPosts } from "@/server/jobs/purge-stale-content";
-import { runDailyRepostChecks } from "@/server/services/repost-checks";
+import { expireStaleMessaged } from "@/server/services/repost-checks";
 
 // Called by the scheduler (Supabase pg_cron → pg_net) every few minutes.
 export const maxDuration = 60;
@@ -18,9 +18,9 @@ export async function POST(request: Request) {
   const now = new Date();
   const summary = await processDueReposts(now, { writesEnabled: env.X_WRITES_ENABLED });
   const purgedTargetPosts = await purgeStaleTargetPosts(now);
-  // Reads only (never reposts): each promoted post once a day after 09:00 workspace time
-  // (approved by the owner 2026-10-09), then free "No reply" expiry.
-  const repostChecks = await runDailyRepostChecks(now);
+  // Repost checks read X only on the user's click (owner decision); this is the free part:
+  // creators messaged > 3 days ago without a repost become "No reply".
+  const repostChecks = { expiredNoReply: await expireStaleMessaged(now) };
   return NextResponse.json(
     { ...summary, purgedTargetPosts, repostChecks },
     { headers: { "Cache-Control": "no-store" } },
