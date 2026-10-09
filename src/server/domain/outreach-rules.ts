@@ -3,6 +3,11 @@
 export const MAX_MESSAGE_LENGTH = 1_000;
 /** One bulk send (superadmin, D-035) messages at most this many creators. */
 export const MAX_BULK_MESSAGES = 10;
+/**
+ * A bulk send stops after this many X refusals in a row: X limits messages to people you
+ * aren't connected with (agency report 2026-10-10, ~50 — UNVERIFIED), so more would fail too.
+ */
+export const MAX_REFUSALS_IN_ROW = 3;
 /** Bulk sends skip creators messaged more recently than this. */
 export const RECONTACT_WAIT_MS = 7 * 24 * 3_600_000;
 /** "Didn't send it?" can be undone this long after opening X. */

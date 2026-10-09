@@ -111,6 +111,18 @@ export function CreatorsFilters({ counts, total, tags, owedCount }: Props) {
             </option>
           ))}
         </Select>
+        <Select
+          aria-label="Filter by connection"
+          value={params.get("conn") ?? ""}
+          onChange={(event) => go({ conn: event.target.value || null })}
+          className="w-40"
+        >
+          <option value="">Anyone</option>
+          <option value="follows">Follows you</option>
+          <option value="mutual">Mutual</option>
+          <option value="none">No connection</option>
+          <option value="unknown">Not checked</option>
+        </Select>
         {tags.length > 0 && (
           <Select
             aria-label="Filter by label"

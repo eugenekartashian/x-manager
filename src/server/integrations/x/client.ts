@@ -229,6 +229,9 @@ export type XProfile = {
   followers: number | null;
   following: number | null;
   posts: number | null;
+  /** From X's `connection_status`; null when X didn't return it. */
+  followsYou: boolean | null;
+  youFollow: boolean | null;
 };
 
 /**
@@ -243,7 +246,10 @@ export async function getUsersByUsernames(
   if (usernames.length > 100) throw new Error("At most 100 usernames per lookup");
   const url = new URL(`${X_API_BASE}/2/users/by`);
   url.searchParams.set("usernames", usernames.join(","));
-  url.searchParams.set("user.fields", "description,profile_image_url,public_metrics,verified");
+  url.searchParams.set(
+    "user.fields",
+    "description,profile_image_url,public_metrics,verified,connection_status",
+  );
   const body = await xRequest(
     { method: "GET", url: url.toString(), headers: bearer(accessToken) },
     usersByResponseSchema,
@@ -258,6 +264,8 @@ export async function getUsersByUsernames(
     followers: user.public_metrics?.followers_count ?? null,
     following: user.public_metrics?.following_count ?? null,
     posts: user.public_metrics?.tweet_count ?? null,
+    followsYou: user.connection_status ? user.connection_status.includes("followed_by") : null,
+    youFollow: user.connection_status ? user.connection_status.includes("following") : null,
   }));
 }
 

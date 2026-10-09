@@ -78,6 +78,8 @@ export default async function BulkMessagePage({ searchParams }: PageProps<"/targ
             id: creator.id,
             username: creator.username,
             name: creator.name,
+            followsYou: creator.followsYou,
+            youFollow: creator.youFollow,
           }))}
           posts={posts}
           left={left}

@@ -32,6 +32,8 @@ const MESSAGES: Record<string, string> = {
   declined: "Skipped — marked Declined.",
   recently_messaged: "Skipped — messaged in the last 7 days.",
   not_sent: "Not sent — the batch stopped earlier.",
+  x_refusing:
+    "Not sent — X refused 3 in a row. It may be limiting messages to people you aren't connected with; try later or message people who follow you.",
   too_many: "At most 10 creators at once.",
   forbidden:
     "X refused the message — this person may not accept messages from you, or X needs to be reconnected with message permission.",

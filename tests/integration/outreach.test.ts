@@ -392,6 +392,42 @@ describe("bulk messages via the X API (D-035)", () => {
     expect(calls).toBe(2);
   });
 
+  it("stops after 3 refusals in a row (X limiting messages to strangers)", async () => {
+    const { workspace, fresh, old } = await bulkSetup();
+    const extra = await prisma.targetAccount.create({
+      data: {
+        workspaceId: workspace.id,
+        xUserId: "x-7",
+        username: "creator_7",
+        name: "Creator 7",
+        lookedUpAt: NOW,
+      },
+    });
+    let calls = 0;
+    const x = fakeX({
+      dm: () => (
+        calls++,
+        { status: 403, body: { detail: "You cannot send messages to this user." } }
+      ),
+    });
+    restoreFetch = x.restore;
+
+    const result = await sendBulkViaApi(
+      workspace,
+      { items: [...fresh, old, extra].map((creator) => ({ targetId: creator.id, text: "hi" })) },
+      NOW,
+    );
+
+    expect(result.ok && result.data.map((item) => (item.ok ? "ok" : item.error))).toEqual([
+      "forbidden",
+      "forbidden",
+      "forbidden",
+      "x_refusing",
+      "x_refusing",
+    ]);
+    expect(calls).toBe(3);
+  });
+
   it("refuses more than 10 and never messages another workspace's creators", async () => {
     const { workspace } = await bulkSetup();
     const other = await setup("a");

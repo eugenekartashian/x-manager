@@ -246,3 +246,12 @@ The user wants RT4RT-style partner outreach (example: agencies DM-ing links with
 - Guardrails: superadmin only (needs dm.write); ≤ 10 creators per batch; shared daily limit 30 messages (manual + API); skips Declined and creators messaged in the last 7 days (checked again at send time); AI drafts are shown on one page, editable/untickable, before one "Send all" click with a confirm listing recipients and cost; messages go out one after another; X refusal for one creator → continue; daily limit / 429 / 402 / reconnect / X unavailable / unknown outcome → stop, rest "not sent", never retried.
 - Cost: $0.015 per message + AI drafts (~$0.01–0.02 each). Repost follow-up uses the existing per-creator search check (D-033).
 - 2026-10-10 (D-034, live read test): `GET /2/dm_conversations/with/{id}/dm_events` (dm.read) on the chat with @eugenbarcelona returned 3 events, all sent by the owner (2 via the API, 1 earlier); the reply the test account wrote in X Chat was **not returned**. Conclusion: the v2 DM API does not see encrypted X Chat replies, so reply notifications via the API are not feasible; replies are checked in X. Cost of the test: 3 DM event reads ≈ $0.03 (recorded as `dmEventRead`).
+
+## D-036 · 2026-10-10 · Follows-you on creators; bulk send stops after 3 refusals
+
+- Context: an agency reports X now limits messages to accounts with no connection (not following each other, no existing conversation) to ~50, and some accounts can't message strangers at all (UNVERIFIED — no official X statement found). Messaging people with a connection is the safer path.
+- Creator lookups (`GET /2/users/by`) also request the user field `connection_status` ([data dictionary](https://docs.x.com/x-api/fundamentals/data-dictionary)) — same request, no extra cost. Stored as `followsYou` (`followed_by`) / `youFollow` (`following`); null when X didn't return the field (creators added earlier → "Not checked"). Shown as "Follows you" / "Mutual" in the table and on the bulk message page; filter Anyone / Follows you / Mutual / No connection / Not checked.
+- "Refresh from X" for selected creators (all users, confirm; cost shown to the superadmin) re-reads profiles: one User read each ($0.010, deduplicated per UTC day). Updates only creators already in the workspace.
+- UNVERIFIED until the first live lookup: whether X returns `connection_status` with our user-context token and omits or empties it when there is no relation.
+- Bulk send (D-035) stops after 3 X refusals in a row; the rest are marked "not sent — X refused 3 in a row".
+

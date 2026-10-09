@@ -5,7 +5,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
 import { draftBulkAction, sendBulkAction } from "./outreach-actions";
 
-type Creator = { id: string; username: string; name: string };
+type Creator = {
+  id: string;
+  username: string;
+  name: string;
+  followsYou: boolean | null;
+  youFollow: boolean | null;
+};
 type PostOption = { url: string; label: string };
 type Row = { text: string; error: string | null; include: boolean };
 type Outcome = { ok: boolean; message: string | null };
@@ -164,6 +170,15 @@ export function BulkMessage({ creators, posts, left }: Props) {
                   {creator.name}
                 </Link>
                 <span className="text-foreground/50">@{creator.username}</span>
+                <span className="bg-foreground/10 text-foreground/70 rounded px-1.5 text-[11px]">
+                  {creator.followsYou === null
+                    ? "connection not checked"
+                    : creator.followsYou
+                      ? creator.youFollow
+                        ? "Mutual"
+                        : "Follows you"
+                      : "Not following you"}
+                </span>
                 {outcome && (
                   <span
                     className={`ml-auto text-xs ${

@@ -78,6 +78,28 @@ export async function addTargets(
   });
 }
 
+export type RefreshError = XActionError | "invalid_selection" | "budget_exceeded";
+
+/**
+ * Re-reads the selected creators' profiles from X (followers, bio, follows-you — D-036).
+ * One User read each; X bills the same user once per UTC day.
+ */
+export async function refreshCreators(
+  workspaceId: string,
+  ids: string[],
+  now: Date = new Date(),
+): Promise<Result<{ refreshed: number }, RefreshError>> {
+  if (ids.length === 0 || ids.length > MAX_HANDLES_PER_ADD) return err("invalid_selection");
+  const usernames = await targets.usernamesOf(workspaceId, ids);
+  if (usernames.length === 0) return err("invalid_selection");
+  if (!(await canSpend(workspaceId, usernames.length * X_PRICE_MICROS.userRead, now)))
+    return err("budget_exceeded");
+  const found = await lookupUsers(workspaceId, usernames);
+  if (!found.ok) return found;
+  await targets.updateLookedUpProfiles(workspaceId, found.data, now);
+  return ok({ refreshed: found.data.length });
+}
+
 export function listTargets(
   workspaceId: string,
   sort: targets.TargetSort,

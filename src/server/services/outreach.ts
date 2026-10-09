@@ -16,6 +16,7 @@ import {
   statusAfterMessage,
   bulkSkipReason,
   MAX_BULK_MESSAGES,
+  MAX_REFUSALS_IN_ROW,
   withPostLink,
   type BulkSkipReason,
 } from "@/server/domain/outreach-rules";
@@ -279,7 +280,11 @@ export async function bulkCandidates(
 
 export type BulkItemResult =
   | { targetId: string; ok: true }
-  | { targetId: string; ok: false; error: ApiMessageError | BulkSkipReason | "not_sent" };
+  | {
+      targetId: string;
+      ok: false;
+      error: ApiMessageError | BulkSkipReason | "not_sent" | "x_refusing";
+    };
 
 /** Errors after which nothing else in the batch is sent (the next call would fail too). */
 const STOP_BATCH = new Set<string>([
@@ -310,10 +315,11 @@ export async function sendBulkViaApi(
   if (postUrl === "invalid") return err("invalid_post_url");
 
   const results: BulkItemResult[] = [];
-  let stopped = false;
+  let stopped: "not_sent" | "x_refusing" | null = null;
+  let refusalsInRow = 0;
   for (const item of items) {
     if (stopped) {
-      results.push({ targetId: item.targetId, ok: false, error: "not_sent" });
+      results.push({ targetId: item.targetId, ok: false, error: stopped });
       continue;
     }
     const creator = await replies.findTarget(workspace.id, item.targetId);
@@ -332,10 +338,13 @@ export async function sendBulkViaApi(
       now,
     );
     if (sent.ok) {
+      refusalsInRow = 0;
       results.push({ targetId: item.targetId, ok: true });
     } else {
       results.push({ targetId: item.targetId, ok: false, error: sent.error });
-      stopped = STOP_BATCH.has(sent.error);
+      refusalsInRow = sent.error === "forbidden" ? refusalsInRow + 1 : 0;
+      if (STOP_BATCH.has(sent.error)) stopped = "not_sent";
+      else if (refusalsInRow >= MAX_REFUSALS_IN_ROW) stopped = "x_refusing";
     }
   }
   return ok(results);

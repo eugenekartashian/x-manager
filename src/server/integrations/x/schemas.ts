@@ -105,6 +105,8 @@ export const usersByResponseSchema = z.object({
         description: z.string().optional(),
         profile_image_url: z.string().optional(),
         verified: z.boolean().optional(),
+        // Relation to the authenticated user, e.g. ["followed_by", "following"].
+        connection_status: z.array(z.string()).optional(),
         public_metrics: z
           .object({
             followers_count: z.number().int(),

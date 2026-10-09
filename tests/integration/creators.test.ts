@@ -9,7 +9,7 @@ import {
   setCreatorStatus,
   tagCreators,
 } from "@/server/services/creators";
-import { addTargets } from "@/server/services/targets";
+import { addTargets, refreshCreators } from "@/server/services/targets";
 import { connectXDirectly, createOwner, resetDatabase } from "../helpers/db";
 import { fakeX, usersByReply } from "../helpers/fake-x";
 
@@ -248,5 +248,59 @@ describe("roles", () => {
     expect(
       (await prisma.targetAccount.findUniqueOrThrow({ where: { id: alex?.id ?? "" } })).role,
     ).toBeNull();
+  });
+});
+
+describe("follows you (D-036)", () => {
+  it("stores X's connection_status on add, filters by it and refreshes only own creators", async () => {
+    const owner = await createOwner("a");
+    const other = await createOwner("b");
+    await connectXDirectly(owner.workspaceId, { xUserId: "me", accessToken: "t" });
+    let known: Parameters<typeof usersByReply>[0] = {
+      fan: { id: "1", connection: ["followed_by"] },
+      friend: { id: "2", connection: ["followed_by", "following"] },
+      stranger: { id: "3", connection: [] },
+      old: { id: "4" },
+    };
+    const fake = fakeX({ usersBy: (names) => usersByReply(known)(names) });
+    restoreFetch = fake.restore;
+    await addTargets(owner.workspaceId, "fan friend stranger old", NOW);
+    expect(fake.calls[0]?.url.searchParams.get("user.fields")).toContain("connection_status");
+
+    const names = async (conn: string) =>
+      (await listCreators(owner.workspaceId, parseCreatorFilters({ conn }))).rows
+        .map((row) => row.username)
+        .sort();
+    expect(await names("follows")).toEqual(["fan", "friend"]);
+    expect(await names("mutual")).toEqual(["friend"]);
+    expect(await names("none")).toEqual(["stranger"]);
+    expect(await names("unknown")).toEqual(["old"]);
+
+    // Refresh: the stranger followed back; never creates rows, never touches other workspaces.
+    const foreign = await seed(other.workspaceId, [{ username: "stranger", followers: 1 }]);
+    known = { ...known, stranger: { id: "3", connection: ["followed_by"] } };
+    const stranger = await prisma.targetAccount.findFirstOrThrow({
+      where: { workspaceId: owner.workspaceId, username: "stranger" },
+    });
+    expect(await refreshCreators(owner.workspaceId, [stranger.id], NOW)).toEqual({
+      ok: true,
+      data: { refreshed: 1 },
+    });
+    expect(await names("follows")).toEqual(["fan", "friend", "stranger"]);
+    expect(
+      await refreshCreators(
+        owner.workspaceId,
+        foreign.map((row) => row.id),
+        NOW,
+      ),
+    ).toEqual({
+      ok: false,
+      error: "invalid_selection",
+    });
+    const untouched = await prisma.targetAccount.findUniqueOrThrow({
+      where: { id: foreign[0]?.id ?? "" },
+    });
+    expect(untouched.followsYou).toBeNull();
+    expect(await prisma.targetAccount.count({ where: { workspaceId: owner.workspaceId } })).toBe(4);
   });
 });

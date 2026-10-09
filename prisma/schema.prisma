@@ -397,6 +397,10 @@ model TargetAccount {
   // Collab CRM (M7.3): when they reposted our post (auto-check or by hand) and when we did back.
   theyRepostedAt DateTime?
   repostedBackAt DateTime?
+  // Relationship with the connected account from X's connection_status at the last lookup
+  // (null = unknown, e.g. added before D-036).
+  followsYou     Boolean?
+  youFollow      Boolean?
   posts          TargetPost[]
   replies        ReplyLog[]
   events         CreatorEvent[]
@@ -404,6 +408,7 @@ model TargetAccount {
   @@unique([workspaceId, xUserId])
   @@index([workspaceId, followersCount])
   @@index([workspaceId, status])
+  @@index([workspaceId, followsYou])
   @@map("target_account")
 }
 

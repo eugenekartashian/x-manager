@@ -164,7 +164,8 @@ export const postReply = (
 
 /** Fake /2/users/by: returns a profile for each known handle (case-insensitive). */
 export const usersByReply =
-  (known: Record<string, { id: string; followers?: number }>) => (usernames: string[]) => ({
+  (known: Record<string, { id: string; followers?: number; connection?: string[] }>) =>
+  (usernames: string[]) => ({
     status: 200,
     body: {
       data: usernames
@@ -179,6 +180,7 @@ export const usersByReply =
                 name: `Name ${entry[0]}`,
                 description: `bio of ${entry[0]}`,
                 profile_image_url: `https://pbs.twimg.com/profile_images/${entry[1].id}.jpg`,
+                ...(entry[1].connection ? { connection_status: entry[1].connection } : {}),
                 public_metrics: {
                   followers_count: entry[1].followers ?? 100,
                   following_count: 10,

@@ -56,6 +56,8 @@ export async function upsertTargets(
         followersCount: profile.followers,
         followingCount: profile.following,
         postsCount: profile.posts,
+        followsYou: profile.followsYou,
+        youFollow: profile.youFollow,
         lookedUpAt: now,
       };
       return prisma.targetAccount.upsert({
@@ -64,6 +66,34 @@ export async function upsertTargets(
         update: fields,
       });
     }),
+  );
+}
+
+/** Updates profile snapshots of creators already in the workspace (never adds new ones). */
+export async function updateLookedUpProfiles(
+  workspaceId: string,
+  profiles: XProfile[],
+  now: Date,
+): Promise<void> {
+  await prisma.$transaction(
+    profiles.map((profile) =>
+      prisma.targetAccount.updateMany({
+        where: { workspaceId, xUserId: profile.id },
+        data: {
+          username: profile.username,
+          name: profile.name,
+          bio: profile.bio,
+          avatarUrl: profile.avatarUrl,
+          verified: profile.verified,
+          followersCount: profile.followers,
+          followingCount: profile.following,
+          postsCount: profile.posts,
+          followsYou: profile.followsYou,
+          youFollow: profile.youFollow,
+          lookedUpAt: now,
+        },
+      }),
+    ),
   );
 }
 
@@ -99,11 +129,22 @@ export function findTargetIdByUsername(
 
 export type CreatorSort = "followers" | "recent" | "contact";
 
+/** Relationship filter (D-036): from X's connection_status at the last lookup. */
+export type ConnectionFilter = "follows" | "mutual" | "none" | "unknown";
+
+const CONNECTION_WHERE: Record<ConnectionFilter, Prisma.TargetAccountWhereInput> = {
+  follows: { followsYou: true },
+  mutual: { followsYou: true, youFollow: true },
+  none: { followsYou: false, youFollow: false },
+  unknown: { followsYou: null },
+};
+
 export type CreatorQuery = {
   status?: CreatorStatus;
   /** They reposted our post and we haven't reposted back yet. */
   owed?: boolean;
   role?: CreatorRole;
+  connection?: ConnectionFilter;
   search?: string;
   tag?: string;
   sort: CreatorSort;
@@ -118,6 +159,7 @@ function creatorWhere(workspaceId: string, query: CreatorQuery): Prisma.TargetAc
     ...(query.status ? { status: query.status } : {}),
     ...(query.owed ? { status: "REPOSTED" as const, repostedBackAt: null } : {}),
     ...(query.role ? { role: query.role } : {}),
+    ...(query.connection ? CONNECTION_WHERE[query.connection] : {}),
     ...(query.tag ? { tags: { has: query.tag } } : {}),
     ...(search
       ? {
@@ -197,6 +239,16 @@ export async function removeCreatorsTag(workspaceId: string, ids: string[], tag:
   return prisma.$executeRaw`
     UPDATE target_account SET tags = array_remove(tags, ${tag})
     WHERE "workspaceId" = ${workspaceId} AND id = ANY(${ids})`;
+}
+
+/** Usernames of the selected creators (scoped), for a fresh lookup. */
+export async function usernamesOf(workspaceId: string, ids: string[]): Promise<string[]> {
+  const rows = await prisma.targetAccount.findMany({
+    where: { workspaceId, id: { in: ids } },
+    select: { username: true },
+    take: ids.length,
+  });
+  return rows.map((row) => row.username);
 }
 
 export async function deleteCreators(workspaceId: string, ids: string[]): Promise<number> {

@@ -66,7 +66,7 @@ describe("addTargets", () => {
       },
     });
     expect(x.calls[0]?.url.searchParams.get("user.fields")).toBe(
-      "description,profile_image_url,public_metrics,verified",
+      "description,profile_image_url,public_metrics,verified,connection_status",
     );
     const list = await listTargets(owner.workspaceId, "followers");
     expect(list.map((target) => [target.username, target.followersCount])).toEqual([

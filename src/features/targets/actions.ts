@@ -12,7 +12,13 @@ import {
   setCreatorStatus,
   tagCreators,
 } from "@/server/services/creators";
-import { addTargets, findTargetId, removeTarget, saveTargetNote } from "@/server/services/targets";
+import {
+  addTargets,
+  findTargetId,
+  refreshCreators,
+  removeTarget,
+  saveTargetNote,
+} from "@/server/services/targets";
 
 const MESSAGES: Record<string, string> = {
   nothing_to_add: "Paste at least one @handle.",
@@ -101,6 +107,12 @@ const BULK_MESSAGES: Record<string, string> = {
   invalid_selection: "Select between 1 and 100 creators.",
   invalid_tag: "Tags: up to 24 letters, numbers, - or _.",
   invalid_status: "Pick a status.",
+  budget_exceeded: "This month's usage limit is reached.",
+  needs_reconnect: "Reconnect your X account on the dashboard.",
+  not_connected: "Connect your X account first.",
+  rate_limited: "X rate limit reached — try again later.",
+  no_credits: "X API credits are used up — top up in the X Developer Console.",
+  x_unavailable: "X is not responding. Try again in a minute.",
 };
 
 /** Status / tag / remove for the selected rows of the creators table (M7.1). */
@@ -125,11 +137,16 @@ export async function bulkCreatorsAction(
           ? await tagCreators(workspace.id, ids, text("tag"), op === "tag-add" ? "add" : "remove")
           : op === "remove"
             ? await removeCreators(workspace.id, ids)
-            : null;
+            : op === "refresh"
+              ? await refreshCreators(workspace.id, ids)
+              : null;
   revalidatePath("/targets");
   if (!result) return { status: "error", message: "Unknown action." };
   if (!result.ok) return { status: "error", message: BULK_MESSAGES[result.error] ?? "" };
-  return { status: "success", message: "Saved." };
+  return {
+    status: "success",
+    message: op === "refresh" ? "Updated from X." : "Saved.",
+  };
 }
 
 const labelSchema = z.object({ targetId: z.uuid(), tag: z.string().max(40) });

@@ -17,6 +17,8 @@ type Props = {
   filtered: boolean;
   /** Superadmin with message permission: "Message" opens the bulk send page (D-035). */
   bulkMessage?: boolean;
+  /** Superadmin: show the X cost in confirmations. */
+  showCosts?: boolean;
 };
 
 const MAX_BULK = 10;
@@ -26,7 +28,13 @@ const control =
   "border-foreground/15 rounded-md border bg-transparent px-2.5 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-40";
 
 /** Creators table (desktop) / cards (mobile) with selection and a floating action bar (M7.1). */
-export function CreatorsTable({ rows, timeZone, filtered, bulkMessage = false }: Props) {
+export function CreatorsTable({
+  rows,
+  timeZone,
+  filtered,
+  bulkMessage = false,
+  showCosts = false,
+}: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [state, action, pending] = useActionState(bulkCreatorsAction, initial);
   const [label, setLabel] = useState("");
@@ -55,7 +63,7 @@ export function CreatorsTable({ rows, timeZone, filtered, bulkMessage = false }:
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((row) => row.id)));
 
   function submit(
-    op: "status" | "role" | "tag-add" | "remove",
+    op: "status" | "role" | "tag-add" | "remove" | "refresh",
     extra: Record<string, string> = {},
   ) {
     const formData = new FormData();
@@ -129,6 +137,11 @@ export function CreatorsTable({ rows, timeZone, filtered, bulkMessage = false }:
                   <span className="text-foreground/60 block text-xs break-all">
                     @{row.username}
                     <span className="md:hidden"> · {formatCount(row.followersCount)}</span>
+                    {row.followsYou && (
+                      <span className="text-foreground/70 bg-foreground/10 ml-1.5 rounded px-1.5 text-[11px] whitespace-nowrap">
+                        {row.youFollow ? "Mutual" : "Follows you"}
+                      </span>
+                    )}
                   </span>
                   {(row.tags.length > 0 || row.lastContactAt) && (
                     <span className="text-foreground/50 mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
@@ -244,6 +257,18 @@ export function CreatorsTable({ rows, timeZone, filtered, bulkMessage = false }:
               + Label
             </button>
           </span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              const cost = showCosts ? ` (≈ $${(ids.length * 0.01).toFixed(2)})` : "";
+              if (window.confirm(`Update ${ids.length} profiles from X${cost}?`)) submit("refresh");
+            }}
+            title="Re-read followers, bio and who follows whom"
+            className={control}
+          >
+            Refresh from X
+          </button>
           {confirmRemove ? (
             <button
               type="button"

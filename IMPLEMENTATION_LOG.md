@@ -4,6 +4,13 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-10-10 · D-036 — Follows you / Mutual on creators; stop after 3 refusals
+
+- Migration `creator_connection` (`followsYou`, `youFollow`, index). Lookups request `connection_status`; badges, connection filter (`conn=`), "Refresh from X" bulk action (`refreshCreators`, update-only), connection badge on the bulk message page. Bulk send stops after 3 refusals in a row (`MAX_REFUSALS_IN_ROW`).
+- Tests: connection stored on add + filters + refresh (own creators only, no new rows); 3 refusals → rest "x_refusing", no more X calls.
+
+---
+
 ## 2026-10-10 · D-035 — Bulk messages via the X API (superadmin)
 
 - Creators table: "Message" in the selection bar (≤ 10, superadmin with dm.write) → `/targets/message?ids=…`: skipped creators listed (Declined, messaged < 7 days), post picker (default: first repost-list post), AI drafts one message per creator on open (parallel, server-side), editable/untickable, "Send all (N) via X API" with a confirm.

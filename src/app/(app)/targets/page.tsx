@@ -54,7 +54,12 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
   const all = Object.values(page.counts).reduce((sum, count) => sum + count, 0);
   const cap = Math.min(MAX_TARGETS, limits?.targets ?? MAX_TARGETS);
   const filtered = Boolean(
-    filters.status || filters.q || filters.tag || filters.role || filters.owed,
+    filters.status ||
+    filters.q ||
+    filters.tag ||
+    filters.role ||
+    filters.owed ||
+    filters.connection,
   );
 
   const pageHref = (target: number) => {
@@ -129,6 +134,7 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
           rows={page.rows}
           timeZone={workspace.timezone}
           filtered={filtered}
+          showCosts={role === "SUPERADMIN"}
           bulkMessage={role === "SUPERADMIN" && canSendDirectMessages(connection?.scopes ?? "")}
         />
         {page.pages > 1 && (
