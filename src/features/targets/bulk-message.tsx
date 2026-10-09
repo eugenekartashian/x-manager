@@ -16,7 +16,9 @@ type PostOption = { url: string; label: string };
 type Row = { text: string; error: string | null; include: boolean };
 type Outcome = { ok: boolean; message: string | null };
 
-type Props = { creators: Creator[]; posts: PostOption[]; left: number };
+type Skipped = { id: string; username: string; reason: string };
+
+type Props = { creators: Creator[]; skipped: Skipped[]; posts: PostOption[]; left: number };
 
 const control =
   "border-foreground/15 rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none";
@@ -25,7 +27,16 @@ const control =
  * Bulk messages (superadmin, D-035): AI drafts one message per creator on open, the owner
  * reviews them, one "Send all" click sends them via the X API one after another.
  */
-export function BulkMessage({ creators, posts, left }: Props) {
+export function BulkMessage({
+  creators: initialCreators,
+  skipped: initialSkipped,
+  posts,
+  left,
+}: Props) {
+  // Frozen at open: after "Send all" the page re-renders and everyone just messaged would
+  // turn into "skipped" — the results must stay on screen instead.
+  const [creators] = useState(initialCreators);
+  const [skipped] = useState(initialSkipped);
   const [postUrl, setPostUrl] = useState(posts[0]?.url ?? "");
   const [draftedFor, setDraftedFor] = useState<string | null>(null);
   const [rows, setRows] = useState<Record<string, Row>>({});
@@ -63,7 +74,7 @@ export function BulkMessage({ creators, posts, left }: Props) {
 
   useEffect(() => {
     // Draft once when the page opens (the owner chose these creators a click ago).
-    if (started.current) return;
+    if (started.current || creators.length === 0) return;
     started.current = true;
     write(postUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on open
@@ -111,8 +122,34 @@ export function BulkMessage({ creators, posts, left }: Props) {
 
   const sentCount = Object.values(outcomes).filter((item) => item.ok).length;
 
+  const skippedList = skipped.length > 0 && (
+    <ul className="text-foreground/60 flex flex-col gap-0.5 text-sm">
+      {skipped.map((item) => (
+        <li key={item.id}>
+          Skipped @{item.username} — {item.reason}
+        </li>
+      ))}
+    </ul>
+  );
+
+  if (creators.length === 0) {
+    return (
+      <>
+        {skippedList}
+        <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-8 text-center text-sm">
+          Nobody to message. Select creators in the{" "}
+          <Link href="/targets" className="underline">
+            Creators
+          </Link>{" "}
+          table first.
+        </p>
+      </>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      {skippedList}
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex min-w-60 flex-1 flex-col gap-1 text-sm">
           Your post to share

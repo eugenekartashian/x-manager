@@ -54,37 +54,22 @@ export default async function BulkMessagePage({ searchParams }: PageProps<"/targ
         </p>
       </div>
 
-      {candidates.skipped.length > 0 && (
-        <ul className="text-foreground/60 flex flex-col gap-0.5 text-sm">
-          {candidates.skipped.map(({ creator, reason }) => (
-            <li key={creator.id}>
-              Skipped @{creator.username} — {SKIP_LABELS[reason]}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {candidates.ready.length === 0 ? (
-        <p className="border-foreground/15 text-foreground/60 rounded-md border border-dashed px-4 py-8 text-center text-sm">
-          Nobody to message. Select creators in the{" "}
-          <Link href="/targets" className="underline">
-            Creators
-          </Link>{" "}
-          table first.
-        </p>
-      ) : (
-        <BulkMessage
-          creators={candidates.ready.map((creator) => ({
-            id: creator.id,
-            username: creator.username,
-            name: creator.name,
-            followsYou: creator.followsYou,
-            youFollow: creator.youFollow,
-          }))}
-          posts={posts}
-          left={left}
-        />
-      )}
+      <BulkMessage
+        creators={candidates.ready.map((creator) => ({
+          id: creator.id,
+          username: creator.username,
+          name: creator.name,
+          followsYou: creator.followsYou,
+          youFollow: creator.youFollow,
+        }))}
+        skipped={candidates.skipped.map(({ creator, reason }) => ({
+          id: creator.id,
+          username: creator.username,
+          reason: SKIP_LABELS[reason],
+        }))}
+        posts={posts}
+        left={left}
+      />
     </>
   );
 }
