@@ -98,7 +98,7 @@ describe("runRepostChecks", () => {
     ).toBe(1);
   });
 
-  it("skips a post checked < 20 h ago; a forced check reads only new reposters", async () => {
+  it("skips a post already checked after today's 09:00; a forced check reads only new reposters", async () => {
     const { workspaceId, creators } = await setup();
     withFakeX({ repostedBy: () => repostedByReply(["99", "11", "13"]) });
     await runRepostChecks(workspaceId, { now: NOW });
@@ -153,6 +153,16 @@ describe("first check cap", () => {
     });
     await runRepostChecks(workspaceId, { now: NOW });
     expect(x.calls).toHaveLength(2);
+  });
+});
+
+describe("09:00 schedule", () => {
+  it("does not check before 09:00 workspace time", async () => {
+    const { workspaceId } = await setup();
+    const x = withFakeX({ repostedBy: () => repostedByReply(["11"]) });
+    const early = new Date("2026-10-10T06:30:00Z"); // 08:30 Madrid
+    expect((await runRepostChecks(workspaceId, { now: early })).ok).toBe(true);
+    expect(x.calls).toHaveLength(0);
   });
 });
 

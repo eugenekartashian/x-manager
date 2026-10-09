@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeSeen, scanReposterPage, SEEN_CAP } from "./repost-check-rules";
+import { isDailyCheckDue, mergeSeen, scanReposterPage, SEEN_CAP } from "./repost-check-rules";
 
 const start = { fresh: [], knownRun: 0, stop: false };
 
@@ -47,5 +47,21 @@ describe("mergeSeen", () => {
     expect(mergeSeen(["n1", "a"], ["a", "b"])).toEqual(["n1", "a", "b"]);
     const many = Array.from({ length: SEEN_CAP + 10 }, (_, i) => `id${i}`);
     expect(mergeSeen(["new"], many)).toHaveLength(SEEN_CAP);
+  });
+});
+
+describe("isDailyCheckDue (09:00 workspace time)", () => {
+  const tz = "Europe/Madrid"; // UTC+2 in October
+  it("is due after 09:00 local if not checked since", () => {
+    expect(isDailyCheckDue(null, new Date("2026-10-10T07:05:00Z"), tz)).toBe(true); // 09:05
+    expect(
+      isDailyCheckDue(new Date("2026-10-09T07:10:00Z"), new Date("2026-10-10T07:05:00Z"), tz),
+    ).toBe(true);
+  });
+  it("is not due before 09:00 or when already checked today", () => {
+    expect(isDailyCheckDue(null, new Date("2026-10-10T06:55:00Z"), tz)).toBe(false); // 08:55
+    expect(
+      isDailyCheckDue(new Date("2026-10-10T07:01:00Z"), new Date("2026-10-10T15:00:00Z"), tz),
+    ).toBe(false);
   });
 });

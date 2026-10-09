@@ -3,8 +3,8 @@ import { logger } from "@/lib/logger";
 import { parsePostUrl } from "@/lib/post-url";
 import { err, ok, type Result } from "@/lib/result";
 import {
-  AUTO_CHECK_EVERY_MS,
   FIRST_CHECK_PAGES,
+  isDailyCheckDue,
   MAX_REPOSTER_PAGES,
   mergeSeen,
   REPOST_WAIT_MS,
@@ -67,13 +67,12 @@ export async function runRepostChecks(
 ): Promise<Result<CheckSummary, XActionError | "budget_exceeded">> {
   const now = options.now ?? new Date();
   const posts = await promotedPosts(workspaceId, now);
+  const { timezone } = await getLimitsContext(workspaceId);
   const summary: CheckSummary = { posts: posts.size, checked: 0, newReposters: 0, matched: 0 };
 
   for (const postId of posts.keys()) {
     const previous = await checks.findCheck(workspaceId, postId);
-    const recent =
-      previous?.checkedAt && now.getTime() - previous.checkedAt.getTime() < AUTO_CHECK_EVERY_MS;
-    if (recent && !options.force) continue;
+    if (!options.force && !isDailyCheckDue(previous?.checkedAt ?? null, now, timezone)) continue;
     if (!(await canSpend(workspaceId, WORST_CASE_MICROS, now))) return err("budget_exceeded");
 
     const seen = new Set(previous?.seenIds ?? []);
@@ -133,15 +132,37 @@ export type RepostOverview = {
   waitingForThem: number;
   waitingForMe: number;
   lastCheckedAt: Date | null;
+  /** Posts "Check now" would read, and the worst-case cost (micro-dollars). */
+  postsToCheck: number;
+  maxCostMicros: number;
 };
 
-export async function getRepostOverview(workspaceId: string): Promise<RepostOverview> {
-  const [waitingForThem, waitingForMe, list] = await Promise.all([
+export async function getRepostOverview(
+  workspaceId: string,
+  now: Date = new Date(),
+): Promise<RepostOverview> {
+  const [waitingForThem, waitingForMe, list, posts] = await Promise.all([
     checks.countWaitingForThem(workspaceId),
     checks.countWaitingForMe(workspaceId),
     checks.listChecks(workspaceId),
+    promotedPosts(workspaceId, now),
   ]);
-  return { waitingForThem, waitingForMe, lastCheckedAt: list[0]?.checkedAt ?? null };
+  const checked = new Set(list.map((row) => row.xPostId));
+  const maxCostMicros = [...posts.keys()].reduce(
+    (sum, postId) =>
+      sum +
+      (checked.has(postId) ? MAX_REPOSTER_PAGES : FIRST_CHECK_PAGES) *
+        REPOSTERS_PAGE_SIZE *
+        X_PRICE_MICROS.userRead,
+    0,
+  );
+  return {
+    waitingForThem,
+    waitingForMe,
+    lastCheckedAt: list[0]?.checkedAt ?? null,
+    postsToCheck: posts.size,
+    maxCostMicros,
+  };
 }
 
 export async function markRepostedBack(
@@ -156,7 +177,7 @@ export async function markRepostedBack(
 }
 
 /**
- * Cron (any trigger): checks each workspace's promoted posts at most every 20 h, then turns
+ * Cron (any trigger): checks each workspace's promoted posts once a day after 09:00 local, then turns
  * creators messaged > 3 days ago without a repost into "No reply".
  */
 export async function runDailyRepostChecks(

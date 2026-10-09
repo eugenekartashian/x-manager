@@ -37,7 +37,8 @@ export function MessageComposer({
   usedToday,
   dailyLimit,
 }: Props) {
-  const [postUrl, setPostUrl] = useState(posts[0]?.url ?? "");
+  // No post by default: linking a post makes it a promoted post that repost checks read.
+  const [postUrl, setPostUrl] = useState("");
   const [customUrl, setCustomUrl] = useState("");
   const [text, setText] = useState("");
   const [drafts, setDrafts] = useState<string[]>([]);

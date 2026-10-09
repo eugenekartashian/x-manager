@@ -8,10 +8,20 @@ type Props = {
   waitingForThem: number;
   waitingForMe: number;
   lastChecked: string | null; // formatted on the server
+  postsToCheck: number;
+  /** Worst-case price, superadmin only (users never see prices). */
+  maxCost: string | null;
 };
 
 /** Who we're waiting for, who's waiting for us, and a manual "Check now" (M7.3). */
-export function RepostOverview({ waitingForThem, waitingForMe, lastChecked }: Props) {
+export function RepostOverview({
+  waitingForThem,
+  waitingForMe,
+  lastChecked,
+  postsToCheck,
+  maxCost,
+}: Props) {
+  const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   if (waitingForThem === 0 && waitingForMe === 0) return null;
@@ -33,22 +43,46 @@ export function RepostOverview({ waitingForThem, waitingForMe, lastChecked }: Pr
           <span className="text-foreground/60">Nobody waiting for your repost</span>
         )}
         <span className="text-foreground/50 text-xs">
-          {lastChecked ? `Checked ${lastChecked}` : "Not checked yet"} · checks run daily
+          {lastChecked ? `Checked ${lastChecked}` : "Not checked yet"}
         </span>
-        {waitingForThem > 0 && (
+        {waitingForThem > 0 && postsToCheck > 0 && !confirming && (
           <button
             type="button"
             disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const result = await checkRepostsNowAction();
-                setMessage({ ok: result.ok, text: result.message });
-              })
-            }
+            onClick={() => setConfirming(true)}
             className="border-foreground/15 hover:bg-foreground/5 ml-auto rounded-md border px-3 py-1.5 disabled:opacity-50"
           >
             {pending ? "Checking…" : "Check now"}
           </button>
+        )}
+        {confirming && (
+          <span className="ml-auto flex flex-wrap items-center gap-2">
+            <span className="text-foreground/70 text-xs">
+              Reads who reposted {postsToCheck} post{postsToCheck === 1 ? "" : "s"}
+              {maxCost ? ` · up to ${maxCost}` : ""}
+            </span>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await checkRepostsNowAction();
+                  setMessage({ ok: result.ok, text: result.message });
+                  setConfirming(false);
+                })
+              }
+              className="bg-foreground text-background rounded-md px-3 py-1.5 font-medium disabled:opacity-50"
+            >
+              {pending ? "Checking…" : "Check"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="text-foreground/60 px-1"
+            >
+              Cancel
+            </button>
+          </span>
         )}
       </div>
       {message && (

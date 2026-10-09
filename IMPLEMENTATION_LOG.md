@@ -405,3 +405,4 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - Phones: X app chat link (user-verified). 332 tests passing.
 - 7.3 follow-up: the chosen post link is appended to the message when the text doesn't contain it (copy, app link, history) — hand-written texts lost the link before.
 - 7.3 follow-up: first check of a post reads at most 2 pages (≈ 40 users ≈ $0.40) instead of 5 — messaged creators repost after the message, i.e. on top.
+- 7.3 follow-up (incident): auto check of the pinned post cost ≈ $0.89 (100 reposters) — automatic checks paused, then moved to a daily 09:00 (workspace time) schedule with the owner's approval; picker defaults to "No post"; "Check now" confirms with posts count and max cost. 336 tests passing.

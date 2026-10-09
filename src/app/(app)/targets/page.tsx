@@ -16,7 +16,7 @@ import {
   REPLY_COOLDOWN_HOUR_OPTIONS,
   REPLY_DAILY_LIMIT_OPTIONS,
 } from "@/server/domain/reply-rules";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatUsd } from "@/lib/format";
 import { listCreators, parseCreatorFilters } from "@/server/services/creators";
 import { getRepostOverview } from "@/server/services/repost-checks";
 import { getLimits } from "@/server/services/limits";
@@ -102,6 +102,8 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
         lastChecked={
           reposts.lastCheckedAt ? formatDateTime(reposts.lastCheckedAt, workspace.timezone) : null
         }
+        postsToCheck={reposts.postsToCheck}
+        maxCost={role === "SUPERADMIN" ? formatUsd(BigInt(reposts.maxCostMicros)) : null}
       />
 
       {filters.owed && (
