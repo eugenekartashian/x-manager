@@ -46,6 +46,7 @@ type OAuthState = z.infer<typeof oauthStateSchema>;
 export function startXConnection(
   owner: ConnectionOwner,
   now: Date = new Date(),
+  options: { directMessages?: boolean } = {},
 ): { authorizeUrl: string; sealedState: string } {
   const { verifier, challenge } = createPkce();
   const state = createState();
@@ -57,7 +58,7 @@ export function startXConnection(
     expiresAt: now.getTime() + OAUTH_STATE_TTL_MS,
   };
   return {
-    authorizeUrl: buildAuthorizeUrl(state, challenge),
+    authorizeUrl: buildAuthorizeUrl(state, challenge, options),
     sealedState: encrypt(keyRing, JSON.stringify(payload), STATE_CONTEXT),
   };
 }

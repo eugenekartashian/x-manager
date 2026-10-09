@@ -12,6 +12,7 @@ import {
   changeCreatorStatus,
   draftMessages,
   recordSentMessage,
+  sendMessageViaApi,
   undoOpenedMessage,
 } from "@/server/services/outreach";
 
@@ -27,6 +28,15 @@ const MESSAGES: Record<string, string> = {
   budget_exceeded: "This month's usage limit is reached.",
   ai_declined: "The AI declined — write your own message.",
   ai_unavailable: "AI did not respond. Please try again.",
+  forbidden:
+    "X refused the message — this person may not accept messages from you, or X needs to be reconnected with message permission.",
+  needs_reconnect: "Reconnect your X account on the dashboard.",
+  not_connected: "Connect your X account first.",
+  rate_limited: "X rate limit reached — try again later.",
+  no_credits: "X API credits are used up — top up in the X Developer Console.",
+  unknown_outcome:
+    "X did not confirm — the message may or may not have been sent. Check the chat in X before trying again.",
+  x_unavailable: "X is not responding. Try again in a minute.",
 };
 const message = (code: string) => MESSAGES[code] ?? "Something went wrong.";
 
@@ -48,6 +58,23 @@ export async function recordSentAction(
   const result = await recordSentMessage(workspace, parsed.data);
   revalidatePath(`/targets/${parsed.data.targetId}`);
   revalidatePath("/targets");
+  return result.ok
+    ? { ok: true, eventId: result.data.eventId }
+    : { ok: false, message: message(result.error) };
+}
+
+/** "Send via X API": one click sends this one exact message (superadmin experiment, D-034). */
+export async function sendViaApiAction(
+  input: z.input<typeof sentSchema>,
+): Promise<SentMessageResult> {
+  const { workspace, role } = await requireWorkspace();
+  if (role !== "SUPERADMIN") return { ok: false, message: message("not_found") };
+  const parsed = sentSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: message("not_found") };
+  const result = await sendMessageViaApi(workspace, parsed.data);
+  revalidatePath(`/targets/${parsed.data.targetId}`);
+  revalidatePath("/targets");
+  revalidatePath("/", "layout"); // spend
   return result.ok
     ? { ok: true, eventId: result.data.eventId }
     : { ok: false, message: message(result.error) };

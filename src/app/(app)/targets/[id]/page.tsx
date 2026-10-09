@@ -14,6 +14,7 @@ import { MessageComposer } from "@/features/targets/message-composer";
 import { TargetsDisabled } from "@/features/targets/targets-disabled";
 import { isAiEnabled } from "@/server/services/ai-replies";
 import { getLimitsContext, usedToday } from "@/server/services/limits";
+import { canSendDirectMessages } from "@/server/integrations/x/oauth";
 import { findConnection } from "@/server/repositories/x-accounts";
 import { getPostsPageData } from "@/server/services/own-posts";
 import { chatLinkFor, creatorHistory, messagesToday } from "@/server/services/outreach";
@@ -55,6 +56,13 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
     findConnection(workspace.id),
   ]);
   const me = connection?.username ?? "i";
+  // DM via the X API: superadmin-only experiment (D-034), needs a connection with dm.write.
+  const apiSend =
+    role !== "SUPERADMIN"
+      ? null
+      : connection && canSendDirectMessages(connection.scopes)
+        ? "ready"
+        : "reconnect";
   const chatLink = await chatLinkFor(workspace.id, target.xUserId);
   const promotedPostUrl = await latestPromotedPostUrl(workspace.id, target.id, now);
   const replies = allReplies.filter((reply) => reply.targetId === target.id);
@@ -129,6 +137,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
           aiEnabled={aiEnabled}
           usedToday={messages.used}
           dailyLimit={messages.limit}
+          apiSend={apiSend}
         />
       </section>
 

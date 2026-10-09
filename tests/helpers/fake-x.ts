@@ -25,6 +25,8 @@ type Handlers = {
   openai?: (body: unknown) => Reply;
   repost?: (postId: string) => Reply;
   undoRepost?: (postId: string) => Reply;
+  /** POST /2/dm_conversations/with/:id/messages */
+  dm?: (participantId: string, text: string) => Reply;
 };
 
 /**
@@ -74,6 +76,13 @@ function route(
   if (single) return h.post?.(decodeURIComponent(single[1] ?? ""));
   if (method === "POST" && /^\/2\/users\/[^/]+\/retweets$/.test(path)) {
     return h.repost?.(String((json as { tweet_id?: string } | null)?.tweet_id));
+  }
+  const dm = /^\/2\/dm_conversations\/with\/([^/]+)\/messages$/.exec(path);
+  if (method === "POST" && dm) {
+    return h.dm?.(
+      decodeURIComponent(dm[1] ?? ""),
+      String((json as { text?: string } | null)?.text),
+    );
   }
   const undo = /^\/2\/users\/[^/]+\/retweets\/([^/]+)$/.exec(path);
   if (method === "DELETE" && undo) return h.undoRepost?.(decodeURIComponent(undo[1] ?? ""));
@@ -127,6 +136,11 @@ export const postsReply = (ids: string[], nextToken?: string) => ({
       : {}),
     meta: { result_count: ids.length, ...(nextToken ? { next_token: nextToken } : {}) },
   },
+});
+
+export const dmReply = (eventId = "dm-event-1") => ({
+  status: 201,
+  body: { data: { dm_conversation_id: "conv-1", dm_event_id: eventId } },
 });
 
 export const repostReply = (retweeted: boolean) => ({ status: 200, body: { data: { retweeted } } });

@@ -4,6 +4,14 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-10-10 · D-034 — Send a message via the X API (superadmin experiment)
+
+- `oauth.ts`: `DM_SCOPES` (dm.read, dm.write) requested only when the superadmin connects; `canSendDirectMessages(scopes)`; connection view exposes `scopes`. `client.ts` `sendDirectMessage`, `x-api.ts` `sendDm` (write; usage `dmSend` $0.015, also recorded on unknown outcome), `outreach.ts` `sendMessageViaApi` (shared validation/limit with manual messages; records only after X confirms). Composer: "Send via X API" (confirm with exact text and price) or a "reconnect to enable" hint.
+- `pnpm check` ✅ — 332 tests (new: DM scopes only on request; send + record + cost; X 403 → nothing recorded; daily limit → no X call; cross-workspace creator → no X call).
+- Not verified live yet: delivery into encrypted X Chat. Next: owner reconnects X, sends one test message to @eugenbarcelona.
+
+---
+
 ## 2026-09-29 · M3.4 — AI reply ideas + configurable reply limits
 
 - `integrations/ai/claude.ts` (Claude Opus 5 via `@anthropic-ai/sdk` 0.129, low effort, JSON-schema output, `fallbacks: "default"`, no tools, untrusted-data delimiting), `integrations/ai/pricing.ts`, `services/ai-replies.ts` (scoped to loaded posts of own targets, budget + 100/day cap, refusal → no spend, errors → retryable message). "✨ AI ideas" in the reply composer; ideas are one-click fillers for the text box.

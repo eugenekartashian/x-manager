@@ -54,6 +54,14 @@ describe("startXConnection", () => {
     expect(url.searchParams.get("state")?.length).toBeGreaterThanOrEqual(43);
     expect(sealedState).not.toContain(url.searchParams.get("state"));
   });
+
+  it("asks for message permission only when requested (superadmin, D-034)", async () => {
+    const owner = await createOwner("a");
+    const { authorizeUrl } = startXConnection(owner, new Date(), { directMessages: true });
+    expect(new URL(authorizeUrl).searchParams.get("scope")).toBe(
+      "tweet.read tweet.write users.read offline.access dm.read dm.write",
+    );
+  });
 });
 
 describe("completeXConnection", () => {

@@ -3,7 +3,12 @@
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
 import { appChatUrl } from "@/server/domain/outreach-rules";
-import { draftMessagesAction, recordSentAction, undoMessageAction } from "./outreach-actions";
+import {
+  draftMessagesAction,
+  recordSentAction,
+  sendViaApiAction,
+  undoMessageAction,
+} from "./outreach-actions";
 
 type PostOption = { url: string; label: string };
 
@@ -18,6 +23,8 @@ type Props = {
   aiEnabled: boolean;
   usedToday: number;
   dailyLimit: number;
+  /** Superadmin only (D-034): "ready" = can send via the X API; "reconnect" = needs dm.write. */
+  apiSend?: "ready" | "reconnect" | null;
 };
 
 const control =
@@ -36,6 +43,7 @@ export function MessageComposer({
   aiEnabled,
   usedToday,
   dailyLimit,
+  apiSend = null,
 }: Props) {
   // No post by default: linking a post makes it a promoted post that repost checks read.
   const [postUrl, setPostUrl] = useState("");
@@ -46,6 +54,7 @@ export function MessageComposer({
   const [opened, setOpened] = useState<{ copiedOk: boolean; blocked: boolean } | null>(null);
   const [sent, setSent] = useState<{ eventId: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [apiSent, setApiSent] = useState(false);
   const [pending, startTransition] = useTransition();
   const [aiPending, startAi] = useTransition();
   const link = postUrl === "custom" ? customUrl.trim() : postUrl;
@@ -90,7 +99,27 @@ export function MessageComposer({
     });
   }
 
+  function sendViaApi() {
+    // One click = one exact message to one creator; the confirm shows exactly what goes out.
+    if (
+      !window.confirm(`Send this message to @${username} via the X API ($0.015)?\n\n${finalText}`)
+    ) {
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const result = await sendViaApiAction({
+        targetId,
+        text: finalText,
+        postUrl: link || undefined,
+      });
+      if (result.ok) setApiSent(true);
+      else setError(result.message);
+    });
+  }
+
   function reset() {
+    setApiSent(false);
     setOpened(null);
     setSent(null);
     setText("");
@@ -105,6 +134,31 @@ export function MessageComposer({
     } catch {
       setError("Couldn't copy — select the text and copy it manually.");
     }
+  }
+
+  if (apiSent) {
+    return (
+      <div className="flex flex-col gap-3 rounded-md bg-green-600/10 px-3 py-3 text-sm">
+        <p className="font-medium">
+          ✓ Sent to @{username} via the X API — @{username} is “Messaged”.
+        </p>
+        <p className="text-foreground/70 text-xs">
+          Check where it arrived in X.{" "}
+          <a href={chatLink} target="_blank" rel="noopener noreferrer" className="underline">
+            Open the chat ↗
+          </a>
+        </p>
+        <div>
+          <button
+            type="button"
+            onClick={reset}
+            className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (opened) {
@@ -232,6 +286,16 @@ export function MessageComposer({
         >
           Copy & open chat ↗
         </button>
+        {apiSend === "ready" && (
+          <button
+            type="button"
+            onClick={sendViaApi}
+            disabled={pending || limitReached || !text.trim()}
+            className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
+          >
+            {pending ? "Sending…" : "Send via X API"}
+          </button>
+        )}
         {aiEnabled && (
           <button
             type="button"
@@ -254,6 +318,12 @@ export function MessageComposer({
           {usedToday}/{dailyLimit} messages today
         </span>
       </div>
+      {apiSend === "reconnect" && (
+        <p className="text-foreground/50 text-xs">
+          To send through the X API, disconnect and connect X again on the dashboard (adds message
+          permission).
+        </p>
+      )}
       {limitReached && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
           Daily message limit reached — it keeps your account safe. Try again tomorrow.

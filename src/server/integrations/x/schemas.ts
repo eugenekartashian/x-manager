@@ -73,6 +73,10 @@ export const repostResponseSchema = z.object({
   data: z.object({ retweeted: z.boolean() }),
 });
 
+export const dmSendResponseSchema = z.object({
+  data: z.object({ dm_conversation_id: z.string(), dm_event_id: z.string() }),
+});
+
 export const revokeResponseSchema = z.object({ revoked: z.boolean() });
 
 export const postByIdResponseSchema = z.object({

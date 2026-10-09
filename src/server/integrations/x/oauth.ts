@@ -13,6 +13,9 @@ const REVOKE_URL = `${X_API_BASE}/2/oauth2/revoke`;
 
 // Minimal scopes: read own profile/posts, Repost, keep access via refresh tokens.
 export const X_SCOPES = ["tweet.read", "tweet.write", "users.read", "offline.access"] as const;
+// Direct messages via the API (D-034 experiment): requested for the superadmin only and never
+// required, so other users keep the minimal consent screen.
+export const DM_SCOPES = ["dm.read", "dm.write"] as const;
 
 export type Pkce = { verifier: string; challenge: string };
 
@@ -26,13 +29,18 @@ export function createState(): string {
   return randomBytes(32).toString("base64url");
 }
 
-export function buildAuthorizeUrl(state: string, codeChallenge: string): string {
+export function buildAuthorizeUrl(
+  state: string,
+  codeChallenge: string,
+  options: { directMessages?: boolean } = {},
+): string {
+  const scopes: readonly string[] = options.directMessages ? [...X_SCOPES, ...DM_SCOPES] : X_SCOPES;
   const url = new URL(AUTHORIZE_URL);
   url.search = new URLSearchParams({
     response_type: "code",
     client_id: env.X_CLIENT_ID,
     redirect_uri: env.X_REDIRECT_URI,
-    scope: X_SCOPES.join(" "),
+    scope: scopes.join(" "),
     state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
@@ -43,6 +51,10 @@ export function buildAuthorizeUrl(state: string, codeChallenge: string): string 
 export function hasRequiredScopes(granted: string): boolean {
   const scopes = new Set(granted.split(/\s+/));
   return X_SCOPES.every((scope) => scopes.has(scope));
+}
+
+export function canSendDirectMessages(granted: string): boolean {
+  return granted.split(/\s+/).includes("dm.write");
 }
 
 export function exchangeCode(code: string, codeVerifier: string): Promise<XTokenResponse> {

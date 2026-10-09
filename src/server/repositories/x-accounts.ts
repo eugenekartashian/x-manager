@@ -9,6 +9,7 @@ const connectionView = {
   name: true,
   status: true,
   connectedAt: true,
+  scopes: true,
 } as const;
 
 export type XConnectionView = Prisma.XAccountGetPayload<{ select: typeof connectionView }>;

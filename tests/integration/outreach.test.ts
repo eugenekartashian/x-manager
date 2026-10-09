@@ -6,10 +6,11 @@ import {
   draftMessages,
   messagesToday,
   recordSentMessage,
+  sendMessageViaApi,
   undoOpenedMessage,
 } from "@/server/services/outreach";
-import { createOwner, resetDatabase } from "../helpers/db";
-import { claudeReply, fakeX } from "../helpers/fake-x";
+import { connectXDirectly, createOwner, resetDatabase } from "../helpers/db";
+import { claudeReply, dmReply, fakeX } from "../helpers/fake-x";
 
 let restoreFetch: (() => void) | undefined;
 beforeEach(resetDatabase);
@@ -213,5 +214,78 @@ describe("draftMessages", () => {
       ok: false,
       error: "ai_unavailable",
     });
+  });
+});
+
+describe("sendMessageViaApi", () => {
+  it("sends one message to the creator, records it and its cost", async () => {
+    const { workspace, target } = await setup();
+    await connectXDirectly(workspace.id, { xUserId: "me-b", accessToken: "t-b" });
+    const sent: { to: string; text: string }[] = [];
+    const x = fakeX({ dm: (to, text) => (sent.push({ to, text }), dmReply()) });
+    restoreFetch = x.restore;
+
+    const result = await sendMessageViaApi(
+      workspace,
+      { targetId: target.id, text: " Hi! ", postUrl: "https://x.com/me/status/77" },
+      NOW,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(sent).toEqual([{ to: "x-b", text: "Hi!" }]);
+    expect(x.calls[0]?.headers.get("authorization")).toBe("Bearer t-b");
+    const row = await prisma.targetAccount.findUniqueOrThrow({ where: { id: target.id } });
+    expect(row.status).toBe("CONTACTED");
+    expect((await messagesToday(workspace, NOW)).used).toBe(1);
+    const usage = await prisma.externalUsage.findMany({ where: { workspaceId: workspace.id } });
+    expect(usage.map((item) => item.operation)).toEqual(["dmSend"]);
+  });
+
+  it("records nothing when X refuses, and never calls X past the daily limit", async () => {
+    const { workspace, target } = await setup();
+    await connectXDirectly(workspace.id, { xUserId: "me-b", accessToken: "t-b" });
+    let calls = 0;
+    const x = fakeX({
+      dm: () => (
+        calls++,
+        { status: 403, body: { detail: "You cannot send messages to this user." } }
+      ),
+    });
+    restoreFetch = x.restore;
+
+    expect(await sendMessageViaApi(workspace, { targetId: target.id, text: "hi" }, NOW)).toEqual({
+      ok: false,
+      error: "forbidden",
+    });
+    expect((await messagesToday(workspace, NOW)).used).toBe(0);
+    expect(await creatorHistory(workspace.id, target.id)).toEqual([]);
+
+    await prisma.workspace.update({
+      where: { id: workspace.id },
+      data: { limitMessagesPerDay: 0 },
+    });
+    expect(
+      await sendMessageViaApi(
+        { ...workspace, limitMessagesPerDay: 0 },
+        { targetId: target.id, text: "hi" },
+        NOW,
+      ),
+    ).toEqual({ ok: false, error: "daily_limit" });
+    expect(calls).toBe(1);
+  });
+
+  it("never sends to another workspace's creator", async () => {
+    const { target } = await setup("a");
+    const { workspace } = await setup("b");
+    await connectXDirectly(workspace.id, { xUserId: "me-b", accessToken: "t-b" });
+    let calls = 0;
+    const x = fakeX({ dm: () => (calls++, dmReply()) });
+    restoreFetch = x.restore;
+
+    expect(await sendMessageViaApi(workspace, { targetId: target.id, text: "hi" }, NOW)).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+    expect(calls).toBe(0);
   });
 });

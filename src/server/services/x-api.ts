@@ -8,6 +8,7 @@ import {
   getUsersByUsernames,
   listOwnPosts,
   repost,
+  sendDirectMessage,
   undoRepost,
   type CreatorRepost,
   type RepostOutcome,
@@ -186,6 +187,23 @@ export function undoRepostPost(
   );
 }
 
+/** One direct message to one X user (dm.write scope; D-034). */
+export function sendDm(
+  workspaceId: string,
+  recipientXUserId: string,
+  text: string,
+): Promise<Result<{ eventId: string }, XActionError>> {
+  return callX(
+    workspaceId,
+    "write",
+    async ({ accessToken }) => {
+      const sent = await sendDirectMessage(accessToken, recipientXUserId, text);
+      return { data: { eventId: sent.eventId }, usage: DM_USAGE };
+    },
+    DM_USAGE,
+  );
+}
+
 // ─── Internals ───────────────────────────────────────────────────────────────
 
 /** `resources` (reads only): ids X returned — billed once per resource per UTC day. */
@@ -193,6 +211,7 @@ type Usage = { operation: XBillableOperation; units: number; resources?: Billabl
 
 const REPOST_USAGE: Usage = { operation: "repost", units: 1 };
 const UNDO_REPOST_USAGE: Usage = { operation: "undoRepost", units: 1 };
+const DM_USAGE: Usage = { operation: "dmSend", units: 1 };
 
 async function callX<T>(
   workspaceId: string,

@@ -2,6 +2,7 @@ import "server-only";
 import { XApiError } from "./errors";
 import { X_API_BASE, xRequest } from "./http";
 import {
+  dmSendResponseSchema,
   meResponseSchema,
   postByIdResponseSchema,
   recentSearchResponseSchema,
@@ -343,4 +344,25 @@ export async function searchCreatorRepost(
     kind: post.referenced_tweets?.some((ref) => ref.type === "quoted") ? "quote" : "repost",
     createdAt: post.created_at ? new Date(post.created_at) : null,
   }));
+}
+
+/**
+ * POST /2/dm_conversations/with/:participant_id/messages — one 1:1 direct message (needs the
+ * dm.write scope). UNVERIFIED (D-034): whether it reaches recipients who use encrypted X Chat.
+ */
+export async function sendDirectMessage(
+  accessToken: string,
+  participantXUserId: string,
+  text: string,
+): Promise<{ conversationId: string; eventId: string }> {
+  const { data } = await xRequest(
+    {
+      method: "POST",
+      url: `${X_API_BASE}/2/dm_conversations/with/${encodeURIComponent(participantXUserId)}/messages`,
+      headers: { ...bearer(accessToken), "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    },
+    dmSendResponseSchema,
+  );
+  return { conversationId: data.dm_conversation_id, eventId: data.dm_event_id };
 }

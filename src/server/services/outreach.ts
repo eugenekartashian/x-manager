@@ -18,10 +18,10 @@ import { recordUsage } from "@/server/repositories/usage";
 import { canSpend } from "@/server/services/budget";
 import { CREATOR_STATUSES } from "@/server/services/creators";
 import { getLimitsContext, recordFeatureUsage, usedToday } from "@/server/services/limits";
-import { connectedXUserId } from "@/server/services/x-api";
+import { connectedXUserId, sendDm, type XActionError } from "@/server/services/x-api";
 
 // Collab outreach (M7.2, D-033): drafts, "Open in X" (the user sends the DM), history and a
-// per-day message limit. Nothing here sends anything to X.
+// per-day message limit. The only X write is sendMessageViaApi: one click, one message (D-034).
 
 type WorkspaceRef = Pick<Workspace, "id" | "name" | "timezone" | "limitMessagesPerDay">;
 
@@ -57,15 +57,17 @@ export async function chatLinkFor(workspaceId: string, creatorXUserId: string): 
   return chatUrl(me.ok ? me.data : null, creatorXUserId);
 }
 
-/**
- * Records a message the user says they sent in X ("Yes, sent"). Opening the chat records
- * nothing, so history and the daily count reflect confirmed messages only.
- */
-export async function recordSentMessage(
+type PreparedMessage = {
+  target: NonNullable<Awaited<ReturnType<typeof replies.findTarget>>>;
+  text: string;
+  postUrl: string | null;
+};
+
+async function prepareMessage(
   workspace: WorkspaceRef,
   input: { targetId: string; text: string; postUrl?: string },
-  now: Date = new Date(),
-): Promise<Result<{ eventId: string }, SentMessageError>> {
+  now: Date,
+): Promise<Result<PreparedMessage, SentMessageError>> {
   const text = input.text.trim();
   if (!text) return err("empty_text");
   if (text.length > MAX_MESSAGE_LENGTH) return err("too_long");
@@ -76,16 +78,52 @@ export async function recordSentMessage(
   if (!target) return err("not_found");
   const { used, limit } = await messagesToday(workspace, now);
   if (used >= limit) return err("daily_limit");
+  return ok({ target, text, postUrl });
+}
 
-  const event = await outreach.recordMessageOpened({
-    workspaceId: workspace.id,
-    targetId: target.id,
-    previousStatus: target.status,
-    nextStatus: statusAfterMessage(target.status),
-    text,
-    postUrl,
+async function saveMessage(workspaceId: string, message: PreparedMessage, now: Date) {
+  return outreach.recordMessageOpened({
+    workspaceId,
+    targetId: message.target.id,
+    previousStatus: message.target.status,
+    nextStatus: statusAfterMessage(message.target.status),
+    text: message.text,
+    postUrl: message.postUrl,
     now,
   });
+}
+
+/**
+ * Records a message the user sends themselves in X (opening the chat counts as sent; undo
+ * within 24 h). History and the daily count reflect these records.
+ */
+export async function recordSentMessage(
+  workspace: WorkspaceRef,
+  input: { targetId: string; text: string; postUrl?: string },
+  now: Date = new Date(),
+): Promise<Result<{ eventId: string }, SentMessageError>> {
+  const prepared = await prepareMessage(workspace, input, now);
+  if (!prepared.ok) return prepared;
+  const event = await saveMessage(workspace.id, prepared.data, now);
+  return ok({ eventId: event.id });
+}
+
+export type ApiMessageError = SentMessageError | XActionError;
+
+/**
+ * Sends ONE message through the X API after the user clicked "Send via X API" for this exact
+ * text and creator (D-034). Recorded only when X confirms; an unknown outcome is not retried.
+ */
+export async function sendMessageViaApi(
+  workspace: WorkspaceRef,
+  input: { targetId: string; text: string; postUrl?: string },
+  now: Date = new Date(),
+): Promise<Result<{ eventId: string }, ApiMessageError>> {
+  const prepared = await prepareMessage(workspace, input, now);
+  if (!prepared.ok) return prepared;
+  const sent = await sendDm(workspace.id, prepared.data.target.xUserId, prepared.data.text);
+  if (!sent.ok) return sent;
+  const event = await saveMessage(workspace.id, prepared.data, now);
   return ok({ eventId: event.id });
 }
 
