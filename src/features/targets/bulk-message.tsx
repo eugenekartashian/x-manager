@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
+import { withPostLink } from "@/server/domain/outreach-rules";
 import { draftBulkAction, sendBulkAction } from "./outreach-actions";
 
 type Creator = {
@@ -121,6 +122,7 @@ export function BulkMessage({
   }
 
   const sentCount = Object.values(outcomes).filter((item) => item.ok).length;
+  const failedCount = Object.values(outcomes).length - sentCount;
 
   const skippedList = skipped.length > 0 && (
     <ul className="text-foreground/60 flex flex-col gap-0.5 text-sm">
@@ -149,8 +151,30 @@ export function BulkMessage({
 
   return (
     <div className="flex flex-col gap-4">
-      {skippedList}
-      <div className="flex flex-wrap items-end gap-2">
+      {done ? (
+        <div
+          role="status"
+          className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg px-4 py-3 text-sm ${
+            failedCount ? "bg-amber-500/10" : "bg-green-600/10"
+          }`}
+        >
+          <p className="font-medium">
+            ✓ Sent {sentCount} of {sentCount + failedCount}
+            {failedCount > 0 && ` · ${failedCount} not sent — see below`}
+          </p>
+          <span className="ml-auto flex gap-3">
+            <Link href="/targets?status=CONTACTED" className="underline">
+              See Messaged creators
+            </Link>
+            <Link href="/targets" className="underline">
+              ← Creators
+            </Link>
+          </span>
+        </div>
+      ) : (
+        skippedList
+      )}
+      <div className={`flex flex-wrap items-end gap-2 ${done ? "hidden" : ""}`}>
         <label className="flex min-w-60 flex-1 flex-col gap-1 text-sm">
           Your post to share
           <Select
@@ -177,7 +201,7 @@ export function BulkMessage({
           </button>
         )}
       </div>
-      {postUrl && (
+      {postUrl && !done && (
         <p className="text-foreground/60 -mt-2 text-xs">
           The link to your post is added at the end of every message that doesn&apos;t have it.
         </p>
@@ -187,6 +211,25 @@ export function BulkMessage({
         {creators.map((creator) => {
           const row = rows[creator.id];
           const outcome = outcomes[creator.id];
+          if (outcome?.ok) {
+            return (
+              <li
+                key={creator.id}
+                className="border-foreground/10 flex flex-col gap-1 rounded-lg border px-3 py-2"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Link href={`/targets/${creator.id}`} className="font-medium hover:underline">
+                    {creator.name}
+                  </Link>
+                  <span className="text-foreground/50">@{creator.username}</span>
+                  <span className="ml-auto text-xs text-green-700 dark:text-green-400">✓ Sent</span>
+                </div>
+                <p className="text-foreground/60 line-clamp-2 text-xs whitespace-pre-line">
+                  {withPostLink(row?.text ?? "", postUrl || null)}
+                </p>
+              </li>
+            );
+          }
           return (
             <li
               key={creator.id}
@@ -248,7 +291,9 @@ export function BulkMessage({
         })}
       </ul>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div
+        className={`flex flex-wrap items-center gap-3 ${done && toSend.length === 0 ? "hidden" : ""}`}
+      >
         <button
           type="button"
           onClick={sendAll}
@@ -258,14 +303,6 @@ export function BulkMessage({
           {sending ? "Sending…" : `Send all (${toSend.length}) via X API`}
         </button>
         {writing && <span className="text-foreground/60 text-sm">✨ Writing messages…</span>}
-        {done && (
-          <span className="text-sm">
-            Sent {sentCount}.{" "}
-            <Link href="/targets?status=CONTACTED" className="underline">
-              See Messaged creators
-            </Link>
-          </span>
-        )}
       </div>
       {overLimit && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
