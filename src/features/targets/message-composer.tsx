@@ -112,11 +112,14 @@ export function MessageComposer({
       <div className="flex flex-col gap-3 rounded-md bg-blue-500/10 px-3 py-3 text-sm">
         <p className="font-medium">
           {opened.copiedOk
-            ? "Text copied ✓ — paste it into the chat with @" + username + " and send."
+            ? "Text copied ✓ — now click the message box in the X chat with @" +
+              username +
+              " and paste it (⌘V), then send."
             : "Copy the text below and paste it into the chat with @" + username + "."}
         </p>
         <p className="text-foreground/70 text-xs">
-          Paste: ⌘V on a computer, long-press → Paste on the phone. If the chat didn&apos;t open,{" "}
+          X can&apos;t fill the chat for us — the text is in your clipboard. Paste: ⌘V / Ctrl+V on a
+          computer, long-press → Paste on the phone. If the chat didn&apos;t open,{" "}
           <a
             href={`https://x.com/${username}`}
             target="_blank"
