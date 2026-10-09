@@ -44,6 +44,7 @@ export function CreatorHistory({
                 <span className="font-medium">
                   {event.status ? STATUS_META[event.status].label : "?"}
                 </span>
+                {event.text && <span className="text-foreground/50"> · {event.text}</span>}
               </>
             )}
           </span>
