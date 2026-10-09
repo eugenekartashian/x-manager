@@ -5,7 +5,7 @@ import { parsePostUrl } from "@/lib/post-url";
 import { err, ok, type Result } from "@/lib/result";
 import { localDateOf, zonedToUtc } from "@/lib/zoned-time";
 import {
-  dmIntentUrl,
+  chatUrl,
   MAX_MESSAGE_LENGTH,
   MESSAGE_UNDO_WINDOW_MS,
   statusAfterMessage,
@@ -18,6 +18,7 @@ import { recordUsage } from "@/server/repositories/usage";
 import { canSpend } from "@/server/services/budget";
 import { CREATOR_STATUSES } from "@/server/services/creators";
 import { getLimitsContext, recordFeatureUsage, usedToday } from "@/server/services/limits";
+import { connectedXUserId } from "@/server/services/x-api";
 
 // Collab outreach (M7.2, D-033): drafts, "Open in X" (the user sends the DM), history and a
 // per-day message limit. Nothing here sends anything to X.
@@ -47,14 +48,24 @@ function normalisePostUrl(raw: string | undefined): string | null | "invalid" {
     : `https://x.com/i/status/${parsed.postId}`;
 }
 
-export type OpenMessageError =
+export type SentMessageError =
   "not_found" | "empty_text" | "too_long" | "invalid_post_url" | "daily_limit";
 
-export async function openMessage(
+/** Link to the 1:1 X chat with a creator (no X call; uses the stored ids). */
+export async function chatLinkFor(workspaceId: string, creatorXUserId: string): Promise<string> {
+  const me = await connectedXUserId(workspaceId);
+  return chatUrl(me.ok ? me.data : null, creatorXUserId);
+}
+
+/**
+ * Records a message the user says they sent in X ("Yes, sent"). Opening the chat records
+ * nothing, so history and the daily count reflect confirmed messages only.
+ */
+export async function recordSentMessage(
   workspace: WorkspaceRef,
   input: { targetId: string; text: string; postUrl?: string },
   now: Date = new Date(),
-): Promise<Result<{ intentUrl: string; eventId: string }, OpenMessageError>> {
+): Promise<Result<{ eventId: string }, SentMessageError>> {
   const text = input.text.trim();
   if (!text) return err("empty_text");
   if (text.length > MAX_MESSAGE_LENGTH) return err("too_long");
@@ -75,7 +86,7 @@ export async function openMessage(
     postUrl,
     now,
   });
-  return ok({ intentUrl: dmIntentUrl(target.xUserId, text), eventId: event.id });
+  return ok({ eventId: event.id });
 }
 
 export async function undoOpenedMessage(

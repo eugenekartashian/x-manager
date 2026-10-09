@@ -1,16 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { dmIntentUrl, statusAfterMessage } from "./outreach-rules";
+import { chatUrl, statusAfterMessage } from "./outreach-rules";
 
-describe("dmIntentUrl", () => {
-  it("prefills the recipient and encoded text", () => {
-    const url = new URL(
-      dmIntentUrl("123", "Hi! Let's collab 🔥 https://x.com/me/status/1?s=1&t=2"),
+describe("chatUrl", () => {
+  it("links the 1:1 X chat with both ids, lower first (as numbers, not strings)", () => {
+    expect(chatUrl("1754401461281161216", "1068127814061342724")).toBe(
+      "https://x.com/i/chat/1068127814061342724-1754401461281161216",
     );
-    expect(url.origin + url.pathname).toBe("https://x.com/messages/compose");
-    expect(url.searchParams.get("recipient_id")).toBe("123");
-    expect(url.searchParams.get("text")).toBe(
-      "Hi! Let's collab 🔥 https://x.com/me/status/1?s=1&t=2",
+    expect(chatUrl("1068127814061342724", "1754401461281161216")).toBe(
+      "https://x.com/i/chat/1068127814061342724-1754401461281161216",
     );
+    // "999" < "1000" as numbers even though it sorts after it as text.
+    expect(chatUrl("1000", "999")).toBe("https://x.com/i/chat/999-1000");
+  });
+
+  it("falls back to the compose link when our X account is not connected", () => {
+    expect(chatUrl(null, "123")).toBe("https://x.com/messages/compose?recipient_id=123");
   });
 });
 

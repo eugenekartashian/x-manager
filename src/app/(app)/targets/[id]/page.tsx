@@ -15,7 +15,7 @@ import { isAiEnabled } from "@/server/services/ai-replies";
 import { getLimitsContext, usedToday } from "@/server/services/limits";
 import { findConnection } from "@/server/repositories/x-accounts";
 import { getPostsPageData } from "@/server/services/own-posts";
-import { creatorHistory, messagesToday } from "@/server/services/outreach";
+import { chatLinkFor, creatorHistory, messagesToday } from "@/server/services/outreach";
 import { getSessionData, listRecentReplies } from "@/server/services/replies";
 
 export default async function ReplySessionPage({ params }: PageProps<"/targets/[id]">) {
@@ -52,6 +52,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
     findConnection(workspace.id),
   ]);
   const me = connection?.username ?? "i";
+  const chatLink = await chatLinkFor(workspace.id, target.xUserId);
   const replies = allReplies.filter((reply) => reply.targetId === target.id);
   // Own posts the message can link to: repost list first, then recent ones (no X calls).
   const postOptions = ownPosts.connected
@@ -110,6 +111,7 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
         <MessageComposer
           targetId={target.id}
           username={target.username}
+          chatLink={chatLink}
           posts={postOptions}
           aiEnabled={aiEnabled}
           usedToday={messages.used}

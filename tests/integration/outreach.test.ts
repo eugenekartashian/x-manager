@@ -5,7 +5,7 @@ import {
   creatorHistory,
   draftMessages,
   messagesToday,
-  openMessage,
+  recordSentMessage,
   undoOpenedMessage,
 } from "@/server/services/outreach";
 import { createOwner, resetDatabase } from "../helpers/db";
@@ -38,19 +38,19 @@ async function setup(suffix: "a" | "b" = "b", status: "NEW" | "PARTNER" = "NEW")
   return { workspace, target };
 }
 
-describe("openMessage", () => {
-  it("validates, records the message, moves the creator to Messaged and returns X's DM link", async () => {
+describe("recordSentMessage", () => {
+  it("validates, records the confirmed message and moves the creator to Messaged", async () => {
     const { workspace, target } = await setup();
 
-    expect(await openMessage(workspace, { targetId: target.id, text: "  " }, NOW)).toEqual({
+    expect(await recordSentMessage(workspace, { targetId: target.id, text: "  " }, NOW)).toEqual({
       ok: false,
       error: "empty_text",
     });
     expect(
-      await openMessage(workspace, { targetId: target.id, text: "x".repeat(1_001) }, NOW),
+      await recordSentMessage(workspace, { targetId: target.id, text: "x".repeat(1_001) }, NOW),
     ).toEqual({ ok: false, error: "too_long" });
     expect(
-      await openMessage(
+      await recordSentMessage(
         workspace,
         { targetId: target.id, text: "hi", postUrl: "https://example.com/1" },
         NOW,
@@ -60,16 +60,13 @@ describe("openMessage", () => {
       error: "invalid_post_url",
     });
 
-    const result = await openMessage(
+    const result = await recordSentMessage(
       workspace,
       { targetId: target.id, text: "Hey! Support each other?", postUrl: "x.com/me/status/42?s=46" },
       NOW,
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const url = new URL(result.data.intentUrl);
-    expect(url.searchParams.get("recipient_id")).toBe("x-b");
-    expect(url.searchParams.get("text")).toBe("Hey! Support each other?");
 
     const updated = await prisma.targetAccount.findUniqueOrThrow({ where: { id: target.id } });
     expect([updated.status, updated.lastContactAt]).toEqual(["CONTACTED", NOW]);
@@ -83,7 +80,7 @@ describe("openMessage", () => {
 
   it("keeps partners as partners", async () => {
     const { workspace, target } = await setup("b", "PARTNER");
-    await openMessage(workspace, { targetId: target.id, text: "hi" }, NOW);
+    await recordSentMessage(workspace, { targetId: target.id, text: "hi" }, NOW);
     expect(
       (await prisma.targetAccount.findUniqueOrThrow({ where: { id: target.id } })).status,
     ).toBe("PARTNER");
@@ -93,9 +90,9 @@ describe("openMessage", () => {
     const { workspace, target } = await setup();
     const limited = { ...workspace, limitMessagesPerDay: 2 };
 
-    const first = await openMessage(limited, { targetId: target.id, text: "one" }, NOW);
-    await openMessage(limited, { targetId: target.id, text: "two" }, NOW);
-    expect(await openMessage(limited, { targetId: target.id, text: "three" }, NOW)).toEqual({
+    const first = await recordSentMessage(limited, { targetId: target.id, text: "one" }, NOW);
+    await recordSentMessage(limited, { targetId: target.id, text: "two" }, NOW);
+    expect(await recordSentMessage(limited, { targetId: target.id, text: "three" }, NOW)).toEqual({
       ok: false,
       error: "daily_limit",
     });
@@ -111,6 +108,9 @@ describe("openMessage", () => {
       ok: false,
       error: "not_found",
     });
+    expect((await creatorHistory(workspace.id, target.id)).map((event) => event.text)).toEqual([
+      "two",
+    ]);
 
     // Next local day (Madrid) → counter resets.
     expect(await messagesToday(limited, new Date("2026-10-09T22:30:00Z"))).toEqual({
@@ -121,7 +121,7 @@ describe("openMessage", () => {
 
   it("undo is limited to 24 hours", async () => {
     const { workspace, target } = await setup();
-    const opened = await openMessage(workspace, { targetId: target.id, text: "hi" }, NOW);
+    const opened = await recordSentMessage(workspace, { targetId: target.id, text: "hi" }, NOW);
     if (!opened.ok) throw new Error("open failed");
     const later = new Date(NOW.getTime() + 25 * 3_600_000);
     expect(await undoOpenedMessage(workspace.id, opened.data.eventId, later)).toEqual({
@@ -148,7 +148,7 @@ describe("status changes and isolation", () => {
 
   it("never lets another workspace message, undo, re-status or read history of a creator", async () => {
     const victim = await setup("a");
-    const opened = await openMessage(
+    const opened = await recordSentMessage(
       victim.workspace,
       { targetId: victim.target.id, text: "hi" },
       NOW,
@@ -157,7 +157,7 @@ describe("status changes and isolation", () => {
     const attacker = await setup("b");
 
     expect(
-      await openMessage(attacker.workspace, { targetId: victim.target.id, text: "x" }, NOW),
+      await recordSentMessage(attacker.workspace, { targetId: victim.target.id, text: "x" }, NOW),
     ).toEqual({ ok: false, error: "not_found" });
     expect(await undoOpenedMessage(attacker.workspace.id, opened.data.eventId, NOW)).toEqual({
       ok: false,

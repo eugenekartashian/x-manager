@@ -5,14 +5,18 @@ export const MAX_MESSAGE_LENGTH = 1_000;
 export const MESSAGE_UNDO_WINDOW_MS = 24 * 3_600_000;
 
 /**
- * X's direct-message composer with the text prefilled for one recipient.
- * UNVERIFIED on the mobile app — the UI also offers "Copy text" + "Open profile".
+ * Direct link to the 1:1 chat with a creator (X Chat). X no longer prefills text from links
+ * (the documented `messages/compose?…&text=` lands in the post composer first and drops the
+ * text — verified 2026-10-09), so the app copies the message and the user pastes it.
+ * The conversation id is both user ids, lower first.
  */
-export function dmIntentUrl(recipientXUserId: string, text: string): string {
-  const url = new URL("https://x.com/messages/compose");
-  url.searchParams.set("recipient_id", recipientXUserId);
-  url.searchParams.set("text", text);
-  return url.toString();
+export function chatUrl(myXUserId: string | null, theirXUserId: string): string {
+  if (!myXUserId) return `https://x.com/messages/compose?recipient_id=${theirXUserId}`;
+  const [low, high] =
+    BigInt(myXUserId) < BigInt(theirXUserId)
+      ? [myXUserId, theirXUserId]
+      : [theirXUserId, myXUserId];
+  return `https://x.com/i/chat/${low}-${high}`;
 }
 
 /** Opening a message moves a creator to "Messaged" unless they're further along. */

@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
-import { draftMessagesAction, openMessageAction, undoMessageAction } from "./outreach-actions";
+import { draftMessagesAction, recordSentAction, undoMessageAction } from "./outreach-actions";
 
 type PostOption = { url: string; label: string };
 
 type Props = {
   targetId: string;
   username: string;
+  /** Direct link to the 1:1 X chat (built on the server from both user ids). */
+  chatLink: string;
   posts: PostOption[];
   aiEnabled: boolean;
   usedToday: number;
@@ -18,10 +20,14 @@ type Props = {
 const control =
   "border-foreground/15 rounded-md border bg-transparent px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none";
 
-/** Write one personal message → open X's DM composer with it. The user sends it (D-033). */
+/**
+ * Write one personal message → copy it and open the X chat; the user pastes and sends it.
+ * Only "Yes, sent" records anything (history, status, daily count) — D-033.
+ */
 export function MessageComposer({
   targetId,
   username,
+  chatLink,
   posts,
   aiEnabled,
   usedToday,
@@ -32,8 +38,8 @@ export function MessageComposer({
   const [text, setText] = useState("");
   const [drafts, setDrafts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [opened, setOpened] = useState<{ eventId: string; copiedOk: boolean } | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
+  const [opened, setOpened] = useState<{ copiedOk: boolean; blocked: boolean } | null>(null);
+  const [sent, setSent] = useState<{ eventId: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
   const [aiPending, startAi] = useTransition();
@@ -51,28 +57,33 @@ export function MessageComposer({
 
   function openInX() {
     setError(null);
-    // X's DM link opens the chat but doesn't prefill text (seen 2026-10-09), so copy the text
-    // first — inside the click, which the clipboard API requires — then open the chat.
-    // Copy synchronously, before the new tab takes focus (the async Clipboard API fails once
-    // the page loses focus — seen 2026-10-09).
+    // X can't prefill chat text (verified 2026-10-09), so the message is copied first —
+    // synchronously, before the new tab takes focus — and nothing is recorded yet.
     const copiedOk = copySync(text);
-    // Open the tab inside the click so popup blockers allow it.
-    const tab = window.open("about:blank", "_blank");
+    // No "noopener" feature: with it window.open always returns null. Cut the opener instead.
+    const tab = window.open(chatLink, "_blank");
+    if (tab) tab.opener = null;
+    setOpened({ copiedOk, blocked: !tab });
+  }
+
+  function confirmSent() {
+    setError(null);
     startTransition(async () => {
-      const result = await openMessageAction({ targetId, text, postUrl: link || undefined });
+      const result = await recordSentAction({ targetId, text, postUrl: link || undefined });
       if (result.ok) {
-        if (tab) {
-          tab.opener = null;
-          tab.location.href = result.intentUrl;
-        } else {
-          window.location.href = result.intentUrl;
-        }
-        setOpened({ eventId: result.eventId, copiedOk });
+        setSent({ eventId: result.eventId });
+        setOpened(null);
       } else {
-        tab?.close();
         setError(result.message);
       }
     });
+  }
+
+  function reset() {
+    setOpened(null);
+    setSent(null);
+    setText("");
+    setDrafts([]);
   }
 
   async function copy() {
@@ -85,24 +96,29 @@ export function MessageComposer({
     }
   }
 
-  if (opened && confirmed) {
+  if (sent) {
     return (
       <div className="flex flex-col gap-2 rounded-md bg-green-500/10 px-3 py-3 text-sm">
         <p className="font-medium text-green-800 dark:text-green-300">
-          ✓ Sent — @{username} is “Messaged”. Mark “They reposted” on this page when they do.
+          ✓ Saved — @{username} is “Messaged”. Change the status above when they repost.
         </p>
-        <button
-          type="button"
-          onClick={() => {
-            setOpened(null);
-            setConfirmed(false);
-            setText("");
-            setDrafts([]);
-          }}
-          className="text-foreground/70 self-start text-xs underline"
-        >
-          Write another message
-        </button>
+        <div className="flex gap-4 text-xs">
+          <button type="button" onClick={reset} className="text-foreground/70 underline">
+            Write another message
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                if (await undoMessageAction({ eventId: sent.eventId, targetId })) setSent(null);
+              })
+            }
+            className="text-foreground/50 underline"
+          >
+            Undo
+          </button>
+        </div>
       </div>
     );
   }
@@ -133,26 +149,35 @@ export function MessageComposer({
             {copied ? "Copied ✓" : "Copy again"}
           </button>
         </p>
+        <a
+          href={chatLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`self-start text-sm underline ${opened.blocked ? "font-semibold" : "text-foreground/70"}`}
+        >
+          {opened.blocked ? "Open the chat with @" + username + " ↗" : "Open the chat again ↗"}
+        </a>
         <p className="font-medium">Did you send it?</p>
+        {error && (
+          <p role="alert" className="text-sm text-amber-700 dark:text-amber-400">
+            {error}
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setConfirmed(true)}
-            className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium"
+            disabled={pending}
+            onClick={confirmSent}
+            className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
           >
-            ✓ Yes, sent
+            {pending ? "Saving…" : "✓ Yes, sent"}
           </button>
           <button
             type="button"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                if (await undoMessageAction({ eventId: opened.eventId, targetId })) setOpened(null);
-              })
-            }
+            onClick={() => setOpened(null)}
             className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm"
           >
-            No — undo
+            Not yet
           </button>
         </div>
       </div>
@@ -217,10 +242,10 @@ export function MessageComposer({
         <button
           type="button"
           onClick={openInX}
-          disabled={pending || limitReached || !text.trim()}
+          disabled={limitReached || !text.trim()}
           className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90 disabled:opacity-50"
         >
-          {pending ? "Opening…" : "Copy & open chat ↗"}
+          Copy & open chat ↗
         </button>
         {aiEnabled && (
           <button

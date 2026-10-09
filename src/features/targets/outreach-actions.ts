@@ -6,7 +6,7 @@ import { requireWorkspace } from "@/server/auth/session";
 import {
   changeCreatorStatus,
   draftMessages,
-  openMessage,
+  recordSentMessage,
   undoOpenedMessage,
 } from "@/server/services/outreach";
 
@@ -25,25 +25,27 @@ const MESSAGES: Record<string, string> = {
 };
 const message = (code: string) => MESSAGES[code] ?? "Something went wrong.";
 
-const openSchema = z.object({
+const sentSchema = z.object({
   targetId: z.uuid(),
   text: z.string().max(2_000),
   postUrl: z.string().max(300).optional(),
 });
 
-export type OpenMessageResult =
-  { ok: true; intentUrl: string; eventId: string } | { ok: false; message: string };
+export type SentMessageResult = { ok: true; eventId: string } | { ok: false; message: string };
 
-export async function openMessageAction(
-  input: z.input<typeof openSchema>,
-): Promise<OpenMessageResult> {
+/** "Yes, sent" — the only moment a message is recorded (history, status, daily count). */
+export async function recordSentAction(
+  input: z.input<typeof sentSchema>,
+): Promise<SentMessageResult> {
   const { workspace } = await requireWorkspace();
-  const parsed = openSchema.safeParse(input);
+  const parsed = sentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: message("not_found") };
-  const result = await openMessage(workspace, parsed.data);
+  const result = await recordSentMessage(workspace, parsed.data);
   revalidatePath(`/targets/${parsed.data.targetId}`);
   revalidatePath("/targets");
-  return result.ok ? { ok: true, ...result.data } : { ok: false, message: message(result.error) };
+  return result.ok
+    ? { ok: true, eventId: result.data.eventId }
+    : { ok: false, message: message(result.error) };
 }
 
 export async function undoMessageAction(input: {

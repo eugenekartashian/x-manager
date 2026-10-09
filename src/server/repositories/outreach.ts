@@ -90,7 +90,8 @@ export async function recordStatusChange(
 
 export function listCreatorEvents(workspaceId: string, targetId: string, take = 30) {
   return prisma.creatorEvent.findMany({
-    where: { workspaceId, targetId },
+    // Undone messages ("didn't send it") are not history.
+    where: { workspaceId, targetId, undoneAt: null },
     orderBy: { createdAt: "desc" },
     take,
   });
