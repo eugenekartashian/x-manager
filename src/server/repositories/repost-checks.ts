@@ -36,6 +36,7 @@ export async function markCreatorReposted(
   targetId: string,
   note: string,
   now: Date,
+  proofUrl: string | null = null,
 ): Promise<boolean> {
   const { count } = await prisma.targetAccount.updateMany({
     where: {
@@ -53,6 +54,7 @@ export async function markCreatorReposted(
       kind: "STATUS_CHANGED",
       status: "REPOSTED",
       text: note,
+      postUrl: proofUrl,
       createdAt: now,
     },
   });
@@ -106,4 +108,24 @@ export function countWaitingForMe(workspaceId: string): Promise<number> {
 
 export function countWaitingForThem(workspaceId: string): Promise<number> {
   return prisma.targetAccount.count({ where: { workspaceId, status: "CONTACTED" } });
+}
+
+/** Link to the latest found Repost of this creator (from the check), if any. */
+export async function latestRepostProof(
+  workspaceId: string,
+  targetId: string,
+): Promise<string | null> {
+  const event = await prisma.creatorEvent.findFirst({
+    where: {
+      workspaceId,
+      targetId,
+      kind: "STATUS_CHANGED",
+      status: "REPOSTED",
+      postUrl: { not: null },
+      undoneAt: null,
+    },
+    orderBy: { createdAt: "desc" },
+    select: { postUrl: true },
+  });
+  return event?.postUrl ?? null;
 }

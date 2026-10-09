@@ -45,6 +45,19 @@ export function CreatorHistory({
                   {event.status ? STATUS_META[event.status].label : "?"}
                 </span>
                 {event.text && <span className="text-foreground/50"> · {event.text}</span>}
+                {event.postUrl && (
+                  <>
+                    {" · "}
+                    <a
+                      href={event.postUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      see ↗
+                    </a>
+                  </>
+                )}
               </>
             )}
           </span>

@@ -10,6 +10,8 @@ import {
   replyBlock,
   replyIntentUrl,
   TARGET_POSTS_FETCHED,
+  TARGET_POSTS_MAX_BILLED,
+  TARGET_POSTS_MAX_PAGES,
   TARGET_POSTS_MIN_INTERVAL_MS,
   TARGET_POSTS_SHOWN,
   type ReplyBlock,
@@ -78,6 +80,9 @@ export type SessionData = {
   limits: ReplyLimits;
 };
 
+/** "Reply" on the creators table opens at most this many creators at once. */
+export const MAX_REPLY_SESSION_CREATORS = 10;
+
 export async function getSessionData(
   workspace: WorkspaceRef,
   targetId: string,
@@ -125,7 +130,9 @@ export async function loadTargetPosts(
   ) {
     return err("daily_load_limit");
   }
-  if (!(await canSpend(workspaceId, TARGET_POSTS_FETCHED * 2 * X_PRICE_MICROS.postRead, now))) {
+  if (
+    !(await canSpend(workspaceId, (TARGET_POSTS_MAX_BILLED + 10) * X_PRICE_MICROS.postRead, now))
+  ) {
     return err("budget_exceeded");
   }
   if (
@@ -134,7 +141,12 @@ export async function loadTargetPosts(
     return err("too_soon");
   }
   // Fetch extra: replies and Reposts are filtered out, keep the latest original posts.
-  const posts = await fetchUserPosts(workspaceId, target.xUserId, TARGET_POSTS_FETCHED);
+  const posts = await fetchUserPosts(workspaceId, target.xUserId, {
+    pageSize: TARGET_POSTS_FETCHED,
+    wanted: TARGET_POSTS_SHOWN,
+    maxPages: TARGET_POSTS_MAX_PAGES,
+    maxBilled: TARGET_POSTS_MAX_BILLED,
+  });
   if (!posts.ok) return posts;
   await recordFeatureUsage(workspaceId, "TARGET_LOAD", now, target.id);
   const latest = posts.data.slice(0, TARGET_POSTS_SHOWN);

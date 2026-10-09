@@ -9,5 +9,19 @@ export const SEARCH_WINDOW_MS = 7 * 24 * 3_600_000;
 export const MAX_CHECK_COST_MICROS = 10_000;
 /** Regular users: manual checks per local day (each ≤ $0.01). */
 export const USER_CHECKS_PER_DAY = 30;
+/**
+ * Where the user can see the found Repost: a plain Repost has no page of its own, so the
+ * "Reposts" list of the promoted post; a quote is the creator's own post.
+ */
+export function repostProofUrl(
+  hit: { id: string; kind: "repost" | "quote" },
+  creatorUsername: string,
+  promotedPostUrl: string,
+): string {
+  return hit.kind === "quote"
+    ? `https://x.com/${creatorUsername}/status/${hit.id}`
+    : `${promotedPostUrl.replace(/\/+$/, "")}/retweets`;
+}
+
 /** "Check all waiting" checks at most this many creators per click. */
 export const MAX_BATCH_CHECKS = 30;

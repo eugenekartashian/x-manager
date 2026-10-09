@@ -188,6 +188,16 @@ export function CreatorsTable({
           aria-label="Actions for selected creators"
         >
           <span className="px-1 text-sm font-medium">{ids.length} selected</span>
+          {ids.length <= MAX_BULK ? (
+            <Link
+              href={`/targets/reply?ids=${ids.join(",")}`}
+              className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-1.5 text-sm font-medium"
+            >
+              Reply
+            </Link>
+          ) : (
+            <span className="text-foreground/50 text-xs">Reply: up to {MAX_BULK}</span>
+          )}
           {bulkMessage &&
             (ids.length <= MAX_BULK ? (
               <Link

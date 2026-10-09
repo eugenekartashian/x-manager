@@ -65,7 +65,8 @@ export async function loadPostsAction(
   const id = z.uuid().safeParse(formData.get("targetId"));
   if (!id.success) return { status: "error", message: message("not_found") };
   const result = await loadTargetPosts(workspace.id, id.data);
-  revalidatePath(`/targets/${id.data}`);
+  // The creator page and the multi-creator reply page both show these posts.
+  revalidatePath("/targets", "layout");
   if (result.ok && result.data.loaded === 0) {
     return { status: "success", message: "No new original posts — see below." };
   }

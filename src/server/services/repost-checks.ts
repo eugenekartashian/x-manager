@@ -5,6 +5,7 @@ import {
   MAX_BATCH_CHECKS,
   MAX_CHECK_COST_MICROS,
   REPOST_WAIT_MS,
+  repostProofUrl,
   SEARCH_WINDOW_MS,
   USER_CHECKS_PER_DAY,
 } from "@/server/domain/repost-check-rules";
@@ -59,6 +60,7 @@ export async function checkCreatorRepost(
     target.id,
     hit.kind === "repost" ? "Repost found by check" : "Quote found by check",
     now,
+    promotion?.postUrl ? repostProofUrl(hit, target.username, promotion.postUrl) : null,
   );
   return ok({
     found: true,
@@ -132,4 +134,9 @@ export async function latestPromotedPostUrl(
     new Date(now.getTime() - SEARCH_WINDOW_MS),
   );
   return promotion?.postUrl ?? null;
+}
+
+/** Link where the user can see this creator's found Repost (null if marked by hand). */
+export function repostProofFor(workspaceId: string, targetId: string): Promise<string | null> {
+  return checks.latestRepostProof(workspaceId, targetId);
 }

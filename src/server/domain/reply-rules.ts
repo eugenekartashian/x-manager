@@ -16,6 +16,13 @@ export const MAX_TEMPLATES = 50;
 export const TARGET_POSTS_SHOWN = 5;
 /** …out of this many fetched (replies and Reposts are filtered out, so fetch extra). */
 export const TARGET_POSTS_FETCHED = 10;
+/**
+ * X filters Reposts/replies out of each page after picking it, so a creator who mostly
+ * reposts can return empty pages. Keep paging (≤ this many pages) until enough originals —
+ * empty pages bill nothing; stop once this many posts were billed.
+ */
+export const TARGET_POSTS_MAX_PAGES = 5;
+export const TARGET_POSTS_MAX_BILLED = 20;
 export const TARGET_POSTS_MIN_INTERVAL_MS = 10 * 60 * 1000;
 
 /**

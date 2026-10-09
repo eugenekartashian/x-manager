@@ -6,11 +6,19 @@ import { ROLE_LABELS, ROLE_ORDER, STATUS_META, STATUS_ORDER } from "./creator-st
 import { changeStatusAction, repostedBackAction } from "./outreach-actions";
 
 /** Status and role (saved on change), labels, note and remove on the creator page. */
-export function CreatorDetails({ creator }: { creator: TargetAccount }) {
+export function CreatorDetails({
+  creator,
+  repostProofUrl = null,
+}: {
+  creator: TargetAccount;
+  /** Where to see their Repost (set by the repost check). */
+  repostProofUrl?: string | null;
+}) {
   return (
     <section className="border-foreground/10 flex flex-col gap-3 rounded-lg border p-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <AutoSaveSelect
+          key={`status-${creator.status}`}
           label="Status"
           name="status"
           defaultValue={creator.status}
@@ -19,6 +27,7 @@ export function CreatorDetails({ creator }: { creator: TargetAccount }) {
           action={changeStatusAction}
         />
         <AutoSaveSelect
+          key={`role-${creator.role ?? ""}`}
           label="Role"
           name="role"
           defaultValue={creator.role ?? ""}
@@ -48,6 +57,16 @@ export function CreatorDetails({ creator }: { creator: TargetAccount }) {
           {creator.repostedBackAt ? (
             <>
               <span>✓ They reposted your post and you reposted back.</span>
+              {repostProofUrl && (
+                <a
+                  href={repostProofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  See their repost ↗
+                </a>
+              )}
               <form action={repostedBackAction} className="ml-auto">
                 <input type="hidden" name="targetId" value={creator.id} />
                 <input type="hidden" name="done" value="0" />
@@ -59,6 +78,16 @@ export function CreatorDetails({ creator }: { creator: TargetAccount }) {
           ) : (
             <>
               <span>✓ @{creator.username} reposted your post — repost one of theirs in X.</span>
+              {repostProofUrl && (
+                <a
+                  href={repostProofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  See their repost ↗
+                </a>
+              )}
               <a
                 href={`https://x.com/${creator.username}`}
                 target="_blank"

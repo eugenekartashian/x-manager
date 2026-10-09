@@ -115,6 +115,50 @@ describe("loading a target's posts", () => {
   });
 });
 
+describe("creators who mostly repost", () => {
+  it("pages past empty pages (≤ 5) until it finds originals, billing only returned posts", async () => {
+    const { workspace, byName } = await workspaceWithTargets();
+    const target = byName.alex;
+    if (!target) throw new Error("setup");
+    const pages: Record<string, ReturnType<typeof postsReply>> = {
+      first: postsReply([], "t2"),
+      t2: postsReply([], "t3"),
+      t3: postsReply(["p7", "p6"], "t4"),
+      t4: postsReply(["p5", "p4", "p3"], "t5"),
+    };
+    const x = withFakeX({
+      posts: (url) => pages[url.searchParams.get("pagination_token") ?? "first"] ?? postsReply([]),
+    });
+
+    expect(await loadTargetPosts(workspace.id, target.id, T0)).toEqual({
+      ok: true,
+      data: { loaded: 5 },
+    });
+    expect(x.calls.map((call) => call.url.searchParams.get("pagination_token"))).toEqual([
+      null,
+      "t2",
+      "t3",
+      "t4",
+    ]);
+    const usage = await prisma.externalUsage.findFirstOrThrow({
+      where: { workspaceId: workspace.id, operation: "postRead" },
+    });
+    expect(usage.billedUnits).toBe(5);
+  });
+
+  it("stops after 5 pages even if nothing is found", async () => {
+    const { workspace, byName } = await workspaceWithTargets();
+    const target = byName.alex;
+    if (!target) throw new Error("setup");
+    const x = withFakeX({ posts: () => postsReply([], "more") });
+    expect(await loadTargetPosts(workspace.id, target.id, T0)).toEqual({
+      ok: true,
+      data: { loaded: 0 },
+    });
+    expect(x.calls).toHaveLength(5);
+  });
+});
+
 describe("loading keeps the latest original posts", () => {
   it("shows at most 5 of the fetched posts", async () => {
     const { workspace, byName } = await workspaceWithTargets();

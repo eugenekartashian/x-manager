@@ -66,16 +66,29 @@ export function fetchOwnPosts(
 export function fetchUserPosts(
   workspaceId: string,
   xUserId: string,
-  maxResults: number,
+  options: { pageSize: number; wanted: number; maxPages: number; maxBilled: number },
 ): Promise<Result<XPost[], XActionError>> {
   return callX(workspaceId, "read", async ({ accessToken }) => {
-    const page = await listOwnPosts(accessToken, xUserId, { maxResults });
+    const posts: XPost[] = [];
+    const billed: string[] = [];
+    let paginationToken: string | undefined;
+    for (let page = 0; page < options.maxPages; page++) {
+      const result = await listOwnPosts(accessToken, xUserId, {
+        maxResults: options.pageSize,
+        ...(paginationToken ? { paginationToken } : {}),
+      });
+      posts.push(...result.posts);
+      billed.push(...result.billedPostIds, ...result.quotedPostIds);
+      if (!result.nextToken || posts.length >= options.wanted) break;
+      if (billed.length >= options.maxBilled) break;
+      paginationToken = result.nextToken;
+    }
     return {
-      data: page.posts,
+      data: posts,
       usage: {
         operation: "postRead",
-        units: page.billedPostIds.length + page.quotedPostIds.length,
-        resources: { kind: "post", ids: [...page.billedPostIds, ...page.quotedPostIds] },
+        units: billed.length,
+        resources: { kind: "post", ids: billed },
       },
     };
   });

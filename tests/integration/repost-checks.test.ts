@@ -7,6 +7,7 @@ import {
   checkCreatorRepost,
   expireStaleMessaged,
   markRepostedBack,
+  repostProofFor,
 } from "@/server/services/repost-checks";
 import { connectXDirectly, createOwner, resetDatabase } from "../helpers/db";
 import { fakeX, searchReply } from "../helpers/fake-x";
@@ -77,6 +78,10 @@ describe("checkCreatorRepost", () => {
       "from:11 (retweets_of_tweet_id:500 OR quotes_of_tweet_id:500)",
     );
     expect(await statusOf(targetId)).toBe("REPOSTED");
+    // A plain Repost is visible in the post's Reposts list.
+    expect(await repostProofFor(workspaceId, targetId)).toBe(
+      "https://x.com/me_b/status/500/retweets",
+    );
     const usage = await prisma.externalUsage.findFirstOrThrow({ where: { workspaceId } });
     expect([usage.operation, usage.units, usage.costMicros]).toEqual(["postRead", 1, 5_000n]);
   });
@@ -86,6 +91,10 @@ describe("checkCreatorRepost", () => {
     withFakeX({ search: () => searchReply([{ id: "901", kind: "quote", postId: "500" }]) });
     const result = await checkCreatorRepost(workspaceId, targetId, NOW);
     expect(result.ok && result.data.found && result.data.kind).toBe("quote");
+    expect(await repostProofFor(workspaceId, targetId)).toBe("https://x.com/c11/status/901");
+    // Proof links stay inside the workspace.
+    const other = await createOwner("a");
+    expect(await repostProofFor(other.workspaceId, targetId)).toBeNull();
   });
 
   it("not found: nothing changes and nothing is billed", async () => {
