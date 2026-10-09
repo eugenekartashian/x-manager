@@ -144,6 +144,18 @@ describe("runRepostChecks", () => {
   });
 });
 
+describe("first check cap", () => {
+  it("reads only the newest 2 pages of a post never checked before", async () => {
+    const { workspaceId } = await setup();
+    const x = withFakeX({
+      repostedBy: (_post, token) =>
+        repostedByReply([`u-${token ?? "0"}`], `${Number(token ?? 0) + 1}`),
+    });
+    await runRepostChecks(workspaceId, { now: NOW });
+    expect(x.calls).toHaveLength(2);
+  });
+});
+
 describe("daily job", () => {
   it("checks due workspaces and turns 3-day-old silence into No reply", async () => {
     const { workspaceId, creators } = await setup();

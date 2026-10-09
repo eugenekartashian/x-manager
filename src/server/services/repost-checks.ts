@@ -4,6 +4,7 @@ import { parsePostUrl } from "@/lib/post-url";
 import { err, ok, type Result } from "@/lib/result";
 import {
   AUTO_CHECK_EVERY_MS,
+  FIRST_CHECK_PAGES,
   MAX_REPOSTER_PAGES,
   mergeSeen,
   REPOST_WAIT_MS,
@@ -78,7 +79,8 @@ export async function runRepostChecks(
     const seen = new Set(previous?.seenIds ?? []);
     let state: ScanState = { fresh: [], knownRun: 0, stop: false };
     let token: string | undefined;
-    for (let page = 0; page < MAX_REPOSTER_PAGES; page++) {
+    const maxPages = previous ? MAX_REPOSTER_PAGES : FIRST_CHECK_PAGES;
+    for (let page = 0; page < maxPages; page++) {
       const result = await fetchReposters(workspaceId, postId, {
         maxResults: REPOSTERS_PAGE_SIZE,
         paginationToken: token,

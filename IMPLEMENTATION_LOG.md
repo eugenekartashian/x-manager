@@ -404,3 +404,4 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 - UI: overview panel on Creators (waiting for them / for you, last check, Check now), green "reposted your post" panel on the creator page.
 - Phones: X app chat link (user-verified). 332 tests passing.
 - 7.3 follow-up: the chosen post link is appended to the message when the text doesn't contain it (copy, app link, history) — hand-written texts lost the link before.
+- 7.3 follow-up: first check of a post reads at most 2 pages (≈ 40 users ≈ $0.40) instead of 5 — messaged creators repost after the message, i.e. on top.

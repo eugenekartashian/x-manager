@@ -4,6 +4,11 @@
 export const REPOSTERS_PAGE_SIZE = 20;
 /** At most this many pages per post per check (≈ 100 users ≈ $1 worst case). */
 export const MAX_REPOSTER_PAGES = 5;
+/**
+ * The first check of a post has nothing "seen" to stop at, so it reads only the newest
+ * 2 pages (≈ 40 users ≈ $0.40): creators who were messaged repost after that, i.e. on top.
+ */
+export const FIRST_CHECK_PAGES = 2;
 /** Stop after this many already-seen accounts in a row (one old account may have re-reposted). */
 export const STOP_AFTER_KNOWN = 3;
 /** Remembered reposters per post (newest first). */
