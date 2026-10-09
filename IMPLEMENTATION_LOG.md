@@ -6,7 +6,7 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ## 2026-10-10 · D-035 — Bulk messages via the X API (superadmin)
 
-- Creators table: "✉ Message" in the selection bar (≤ 10, superadmin with dm.write) → `/targets/message?ids=…`: skipped creators listed (Declined, messaged < 7 days), post picker (default: first repost-list post), AI drafts one message per creator on open (parallel, server-side), editable/untickable, "Send all (N) via X API" with a confirm.
+- Creators table: "Message" in the selection bar (≤ 10, superadmin with dm.write) → `/targets/message?ids=…`: skipped creators listed (Declined, messaged < 7 days), post picker (default: first repost-list post), AI drafts one message per creator on open (parallel, server-side), editable/untickable, "Send all (N) via X API" with a confirm.
 - `domain/outreach-rules.ts` (`MAX_BULK_MESSAGES`, `RECONTACT_WAIT_MS`, `bulkSkipReason`, `withPostLink`), `services/outreach.ts` (`bulkCandidates`, `sendBulkViaApi`, shared `messagePostOptions`), actions `draftBulkAction`, `sendBulkAction`.
 - Tests: candidates split; send with link appended, skip Declined, dedup; stop at 429 with the rest "not sent"; > 10 refused; cross-workspace creators never messaged.
 

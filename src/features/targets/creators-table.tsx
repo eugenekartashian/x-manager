@@ -181,7 +181,7 @@ export function CreatorsTable({ rows, timeZone, filtered, bulkMessage = false }:
                 href={`/targets/message?ids=${ids.join(",")}`}
                 className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
               >
-                ✉ Message
+                Message
               </Link>
             ) : (
               <span className="text-foreground/50 text-xs">Message: up to {MAX_BULK}</span>
