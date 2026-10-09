@@ -79,6 +79,19 @@ Principle: as close to free as possible — reuse data we already fetch, one sma
 - [ ] **4.3** Time windows: EU vs US slots — median views gained after Reposts per slot, with sample size; flagged "not enough data" under ~10 samples.
 - [ ] **4.4** Replies (Targets): how many replies opened per week and per account (we cannot reliably read results of replies without extra reads — keep it to counts).
 
+## M7 — Collab CRM (planned 2026-10-09, D-033)
+
+Find creators, write to them one by one, track collaborations and who shared your post. Everything that happens on X is done by the user by hand; the app suggests, tracks and counts.
+
+Prices from [X API pricing](https://docs.x.com/x-api/getting-started/pricing) (read 2026-10-09): Post read $0.005, User read $0.010, Following/Followers read $0.010 — **$0.001 as Owned Reads** for the app owner's own following/followers; all resources deduplicated per UTC day. `reposted_by` billing bucket UNVERIFIED (likely User read $0.010 per reposter) → step 7.0.
+
+- [ ] **7.0 Price check** — one live `GET /2/tweets/:id/retweeted_by` on the owner's pinned post (approved by the user), compare with Console → record in D-033.
+- [ ] **7.1 Creators table** — Targets become a CRM: status (new / to write / waiting / reposted / partner / declined / no reply), tags, source, last contact; table on desktop + cards on mobile; status tabs, search, filters, sort, pagination (50); bulk tag/remove (no bulk messaging); `.xlsx`/`.csv` import.
+- [ ] **7.2 Creator card & outreach** — profile, notes, tags, history; AI draft per creator (collab / mutual promotion, varied, not identical mass text); "Open in X" DM with prefilled text (DM intent link UNVERIFIED → fallback copy text + open profile); "Mark as sent"; per-day message limit for users.
+- [ ] **7.3 Promote a post** — campaign = one own post + linked creators; daily check of who reposted it (only posts with waiting creators, max 3 days per creator) + "Check now"; waiting → reposted / no reply; links to their profile/pinned so the user decides what to do back, in X.
+- [ ] **7.4 Discover creators with AI** — sources: hashtag/keyword search, accounts you follow, accounts a creator follows; cost preview before running; candidate cache 30 days with pagination cursors; existing targets filtered out; AI ranks with a reason; user selects ≤ 10 to add (adding from cache is free).
+- [ ] **7.5 Stats & polish** — outreach stats (sent, replies, reposts, partners) on the dashboard; user limits in /admin; empty states and onboarding hints.
+
 ## Next steps after the real-use test (plan recorded 2026-09-29)
 
 Order is a proposal; each step starts only after the user approves its short plan.

@@ -217,3 +217,12 @@ Open before a paid launch: Developer Policy "Pay to engage" forbids receiving co
 
 - `/` is now a public landing page (was a redirect to /dashboard): 6 sections — hero, why (subscription creators who promote on X), how it works, features, safety, request form — plus header (Privacy, Terms, Sign in / Open app, Want to try) and footer with the not-affiliated notice. Dark, minimal, green accent; no X logo or marks; copy states what the app does, no follower/growth promises. Animations: reveal-on-scroll (content stays visible without JS) and light parallax; both off with prefers-reduced-motion. UI mock-ups are pure CSS (no screenshots, no explicit content).
 - "Want to try" → `access_request` (email, optional X username, message; RLS on; honeypot field; max 1,000 pending; people who already have access get the same answer and nothing is stored). `/admin` → Access requests → Invite (creates the invite, deletes the request) or Dismiss (deletes it). Disclosed in the Privacy Policy.
+
+## D-033 · 2026-10-09 · Proposed — Collab CRM boundaries
+
+The user wants RT4RT-style partner outreach (example: agencies DM-ing links with "RT this or my pinned"). Agreed scope, keeping the app's own X actions limited to the user's own posts:
+- **No automated or app-sent DMs.** Messages are drafted (optionally with AI, personalised and varied per creator) and sent by the user in X, one at a time ("Open in X"). Per-day message limit for users.
+- **The app never reposts other people's posts** and never triggers a Repost from someone else's action (CLAUDE.md hard rule). It only *shows* that a creator reposted the user's post, with links to that creator on X; anything the user does in return happens manually in X.
+- Repost checks: once a day per promoted post with waiting creators, at most 3 days per creator, plus a manual "Check now"; per-UTC-day deduplication keeps repeats free.
+- AI discovery: user-chosen source, cost preview, ≤ 10 additions per run, candidate cache to avoid paying twice, existing targets excluded.
+- Residual risk (explicitly accepted by the user): X Developer Policy discourages compensated/reciprocal engagement and services that enable policy violations; the design keeps all X actions human and one-by-one, and the user agreement for creators will restate X rules.
