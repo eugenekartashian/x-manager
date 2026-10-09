@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import type { CreatorStatus, TargetAccount } from "@/generated/prisma/client";
+import { Select } from "@/components/ui/select";
 import { ActionMessage } from "@/features/posts/action-message";
 import type { ActionState } from "@/features/posts/actions";
 import { formatCount, formatDateTime } from "@/lib/format";
@@ -166,7 +167,7 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
           aria-label="Actions for selected creators"
         >
           <span className="px-1 text-sm font-medium">{ids.length} selected</span>
-          <select
+          <Select
             aria-label="Move to status"
             value=""
             disabled={pending}
@@ -183,8 +184,8 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
                 {STATUS_META[status].label}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             aria-label="Set role"
             value=""
             disabled={pending}
@@ -192,7 +193,7 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
               event.target.value &&
               submit("role", { role: event.target.value === "none" ? "" : event.target.value })
             }
-            className={control}
+            className="w-28"
           >
             <option value="" disabled>
               Role…
@@ -203,7 +204,7 @@ export function CreatorsTable({ rows, timeZone, filtered }: Props) {
               </option>
             ))}
             <option value="none">No role</option>
-          </select>
+          </Select>
           <span className="flex gap-1">
             <input
               value={label}

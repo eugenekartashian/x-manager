@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Select } from "@/components/ui/select";
 import { draftMessagesAction, openMessageAction, undoMessageAction } from "./outreach-actions";
 
 type PostOption = { url: string; label: string };
@@ -52,10 +53,9 @@ export function MessageComposer({
     setError(null);
     // X's DM link opens the chat but doesn't prefill text (seen 2026-10-09), so copy the text
     // first — inside the click, which the clipboard API requires — then open the chat.
-    let copiedOk = true;
-    navigator.clipboard?.writeText(text).catch(() => {
-      copiedOk = false;
-    });
+    // Copy synchronously, before the new tab takes focus (the async Clipboard API fails once
+    // the page loses focus — seen 2026-10-09).
+    const copiedOk = copySync(text);
     // Open the tab inside the click so popup blockers allow it.
     const tab = window.open("about:blank", "_blank");
     startTransition(async () => {
@@ -163,11 +163,7 @@ export function MessageComposer({
         <span className="text-foreground/50 text-xs">
           (optional — the link goes into the message)
         </span>
-        <select
-          value={postUrl}
-          onChange={(event) => setPostUrl(event.target.value)}
-          className={control}
-        >
+        <Select value={postUrl} onChange={(event) => setPostUrl(event.target.value)}>
           <option value="">No post</option>
           {posts.map((post) => (
             <option key={post.url} value={post.url}>
@@ -175,7 +171,7 @@ export function MessageComposer({
             </option>
           ))}
           <option value="custom">Paste a link…</option>
-        </select>
+        </Select>
       </label>
       {postUrl === "custom" && (
         <input
@@ -257,4 +253,26 @@ export function MessageComposer({
       )}
     </div>
   );
+}
+
+/** Synchronous copy that works inside a click even if a new tab opens right after. */
+function copySync(value: string): boolean {
+  const field = document.createElement("textarea");
+  field.value = value;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.appendChild(field);
+  field.select();
+  field.setSelectionRange(0, value.length); // iOS
+  let ok = false;
+  try {
+    // Deprecated but still the only synchronous copy; the Clipboard API is async.
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  document.body.removeChild(field);
+  if (!ok) void navigator.clipboard?.writeText(value).catch(() => undefined);
+  return ok;
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import type { CreatorStatus } from "@/generated/prisma/client";
+import { Select } from "@/components/ui/select";
 import { ROLE_LABELS, ROLE_ORDER, STATUS_META, STATUS_ORDER } from "./creator-status";
 
 type Props = {
@@ -90,11 +91,11 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
             className={`${control} min-w-0 flex-1`}
           />
         </form>
-        <select
+        <Select
           aria-label="Filter by role"
           value={params.get("role") ?? ""}
           onChange={(event) => go({ role: event.target.value || null })}
-          className={control}
+          className="w-32"
         >
           <option value="">Any role</option>
           {ROLE_ORDER.map((role) => (
@@ -102,13 +103,13 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
               {ROLE_LABELS[role]}
             </option>
           ))}
-        </select>
+        </Select>
         {tags.length > 0 && (
-          <select
+          <Select
             aria-label="Filter by label"
             value={params.get("tag") ?? ""}
             onChange={(event) => go({ tag: event.target.value || null })}
-            className={control}
+            className="w-36"
           >
             <option value="">All labels</option>
             {tags.map((tag) => (
@@ -116,20 +117,20 @@ export function CreatorsFilters({ counts, total, tags }: Props) {
                 {tag}
               </option>
             ))}
-          </select>
+          </Select>
         )}
-        <select
+        <Select
           aria-label="Sort"
           value={params.get("sort") ?? "followers"}
           onChange={(event) =>
             go({ sort: event.target.value === "followers" ? null : event.target.value })
           }
-          className={control}
+          className="w-40"
         >
           <option value="followers">Most followers</option>
           <option value="recent">Recently added</option>
           <option value="contact">Last contact</option>
-        </select>
+        </Select>
       </div>
     </div>
   );
