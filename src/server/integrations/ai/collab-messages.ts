@@ -20,7 +20,7 @@ Write 3 different messages. Each message:
 - does NOT mention facts or labels from the bio (no "backup account", awards, promos, prices, locations or anything that sounds like gossip) — compliment their content or vibe in general words instead; the creator note may be used if it is relevant;
 - is in the language of the recipient's bio (English if unclear);
 - if a post link is given, includes it once and asks them to check it out / share it if they like it, offering to support them back;
-- offers an easy alternative in a few words — reposting the sender's pinned post instead (vary the wording, e.g. "or just my pinned post if that's easier");
+- offers an easy alternative in a few words — reposting the SENDER's own pinned post instead (vary the wording, e.g. "or just my pinned post if that's easier"); in every language it must clearly mean "my pinned post" (French "mon post épinglé", Spanish "mi post fijado", Portuguese "meu post fixado"), never the recipient's;
 - may be playful and confident, but never sexually explicit, never pushy, no threats, no fake urgency, no hashtags, at most two emoji;
 - does not promise payment, follower numbers or anything in return beyond friendly mutual support.
 Make the 3 messages clearly different in wording (never the same template).

@@ -140,13 +140,18 @@ export function BulkMessage({
 
   function changeChoice(next: string) {
     setChoice(next);
-    if (next !== "custom") applyLink(next);
+    if (next !== "custom") {
+      setCustomUrl("");
+      applyLink(next);
+    }
   }
 
   /** Pasted links are applied once complete (on leaving the field), not on every keystroke. */
   function applyCustom() {
     const link = customUrl.trim();
-    if (/\/status\/\d+/.test(link)) applyLink(link);
+    if (!/\/status\/\d+/.test(link)) return;
+    setChoice("custom");
+    applyLink(link);
   }
 
   function loadLatestPosts() {
@@ -278,7 +283,7 @@ export function BulkMessage({
                 {post.label}
               </option>
             ))}
-            <option value="custom">Paste a link…</option>
+            {choice === "custom" && <option value="custom">Pasted link</option>}
           </Select>
         </label>
         <button
@@ -301,12 +306,12 @@ export function BulkMessage({
           </button>
         )}
       </div>
-      {choice === "custom" && !done && (
+      {!done && (
         <input
           value={customUrl}
           onChange={(event) => setCustomUrl(event.target.value)}
           onBlur={applyCustom}
-          placeholder="https://x.com/you/status/…"
+          placeholder="Or paste a link to your post: https://x.com/you/status/…"
           aria-label="Link to your post"
           className={`${control} -mt-2`}
         />
