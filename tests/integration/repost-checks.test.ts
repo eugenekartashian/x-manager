@@ -7,6 +7,7 @@ import {
   checkCreatorRepost,
   expireStaleMessaged,
   markRepostedBack,
+  markRepostedByHand,
   repostProofFor,
 } from "@/server/services/repost-checks";
 import { connectXDirectly, createOwner, resetDatabase } from "../helpers/db";
@@ -216,5 +217,27 @@ describe("expiry, reposted back and isolation", () => {
       data: null,
     });
     expect((await owed()).rows).toEqual([]);
+  });
+});
+
+describe("markRepostedByHand", () => {
+  it("marks Reposted (and optionally reposted back) without calling X, only in its workspace", async () => {
+    const { workspaceId, targetId } = await setup();
+    const x = withFakeX({});
+    const other = await createOwner("a");
+    expect(await markRepostedByHand(other.workspaceId, targetId, true, NOW)).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+
+    expect(await markRepostedByHand(workspaceId, targetId, true, NOW)).toEqual({
+      ok: true,
+      data: null,
+    });
+    const row = await prisma.targetAccount.findUniqueOrThrow({ where: { id: targetId } });
+    expect([row.status, row.theyRepostedAt, row.repostedBackAt]).toEqual(["REPOSTED", NOW, NOW]);
+    expect(await repostProofFor(workspaceId, targetId)).toBeNull();
+    expect(x.calls).toHaveLength(0);
+    expect(await prisma.externalUsage.count()).toBe(0);
   });
 });

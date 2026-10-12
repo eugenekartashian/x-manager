@@ -95,7 +95,11 @@ export async function recordStatusChange(
 ): Promise<boolean> {
   const { count } = await prisma.targetAccount.updateMany({
     where: { id: targetId, workspaceId },
-    data: { status, ...(status === "CONTACTED" ? { lastContactAt: now } : {}) },
+    data: {
+      status,
+      ...(status === "CONTACTED" ? { lastContactAt: now } : {}),
+      ...(status === "REPOSTED" ? { theyRepostedAt: now } : {}),
+    },
   });
   if (count === 0) return false;
   await prisma.creatorEvent.create({

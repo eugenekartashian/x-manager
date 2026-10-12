@@ -7,6 +7,7 @@ import {
   checkAllWaiting,
   checkCreatorRepost,
   markRepostedBack,
+  markRepostedByHand,
 } from "@/server/services/repost-checks";
 import {
   changeCreatorStatus,
@@ -166,6 +167,18 @@ export async function checkAllWaitingAction(): Promise<{ ok: boolean; message: s
   return summary.stoppedBy
     ? { ok: summary.checked > 0, message: `${base}. Stopped: ${checkMessage(summary.stoppedBy)}` }
     : { ok: true, message: base };
+}
+
+/** "They reposted" / "Both reposted" marked by hand — no X call. */
+export async function markRepostedByHandAction(formData: FormData): Promise<void> {
+  const { workspace } = await requireWorkspace();
+  const parsed = z
+    .object({ targetId: z.uuid(), back: z.enum(["1", "0"]) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  await markRepostedByHand(workspace.id, parsed.data.targetId, parsed.data.back === "1");
+  revalidatePath(`/targets/${parsed.data.targetId}`);
+  revalidatePath("/targets");
 }
 
 export async function repostedBackAction(formData: FormData): Promise<void> {

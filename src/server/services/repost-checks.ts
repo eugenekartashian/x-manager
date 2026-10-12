@@ -114,6 +114,22 @@ export async function markRepostedBack(
     : err("not_found");
 }
 
+/**
+ * The user saw the Repost in X themselves — marked without any X call (free). With
+ * `alsoBack`, the user's Repost back is recorded too.
+ */
+export async function markRepostedByHand(
+  workspaceId: string,
+  targetId: string,
+  alsoBack: boolean,
+  now: Date = new Date(),
+): Promise<Result<null, "not_found">> {
+  const marked = await checks.markCreatorReposted(workspaceId, targetId, "Marked by you", now);
+  if (!marked) return err("not_found");
+  if (alsoBack) await checks.setRepostedBack(workspaceId, targetId, now);
+  return ok(null);
+}
+
 /** Cron, free: creators messaged > 3 days ago without a repost become "No reply". */
 export function expireStaleMessaged(now: Date = new Date()): Promise<number> {
   return checks.expireNoReply(new Date(now.getTime() - REPOST_WAIT_MS), now);

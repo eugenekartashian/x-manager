@@ -9,6 +9,7 @@ import { requireWorkspace } from "@/server/auth/session";
 import { CreatorDetails } from "@/features/targets/creator-details";
 import { CheckRepostButton } from "@/features/targets/check-repost-button";
 import { FindSimilarButton } from "@/features/targets/find-similar-button";
+import { MarkReposted } from "@/features/targets/mark-reposted";
 import { FIND_SIMILAR_MAX_MICROS } from "@/server/services/discovery";
 import { CreatorHistory } from "@/features/targets/creator-history";
 import { MessageComposer } from "@/features/targets/message-composer";
@@ -114,6 +115,9 @@ export default async function ReplySessionPage({ params }: PageProps<"/targets/[
           postUrl={promotedPostUrl}
           cost={showCosts ? formatUsd(BigInt(MAX_CHECK_COST_MICROS)) : null}
         />
+      )}
+      {target.status !== "REPOSTED" && target.status !== "PARTNER" && (
+        <MarkReposted targetId={target.id} />
       )}
       {role === "SUPERADMIN" && (
         <FindSimilarButton
