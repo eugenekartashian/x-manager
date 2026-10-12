@@ -23,7 +23,8 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 - Admin → "Your messages": superadmin's own messages-per-day (10/15/20/30/40/50, default 30).
 - Bulk message page: "↻ Another version" per creator, max 3 (uses the model's spare drafts first, then one more AI call); sent summary + compact sent rows; results stay after the page refreshes.
-- AI drafts: first name only, no bio facts, 2–3 sentences.
+- AI drafts: first name only, no bio facts, 2–3 sentences; each offers "or my pinned post" as an easy alternative.
+- Bug fix: changing "Your post to share" after drafts were written left the old link in the text (and appended the new one) — the link is now swapped in every draft (`swapPostLink`, unit-tested), on the bulk page and the creator page.
 - "Reply" in the creators selection bar → `/targets/reply?ids=…` (≤ 10): each creator's posts load only on click, reply composer + AI ideas per post, same 15/day + 24 h limits (D-008: the user posts in X). Shared `TargetPosts` component and `replyBlockMessage`.
 - Creator posts: X filters Reposts/replies after picking a page, so heavy reposters returned nothing; loading now pages up to 5 times until 5 originals (stops at 20 billed posts; empty pages bill nothing).
 - Repost check stores a proof link on the "Reposted" event (plain Repost → the post's `/retweets` list, quote → the quote post), shown as "See their repost ↗" on the creator page and "see ↗" in History; 2 earlier events backfilled in production. Status/role selects on the creator page now follow server changes (keyed by value).

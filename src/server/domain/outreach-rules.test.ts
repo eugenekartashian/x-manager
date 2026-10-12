@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appChatUrl, chatUrl, statusAfterMessage } from "./outreach-rules";
+import { appChatUrl, chatUrl, statusAfterMessage, swapPostLink } from "./outreach-rules";
 
 describe("chatUrl", () => {
   it("links the 1:1 X chat with both ids, lower first (as numbers, not strings)", () => {
@@ -35,5 +35,23 @@ describe("appChatUrl", () => {
     expect(appChatUrl("123", "Hi & bye 🔥")).toBe(
       "twitter://messages/compose?recipient_id=123&text=Hi%20%26%20bye%20%F0%9F%94%A5",
     );
+  });
+});
+
+describe("swapPostLink", () => {
+  const old = "https://x.com/me/status/111";
+  it("replaces every form of the previous post link with the new one", () => {
+    expect(
+      swapPostLink(`Check ${old} and https://twitter.com/me/status/111?s=20 too`, old, "NEW"),
+    ).toBe("Check NEW and NEW too");
+    expect(swapPostLink(`Here: ${old}, would you share? End ${old}.`, old, "NEW")).toBe(
+      "Here: NEW, would you share? End NEW.",
+    );
+  });
+  it("removes it when no post is picked, and leaves other links alone", () => {
+    expect(swapPostLink(`See ${old}  and https://x.com/me/status/222`, old, "")).toBe(
+      "See and https://x.com/me/status/222",
+    );
+    expect(swapPostLink("no link here", old, "NEW")).toBe("no link here");
   });
 });

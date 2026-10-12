@@ -68,3 +68,18 @@ export function withPostLink(text: string, postUrl: string | null): string {
   const postId = /status\/(\d+)/.exec(postUrl)?.[1] ?? postUrl;
   return trimmed.includes(postId) ? trimmed : `${trimmed}\n${postUrl}`;
 }
+
+/**
+ * The user picked another post after the drafts were written: links to the previous post
+ * (any x.com/…/status/<id> form) become the new link, or are removed when "No post" is picked.
+ */
+export function swapPostLink(text: string, previousUrl: string, nextUrl: string): string {
+  const previousId = /status\/(\d+)/.exec(previousUrl)?.[1];
+  if (!previousId) return text;
+  const anyFormOfPrevious = new RegExp(
+    `https?://(?:www\\.)?(?:x|twitter)\\.com/[^\\s/]+/status/${previousId}(?:\\?[^\\s,]*)?`,
+    "g",
+  );
+  const swapped = text.replace(anyFormOfPrevious, nextUrl);
+  return nextUrl ? swapped : swapped.replace(/[ \t]{2,}/g, " ").trim();
+}

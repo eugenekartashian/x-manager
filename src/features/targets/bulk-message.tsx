@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
-import { withPostLink } from "@/server/domain/outreach-rules";
+import { swapPostLink, withPostLink } from "@/server/domain/outreach-rules";
 import { draftBulkAction, draftMessagesAction, sendBulkAction } from "./outreach-actions";
 
 type Creator = {
@@ -107,6 +107,24 @@ export function BulkMessage({
         ...change,
       },
     }));
+
+  /** A new post swaps its link into every draft — no rewrite (and no AI call) needed. */
+  function changePost(nextUrl: string) {
+    const previousUrl = postUrl;
+    setPostUrl(nextUrl);
+    setRows((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([id, row]) => [
+          id,
+          {
+            ...row,
+            text: swapPostLink(row.text, previousUrl, nextUrl),
+            spare: row.spare.map((text) => swapPostLink(text, previousUrl, nextUrl)),
+          },
+        ]),
+      ),
+    );
+  }
 
   async function regenerate(id: string) {
     const row = rows[id];
@@ -223,7 +241,7 @@ export function BulkMessage({
           Your post to share
           <Select
             value={postUrl}
-            onChange={(event) => setPostUrl(event.target.value)}
+            onChange={(event) => changePost(event.target.value)}
             disabled={sending || done}
           >
             <option value="">No post</option>

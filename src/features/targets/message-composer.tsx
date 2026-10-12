@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
-import { appChatUrl } from "@/server/domain/outreach-rules";
+import { appChatUrl, swapPostLink } from "@/server/domain/outreach-rules";
 import {
   draftMessagesAction,
   recordSentAction,
@@ -118,6 +118,14 @@ export function MessageComposer({
     });
   }
 
+  /** Picking another post swaps its link into the text and the drafts. */
+  function changePost(next: string) {
+    const nextLink = next === "custom" ? customUrl.trim() : next;
+    setPostUrl(next);
+    setText((current) => swapPostLink(current, link, nextLink));
+    setDrafts((current) => current.map((draft) => swapPostLink(draft, link, nextLink)));
+  }
+
   function reset() {
     setApiSent(false);
     setOpened(null);
@@ -225,7 +233,7 @@ export function MessageComposer({
         <span className="text-foreground/50 text-xs">
           (optional — the link goes into the message)
         </span>
-        <Select value={postUrl} onChange={(event) => setPostUrl(event.target.value)}>
+        <Select value={postUrl} onChange={(event) => changePost(event.target.value)}>
           <option value="">No post</option>
           {posts.map((post) => (
             <option key={post.url} value={post.url}>
