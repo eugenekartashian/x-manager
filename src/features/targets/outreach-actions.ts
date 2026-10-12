@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireWorkspace } from "@/server/auth/session";
+import { refreshOwnPosts } from "@/server/services/own-posts";
 import {
   checkAllWaiting,
   checkCreatorRepost,
@@ -257,4 +258,25 @@ export async function sendBulkAction(
       message: item.ok ? null : message(item.error),
     })),
   };
+}
+
+const REFRESH_MESSAGES: Record<string, string> = {
+  too_soon: "Your posts were loaded a moment ago — try again in a minute.",
+  budget_exceeded: "This month's usage limit is reached.",
+  needs_reconnect: "Reconnect your X account on the dashboard.",
+  not_connected: "Connect your X account first.",
+  rate_limited: "X rate limit reached — try again later.",
+  no_credits: "X API credits are used up — top up in the X Developer Console.",
+  x_unavailable: "X is not responding. Try again in a minute.",
+};
+
+/** "Load my latest posts" next to the post picker (same refresh as on the Posts page). */
+export async function refreshMyPostsAction(): Promise<{ ok: boolean; message: string }> {
+  const { workspace } = await requireWorkspace();
+  const result = await refreshOwnPosts(workspace.id);
+  revalidatePath("/posts");
+  revalidatePath("/targets", "layout");
+  return result.ok
+    ? { ok: true, message: `Loaded ${result.data.synced} recent posts — pick one above.` }
+    : { ok: false, message: REFRESH_MESSAGES[result.error] ?? "Something went wrong." };
 }

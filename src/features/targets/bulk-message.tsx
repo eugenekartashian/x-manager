@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/select";
 import { swapPostLink, withPostLink } from "@/server/domain/outreach-rules";
-import { draftBulkAction, draftMessagesAction, sendBulkAction } from "./outreach-actions";
+import {
+  draftBulkAction,
+  draftMessagesAction,
+  refreshMyPostsAction,
+  sendBulkAction,
+} from "./outreach-actions";
 
 type Creator = {
   id: string;
@@ -48,7 +53,13 @@ export function BulkMessage({
   // turn into "skipped" — the results must stay on screen instead.
   const [creators] = useState(initialCreators);
   const [skipped] = useState(initialSkipped);
-  const [postUrl, setPostUrl] = useState(posts[0]?.url ?? "");
+  // The picked option ("custom" = a pasted link) and the link the drafts currently contain.
+  const [choice, setChoice] = useState(posts[0]?.url ?? "");
+  const [customUrl, setCustomUrl] = useState("");
+  const [appliedLink, setAppliedLink] = useState(posts[0]?.url ?? "");
+  const postUrl = choice === "custom" ? customUrl.trim() : choice;
+  const [postsNotice, setPostsNotice] = useState<string | null>(null);
+  const [loadingPosts, startLoadingPosts] = useTransition();
   const [draftedFor, setDraftedFor] = useState<string | null>(null);
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [outcomes, setOutcomes] = useState<Record<string, Outcome>>({});
@@ -83,6 +94,7 @@ export function BulkMessage({
         return next;
       });
       setDraftedFor(forPost);
+      setAppliedLink(forPost);
     });
   }
 
@@ -109,9 +121,9 @@ export function BulkMessage({
     }));
 
   /** A new post swaps its link into every draft — no rewrite (and no AI call) needed. */
-  function changePost(nextUrl: string) {
-    const previousUrl = postUrl;
-    setPostUrl(nextUrl);
+  function applyLink(nextUrl: string) {
+    const previousUrl = appliedLink;
+    setAppliedLink(nextUrl);
     setRows((current) =>
       Object.fromEntries(
         Object.entries(current).map(([id, row]) => [
@@ -124,6 +136,22 @@ export function BulkMessage({
         ]),
       ),
     );
+  }
+
+  function changeChoice(next: string) {
+    setChoice(next);
+    if (next !== "custom") applyLink(next);
+  }
+
+  /** Pasted links are applied once complete (on leaving the field), not on every keystroke. */
+  function applyCustom() {
+    const link = customUrl.trim();
+    if (/\/status\/\d+/.test(link)) applyLink(link);
+  }
+
+  function loadLatestPosts() {
+    setPostsNotice(null);
+    startLoadingPosts(async () => setPostsNotice((await refreshMyPostsAction()).message));
   }
 
   async function regenerate(id: string) {
@@ -240,8 +268,8 @@ export function BulkMessage({
         <label className="flex min-w-60 flex-1 flex-col gap-1 text-sm">
           Your post to share
           <Select
-            value={postUrl}
-            onChange={(event) => changePost(event.target.value)}
+            value={choice}
+            onChange={(event) => changeChoice(event.target.value)}
             disabled={sending || done}
           >
             <option value="">No post</option>
@@ -250,8 +278,18 @@ export function BulkMessage({
                 {post.label}
               </option>
             ))}
+            <option value="custom">Paste a link…</option>
           </Select>
         </label>
+        <button
+          type="button"
+          onClick={loadLatestPosts}
+          disabled={loadingPosts || sending || done}
+          title="Load your newest posts from X into this list"
+          className="border-foreground/15 hover:bg-foreground/5 rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+        >
+          {loadingPosts ? "Loading…" : "↻ Load my latest posts"}
+        </button>
         {draftedFor !== null && draftedFor !== postUrl && !done && (
           <button
             type="button"
@@ -263,6 +301,21 @@ export function BulkMessage({
           </button>
         )}
       </div>
+      {choice === "custom" && !done && (
+        <input
+          value={customUrl}
+          onChange={(event) => setCustomUrl(event.target.value)}
+          onBlur={applyCustom}
+          placeholder="https://x.com/you/status/…"
+          aria-label="Link to your post"
+          className={`${control} -mt-2`}
+        />
+      )}
+      {postsNotice && !done && (
+        <p role="status" className="text-foreground/70 -mt-2 text-xs">
+          {postsNotice}
+        </p>
+      )}
       {postUrl && !done && (
         <p className="text-foreground/60 -mt-2 text-xs">
           The link to your post is added at the end of every message that doesn&apos;t have it.
