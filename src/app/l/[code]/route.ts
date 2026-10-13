@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { LINKS_ENABLED } from "@/lib/features";
 import { resolveClick } from "@/server/services/links";
 
 // Public tracked-link redirect (D-039). No sign-in: the code is the only key.
 export async function GET(request: Request, { params }: RouteContext<"/l/[code]">) {
   const { code } = await params;
+  if (!LINKS_ENABLED) return new NextResponse("Not found.", { status: 404 });
   const headers = request.headers;
   const destination = await resolveClick({
     code,

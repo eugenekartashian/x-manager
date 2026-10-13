@@ -1,4 +1,6 @@
+import { notFound } from "next/navigation";
 import { DailyBars } from "@/features/dashboard/daily-bars";
+import { LINKS_ENABLED } from "@/lib/features";
 import { archiveLinkAction } from "@/features/links/actions";
 import { CopyButton } from "@/features/links/copy-button";
 import { CreateLinkForm } from "@/features/links/create-link-form";
@@ -20,6 +22,7 @@ function dayLabel(day: string): string {
 
 // Tracked links (D-039): free click counts for the bio, posts and repost swaps.
 export default async function LinksPage() {
+  if (!LINKS_ENABLED) notFound();
   const { workspace } = await requireWorkspace();
   const tz = workspace.timezone;
   const now = new Date();

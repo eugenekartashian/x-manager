@@ -1,3 +1,4 @@
+import { LINKS_ENABLED } from "@/lib/features";
 import Link from "next/link";
 import { BudgetBanner } from "@/features/history/budget-banner";
 import { AppNav } from "@/features/nav/app-nav";
@@ -9,7 +10,7 @@ const NAV = [
   { href: "/posts", label: "Posts" },
   { href: "/schedule", label: "Schedule" },
   { href: "/targets", label: "Creators" },
-  { href: "/links", label: "Links" },
+  ...(LINKS_ENABLED ? [{ href: "/links", label: "Links" }] : []),
   { href: "/history", label: "History" },
 ] as const;
 

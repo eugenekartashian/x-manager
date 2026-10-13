@@ -278,4 +278,5 @@ The user wants RT4RT-style partner outreach (example: agencies DM-ing links with
 - Privacy: no IP stored — country (Vercel header), device type, and a per-UTC-day HMAC of IP+UA (keyed with the app secret) for unique counts. Bots and link-preview crawlers (X fetches every link) are redirected but not counted. Destinations: https only, no credentials, no loop to `/l/`. Hidden ("archived") links keep redirecting (they live in old posts). Privacy policy updated.
 - Not yet: OnlyFans subscriptions (no OF API — use OF's own tracking links as destinations), automatic post ↔ link matching from post entities.
 - Wording: reciprocal reposts are a "repost swap", not a "collab" (owner decision) — UI and the AI prompt updated.
+- 2026-10-13 (D-039): parked by the owner (they already have this on their own site; they want post interaction analytics instead). `LINKS_ENABLED = false` in `src/lib/features.ts`: no nav item, `/links` and `/l/*` return 404; code, tables and tests stay.
 
