@@ -3,7 +3,7 @@ import { prisma } from "@/server/db";
 // Wipes all app tables. Only ever runs against the test database (see global-setup).
 export async function resetDatabase(): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "creator_candidate", "promoted_post_check", "creator_event", "access_request", "access_invite", "external_usage", "x_account", "workspace", "session", "account", "verification", "user" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "link_click", "tracked_link", "creator_candidate", "promoted_post_check", "creator_event", "access_request", "access_invite", "external_usage", "x_account", "workspace", "session", "account", "verification", "user" RESTART IDENTITY CASCADE',
   );
 }
 

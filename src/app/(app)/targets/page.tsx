@@ -84,7 +84,7 @@ export default async function CreatorsPage({ searchParams }: PageProps<"/targets
           </span>
         </h1>
         <p className="text-foreground/70 text-sm">
-          Accounts you reply to and collaborate with. Everything you post on X — replies, messages,
+          Accounts you reply to and swap reposts with. Everything you post on X — replies, messages,
           Reposts — you do yourself; this list keeps track.
         </p>
       </div>

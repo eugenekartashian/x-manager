@@ -4,6 +4,14 @@ Newest entry first. Each entry: what changed, key decisions, verification, limit
 
 ---
 
+## 2026-10-13 · D-039 — Tracked links
+
+- Migration `tracked_links` (`tracked_link`, `link_click`, RLS). `domain/link-rules.ts` (codes, bot filter, device, destination validation; unit tests), `repositories/links.ts`, `services/links.ts`, public `app/l/[code]/route.ts`, `/links` page (create, copy, clicks 7 d / unique / total, daily chart, hide), nav "Links". Privacy policy: click data.
+- "Repost swap" wording instead of "collab" in UI and the AI prompt.
+- Tests: validation, human vs bot counting, unknown code, uniques without storing IPs, daily counts in the workspace timezone, hidden links still redirect, cross-workspace denial.
+
+---
+
 ## 2026-10-10 · D-038 — Find similar creators
 
 - Migration `creator_candidates` (`creator_candidate` + RLS, `CandidateStatus`, `TargetAccount.followingCursor/followingExhausted`). `getFollowing` client, `fetchFollowing` (usage `followingRead`), `repositories/candidates.ts`, `services/discovery.ts` (`findSimilar`, `listSuggestions`, `addSuggestions`, `skipSuggestions`), superadmin actions, "Find similar creators" on the creator page, `/targets/suggestions`, "Suggestions (N)" on Creators. Repost check "Open ↗" now uses the proof link.

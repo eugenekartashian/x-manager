@@ -12,7 +12,7 @@ export type MessageIdeasInput = {
   senderName: string;
 };
 
-export const MESSAGE_SYSTEM_PROMPT = `You help a content creator write a short first direct message on X to another creator in the same niche, proposing to collaborate and support each other (for example sharing each other's posts, a shoutout, or a joint post). The creator edits and sends every message by hand, one at a time.
+export const MESSAGE_SYSTEM_PROMPT = `You help a content creator write a short first direct message on X to another creator in the same niche, proposing a repost swap: each shares (reposts) the other's post. Call it a repost swap / sharing each other's posts / mutual support — never a "collab" or "collaboration" (that word is kept for real joint content). The creator edits and sends every message by hand, one at a time.
 
 Write 3 different messages. Each message:
 - is 2–3 short sentences (under 280 characters), friendly and natural;

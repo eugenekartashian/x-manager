@@ -20,7 +20,7 @@ export const STATUS_META: Record<CreatorStatus, { label: string; tone: string; h
   PARTNER: {
     label: "Partner",
     tone: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-    hint: "A regular collab partner. Set by you; checks and messages keep it.",
+    hint: "A regular repost-swap partner. Set by you; checks and messages keep it.",
   },
   DECLINED: {
     label: "Declined",

@@ -134,6 +134,8 @@ model Workspace {
   billedResources BilledResource[]
   targets         TargetAccount[]
   candidates      CreatorCandidate[]
+  trackedLinks    TrackedLink[]
+  linkClicks      LinkClick[]
   replyTemplates  ReplyTemplate[]
   replies         ReplyLog[]
   posts           OwnPost[]
@@ -606,4 +608,38 @@ enum CandidateStatus {
   PENDING
   ADDED
   SKIPPED
+}
+
+/// Short tracked links (D-039): /l/<code> counts a click and redirects to `destinationUrl`.
+model TrackedLink {
+  id             String      @id @default(uuid(7))
+  workspaceId    String
+  workspace      Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  code           String      @unique
+  label          String
+  destinationUrl String
+  archivedAt     DateTime?
+  createdAt      DateTime    @default(now())
+  clicks         LinkClick[]
+
+  @@index([workspaceId, createdAt])
+  @@map("tracked_link")
+}
+
+/// One human click (bots and link-preview crawlers are not stored). No IP is kept:
+/// `visitorHash` is a per-day salted hash, only for counting unique visitors.
+model LinkClick {
+  id          String      @id @default(uuid(7))
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  linkId      String
+  link        TrackedLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  clickedAt   DateTime    @default(now())
+  country     String?
+  device      String?
+  visitorHash String
+
+  @@index([linkId, clickedAt])
+  @@index([workspaceId, clickedAt])
+  @@map("link_click")
 }

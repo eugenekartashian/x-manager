@@ -29,6 +29,12 @@ export default function PrivacyPage() {
           </li>
           <li>Usage counters and estimated API costs, to enforce limits.</li>
           <li>
+            Tracked links you create: their name and destination. When someone opens one, we count
+            the click with the country, the device type (phone, tablet or computer) and a one-way
+            daily hash used only to count unique visitors. We do not store the visitor&apos;s IP
+            address or anything that identifies them. Link-preview bots are not counted.
+          </li>
+          <li>
             If you request access on our website: the email, X username and message you send — only
             to decide on and send your invite. The request is deleted once it is answered.
           </li>

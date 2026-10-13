@@ -272,3 +272,10 @@ The user wants RT4RT-style partner outreach (example: agencies DM-ing links with
 - Not yet: AI niche filter by bio; the owner's own followers as a source ($0.001 owned reads).
 - 2026-10-10 (D-038, live): the first run got 403 — `GET /2/users/:id/following` needs the OAuth scope `follows.read` ([docs](https://docs.x.com/x-api/users/get-following)). Added to the superadmin-only optional scopes; the button asks to reconnect until the connection has it.
 
+## D-039 · 2026-10-13 · Tracked links (free click counts)
+
+- Owner request: see which post / bio / repost swap brings people to their page (e.g. OnlyFans). `/l/<code>` (public route, unguessable 6-char code) counts a human click and redirects (302, no-store, no-referrer, noindex). No X API, no paid service: one row per click in Postgres. Beta runs on the app domain (`x-manager-ek.vercel.app/l/…`); a short own domain can be added later without breaking old links.
+- Privacy: no IP stored — country (Vercel header), device type, and a per-UTC-day HMAC of IP+UA (keyed with the app secret) for unique counts. Bots and link-preview crawlers (X fetches every link) are redirected but not counted. Destinations: https only, no credentials, no loop to `/l/`. Hidden ("archived") links keep redirecting (they live in old posts). Privacy policy updated.
+- Not yet: OnlyFans subscriptions (no OF API — use OF's own tracking links as destinations), automatic post ↔ link matching from post entities.
+- Wording: reciprocal reposts are a "repost swap", not a "collab" (owner decision) — UI and the AI prompt updated.
+
