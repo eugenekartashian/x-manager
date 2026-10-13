@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "X Manager",
   description: "Personal scheduler for Reposts of your own X posts",
+  // iPhone "Add to Home Screen": opens full-screen as its own app with this name.
+  appleWebApp: { title: "X Manager", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
